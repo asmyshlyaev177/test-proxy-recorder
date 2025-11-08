@@ -2,6 +2,8 @@
 
 HTTP proxy server for recording and replaying network requests in testing. Works seamlessly with Playwright and other testing frameworks.
 
+### BETA VERSION, NOT STABLE FOR PRODUCTION USE
+
 ## Features
 
 - **Record Mode**: Capture HTTP/HTTPS requests and responses, including WebSocket connections
