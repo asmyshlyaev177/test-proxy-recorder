@@ -3,16 +3,18 @@
   "version": "0.1.0",
   "description": "HTTP proxy server for recording and replaying network requests in testing. Works seamlessly with Playwright testing framework.",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "dist/index.mjs",
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "require": "./dist/index.cjs",
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "default": "./dist/index.mjs"
     },
     "./playwright": {
+      "require": "./dist/playwright/index.cjs",
       "types": "./dist/playwright/index.d.ts",
-      "import": "./dist/playwright/index.js"
+      "default": "./dist/playwright/index.mjs"
     }
   },
   "bin": {
@@ -20,7 +22,10 @@
   },
   "files": [
     "dist/**/*.js",
+    "dist/**/*.mjs",
+    "dist/**/*.cjs",
     "dist/**/*.d.ts",
+    "dist/**/*.d.cts",
     "dist/**/*.d.ts.map",
     "!dist/**/*.test.*",
     "!dist/**/*.integration.test.*",
@@ -31,7 +36,7 @@
   "scripts": {
     "start": "node dist/proxy.js",
     "dev": "tsx src/proxy.ts",
-    "build": "tsc",
+    "build": "tsup",
     "prepublish": "pnpm run build && pnpm run test:run && pnpm run lint",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -92,6 +97,7 @@
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-unicorn": "^62.0.0",
     "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
     "vitest": "^3.2.4",
