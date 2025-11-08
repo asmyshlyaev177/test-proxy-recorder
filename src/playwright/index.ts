@@ -1,14 +1,14 @@
 import type { TestInfo } from '@playwright/test';
 
+import { type Mode, Modes } from '../types';
+
 const INTERNAL_API_URL =
   process.env.INTERNAL_API_URL || 'http://localhost:8100';
-
-export type ProxyMode = 'recording' | 'replay' | 'transparent';
 
 export type PlaywrightTestInfo = Pick<TestInfo, 'title'>;
 
 interface ProxyControlRequest {
-  mode: ProxyMode;
+  mode: Mode;
   id: string;
   timeout?: number;
 }
@@ -20,7 +20,7 @@ interface ProxyControlRequest {
  * @param timeout - Optional timeout in milliseconds
  */
 export async function setProxyMode(
-  mode: ProxyMode,
+  mode: Mode,
   sessionId: string,
   timeout?: number,
 ): Promise<void> {
@@ -72,7 +72,7 @@ export async function startRecording(
   testInfo: PlaywrightTestInfo,
 ): Promise<void> {
   const sessionId = generateSessionId(testInfo);
-  await setProxyMode('recording', sessionId);
+  await setProxyMode(Modes.record, sessionId);
 }
 
 /**
@@ -81,7 +81,7 @@ export async function startRecording(
  */
 export async function startReplay(testInfo: PlaywrightTestInfo): Promise<void> {
   const sessionId = generateSessionId(testInfo);
-  await setProxyMode('replay', sessionId);
+  await setProxyMode(Modes.replay, sessionId);
 }
 
 /**
@@ -90,7 +90,7 @@ export async function startReplay(testInfo: PlaywrightTestInfo): Promise<void> {
  */
 export async function stopProxy(testInfo: PlaywrightTestInfo): Promise<void> {
   const sessionId = generateSessionId(testInfo);
-  await setProxyMode('transparent', sessionId);
+  await setProxyMode(Modes.transparent, sessionId);
 }
 
 /**
@@ -103,7 +103,7 @@ export const playwrightProxy = {
    * @param testInfo - Playwright test info object
    * @param mode - The proxy mode to use for this test
    */
-  async before(testInfo: PlaywrightTestInfo, mode: ProxyMode): Promise<void> {
+  async before(testInfo: PlaywrightTestInfo, mode: Mode): Promise<void> {
     const sessionId = generateSessionId(testInfo);
     console.log('Proxy setup:', { mode, sessionId });
     await setProxyMode(mode, sessionId);
@@ -115,6 +115,6 @@ export const playwrightProxy = {
    */
   async after(testInfo: PlaywrightTestInfo): Promise<void> {
     const sessionId = generateSessionId(testInfo);
-    await setProxyMode('transparent', sessionId);
+    await setProxyMode(Modes.transparent, sessionId);
   },
 };

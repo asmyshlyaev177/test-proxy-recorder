@@ -8,7 +8,7 @@ export type {
 } from './types';
 
 // Playwright integration
-export type { PlaywrightTestInfo, ProxyMode } from './playwright';
+export type { PlaywrightTestInfo } from './playwright';
 export {
   generateSessionId,
   playwrightProxy,
