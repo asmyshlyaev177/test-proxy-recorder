@@ -191,7 +191,7 @@ interface ControlRequest {
 ### Playwright Integration API
 
 ```typescript
-import { playwrightProxy } from 'test-proxy-recorder';
+import { playwrightProxy, setProxyMode } from 'test-proxy-recorder';
 
 // Main helper object for use with Playwright tests
 const playwrightProxy = {
@@ -215,7 +215,7 @@ Create `e2e/global-teardown.ts` to reset the proxy mode after all tests complete
 import { setProxyMode } from 'test-proxy-recorder';
 
 async function globalTeardown() {
-  await setProxyMode('transparent', '');
+  await setProxyMode('transparent');
 }
 
 export default globalTeardown;
@@ -298,11 +298,7 @@ Each recording contains:
    test-proxy-recorder http://localhost:8000 --port 8100
    ```
 
-2. **Configure your app** to use the proxy:
-
-   ```bash
-   export EXTERNAL_API_URL=http://localhost:8100 yarn dev
-   ```
+2. **Configure your app** to use the proxy (point your app to the proxy port, e.g., 8100)
 
 3. **Record responses** (first run):
 

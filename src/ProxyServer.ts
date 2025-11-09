@@ -77,6 +77,8 @@ export class ProxyServer {
     });
 
     server.listen(port, () => {
+      // Set environment variable so Playwright integration can discover the port
+      process.env.TEST_PROXY_RECORDER_PORT = String(port);
       this.logServerStartup(port);
     });
 

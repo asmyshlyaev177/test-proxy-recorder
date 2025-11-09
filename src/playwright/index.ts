@@ -2,15 +2,28 @@ import type { TestInfo } from '@playwright/test';
 
 import { type Mode, Modes } from '../types';
 
-const INTERNAL_API_URL =
-  process.env.INTERNAL_API_URL || 'http://localhost:8100';
-
 export type PlaywrightTestInfo = Pick<TestInfo, 'title' | 'titlePath'>;
 
 interface ProxyControlRequest {
   mode: Mode;
   id?: string;
   timeout?: number;
+}
+
+/**
+ * Get the proxy port from environment variable or use default
+ * @returns The port number to use
+ */
+function getProxyPort(): number {
+  const envPort = process.env.TEST_PROXY_RECORDER_PORT;
+  if (envPort) {
+    const parsed = Number.parseInt(envPort, 10);
+    if (!Number.isNaN(parsed)) {
+      return parsed;
+    }
+  }
+
+  return 8100; // Default fallback
 }
 
 /**
@@ -24,10 +37,7 @@ export async function setProxyMode(
   sessionId?: string,
   timeout?: number,
 ): Promise<void> {
-  if (!INTERNAL_API_URL) {
-    console.warn('INTERNAL_API_URL not set, proxy mode not changed');
-    return;
-  }
+  const proxyPort = getProxyPort();
 
   try {
     const body: ProxyControlRequest = {
@@ -36,7 +46,7 @@ export async function setProxyMode(
       ...(timeout && { timeout }),
     };
 
-    const response = await fetch(`${INTERNAL_API_URL}/__control`, {
+    const response = await fetch(`http://127.0.0.1:${proxyPort}/__control`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
