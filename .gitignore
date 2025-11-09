@@ -6,3 +6,4 @@ dist/
 test-recordings-integration
 test-recordings-websocket
 coverage/
+coverage-reports
