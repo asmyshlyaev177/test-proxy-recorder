@@ -1,6 +1,6 @@
 {
   "name": "test-proxy-recorder",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "HTTP proxy server for recording and replaying network requests in testing. Works seamlessly with Playwright testing framework.",
   "type": "module",
   "main": "dist/index.mjs",
