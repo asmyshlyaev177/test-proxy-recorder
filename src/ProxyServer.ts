@@ -514,16 +514,18 @@ export class ProxyServer {
         // Add CORS headers
         this.addCorsHeaders(proxyRes, req);
 
-        // Record the response
+        // Record the response (including error responses)
         this.recordResponse(req, proxyRes);
 
-        // Forward response to client
+        // Forward response to client with original status code and headers
         res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
         proxyRes.pipe(res);
       },
     );
 
     proxyReq.on('error', (err) => {
+      // This handles network/connection errors (e.g., ECONNREFUSED, ETIMEDOUT)
+      // NOT HTTP error responses (which are handled above in the response callback)
       this.handleProxyError(err, req, res);
     });
 

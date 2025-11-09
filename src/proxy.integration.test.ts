@@ -191,11 +191,92 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.body).toBe(responseDataJson);
     });
 
-    it('should handle 404 responses', async () => {
+    it('should forward 404 error responses from target', async () => {
       const response = await makeProxyRequest('GET', '/api/nonexistent');
 
       expect(response.statusCode).toBe(404);
       expect(response.body).toContain('Not found');
+    });
+
+    it('should forward 400 error responses from target', async () => {
+      const errorBody = JSON.stringify({
+        error: 'Validation failed',
+        message: 'Missing required field: email',
+        field: 'email',
+      });
+
+      mockResponses.set('POST:/api/invalid', {
+        statusCode: 400,
+        headers: { 'Content-Type': 'application/json' },
+        body: errorBody,
+      });
+
+      const response = await makeProxyRequest('POST', '/api/invalid', {
+        body: JSON.stringify({ invalid: 'data' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body).toBe(errorBody);
+    });
+
+    it('should forward 500 error responses from target', async () => {
+      const errorBody = JSON.stringify({
+        error: 'Internal server error',
+        message: 'Database connection failed',
+      });
+
+      mockResponses.set('GET:/api/error', {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: errorBody,
+      });
+
+      const response = await makeProxyRequest('GET', '/api/error');
+
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toBe(errorBody);
+    });
+
+    it('should forward 401 unauthorized responses from target', async () => {
+      const errorBody = JSON.stringify({
+        error: 'Authentication required',
+        message: 'Invalid or expired token',
+        code: 'TOKEN_EXPIRED',
+      });
+
+      mockResponses.set('GET:/api/protected', {
+        statusCode: 401,
+        headers: {
+          'Content-Type': 'application/json',
+          'WWW-Authenticate': 'Bearer realm="api"',
+        },
+        body: errorBody,
+      });
+
+      const response = await makeProxyRequest('GET', '/api/protected');
+
+      expect(response.statusCode).toBe(401);
+      expect(response.headers['www-authenticate']).toBe('Bearer realm="api"');
+      expect(response.body).toBe(errorBody);
+    });
+
+    it('should forward 403 forbidden responses from target', async () => {
+      const errorBody = JSON.stringify({
+        error: 'Forbidden',
+        message: 'Insufficient permissions',
+      });
+
+      mockResponses.set('GET:/api/admin', {
+        statusCode: 403,
+        headers: { 'Content-Type': 'application/json' },
+        body: errorBody,
+      });
+
+      const response = await makeProxyRequest('GET', '/api/admin');
+
+      expect(response.statusCode).toBe(403);
+      expect(response.body).toBe(errorBody);
     });
 
     it('should preserve response headers', async () => {
@@ -414,6 +495,72 @@ describe('ProxyServer Integration Tests', () => {
       const recording = JSON.parse(recordingContent);
 
       expect(recording.recordings[0].request.url).toBe(searchUrl);
+    });
+
+    it('should record and forward 404 error responses', async () => {
+      const errorBody = JSON.stringify({
+        error: 'Resource not found',
+        message: 'The requested user does not exist',
+        resource: 'user',
+        id: '12345',
+      });
+
+      mockResponses.set('GET:/api/missing', {
+        statusCode: 404,
+        headers: { 'Content-Type': 'application/json' },
+        body: errorBody,
+      });
+
+      const response = await makeProxyRequest('GET', '/api/missing');
+
+      // Verify the error is forwarded to the client
+      expect(response.statusCode).toBe(404);
+      expect(response.body).toBe(errorBody);
+
+      await setProxyMode('transparent', sessionId);
+
+      // Verify the error response was recorded
+      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
+
+      expect(recording.recordings[0].response.statusCode).toBe(404);
+      expect(recording.recordings[0].response.body).toBe(errorBody);
+    });
+
+    it('should record and forward 500 error responses', async () => {
+      const errorBody = JSON.stringify({
+        error: 'Internal server error',
+        message: 'Failed to process payment',
+        code: 'PAYMENT_PROCESSOR_ERROR',
+        requestId: 'req-abc-123',
+        timestamp: '2025-01-15T10:30:00Z',
+      });
+
+      mockResponses.set('POST:/api/crash', {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: errorBody,
+      });
+
+      const response = await makeProxyRequest('POST', '/api/crash', {
+        body: JSON.stringify({ action: 'trigger-error' }),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      // Verify the error is forwarded to the client
+      expect(response.statusCode).toBe(500);
+      expect(response.body).toBe(errorBody);
+
+      await setProxyMode('transparent', sessionId);
+
+      // Verify the error response was recorded
+      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
+
+      expect(recording.recordings[0].response.statusCode).toBe(500);
+      expect(recording.recordings[0].response.body).toBe(errorBody);
     });
   });
 
