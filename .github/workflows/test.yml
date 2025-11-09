@@ -4,8 +4,13 @@ on:
   pull_request:
     branches:
       - master
-      - main
   workflow_dispatch:
+    inputs:
+      run_tests:
+        description: 'Run tests'
+        required: false
+        default: true
+        type: boolean
 
 jobs:
   test:
@@ -42,7 +47,6 @@ jobs:
         with:
           project-token: ${{ secrets.CODACY_PROJECT_TOKEN }}
           coverage-reports: coverage-reports/lcov.info
-
 
       - name: Build project
         run: pnpm run build
