@@ -6,9 +6,6 @@ import type { RecordingSession } from '../types.js';
 
 const JSON_INDENT_SPACES = 2;
 
-// TODO: change mode back to transparent on test fail ?
-// TODO: set mode transparent afterAll
-// TODO: add some delay on after step, to wait for all requests?
 export function getRecordingPath(recordingsDir: string, id: string): string {
   // Handle paths with subdirectories (e.g., 'jobs/Create-create-a-job')
   return path.join(recordingsDir, `${id}.mock.json`);
