@@ -327,7 +327,10 @@ describe('ProxyServer Integration Tests', () => {
       await setProxyMode('transparent', sessionId);
 
       // Verify recording file was created
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -361,7 +364,10 @@ describe('ProxyServer Integration Tests', () => {
 
       await setProxyMode('transparent', sessionId);
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -399,7 +405,10 @@ describe('ProxyServer Integration Tests', () => {
 
       await setProxyMode('transparent', sessionId);
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -436,7 +445,10 @@ describe('ProxyServer Integration Tests', () => {
 
       await setProxyMode('transparent', sessionId);
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -468,7 +480,10 @@ describe('ProxyServer Integration Tests', () => {
 
       await setProxyMode('transparent', sessionId);
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -490,7 +505,10 @@ describe('ProxyServer Integration Tests', () => {
       await makeProxyRequest('GET', searchUrl);
       await setProxyMode('transparent', sessionId);
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -520,7 +538,10 @@ describe('ProxyServer Integration Tests', () => {
       await setProxyMode('transparent', sessionId);
 
       // Verify the error response was recorded
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -555,7 +576,10 @@ describe('ProxyServer Integration Tests', () => {
       await setProxyMode('transparent', sessionId);
 
       // Verify the error response was recorded
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingContent = await fs.readFile(recordingPath, 'utf8');
       const recording = JSON.parse(recordingContent);
 
@@ -655,7 +679,10 @@ describe('ProxyServer Integration Tests', () => {
         websocketRecordings: [],
       };
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
     });
 
@@ -822,7 +849,10 @@ describe('ProxyServer Integration Tests', () => {
         websocketRecordings: [],
       };
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
 
       await setProxyMode('replay', sessionId);
@@ -934,7 +964,10 @@ describe('ProxyServer Integration Tests', () => {
       await setProxyMode('transparent', sessionId);
 
       // Verify the recording file has correct sequences
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const fileContent = await fs.readFile(recordingPath, 'utf8');
       const session = JSON.parse(fileContent);
 
@@ -1033,7 +1066,10 @@ describe('ProxyServer Integration Tests', () => {
       await setProxyMode('transparent', sessionId);
 
       // Verify recording was saved
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       const recordingExists = await fs
         .access(recordingPath)
         .then(() => true)

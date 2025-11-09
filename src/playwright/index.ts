@@ -5,7 +5,7 @@ import { type Mode, Modes } from '../types';
 const INTERNAL_API_URL =
   process.env.INTERNAL_API_URL || 'http://localhost:8100';
 
-export type PlaywrightTestInfo = Pick<TestInfo, 'title'>;
+export type PlaywrightTestInfo = Pick<TestInfo, 'title' | 'titlePath'>;
 
 interface ProxyControlRequest {
   mode: Mode;
@@ -56,12 +56,60 @@ export async function setProxyMode(
   }
 }
 
+interface ParsedPath {
+  folder: string | null;
+  fileName: string | null;
+}
+
+function parseSpecFilePath(specPath: string): ParsedPath {
+  // Try to match 'folder/FileName.(spec|test).ts' pattern
+  const folderMatch = specPath.match(/^(.+?)\/([^/]+)\.(spec|test)\.ts$/);
+  if (folderMatch) {
+    return { folder: folderMatch[1], fileName: folderMatch[2] };
+  }
+
+  // Try to match 'FileName.(spec|test).ts' pattern (no folder)
+  const fileMatch = specPath.match(/^([^/]+)\.(spec|test)\.ts$/);
+  if (fileMatch) {
+    return { folder: null, fileName: fileMatch[1] };
+  }
+
+  return { folder: null, fileName: null };
+}
+
+function buildSessionPath(
+  folder: string | null,
+  fileName: string | null,
+  testName: string,
+): string {
+  if (folder && fileName) {
+    return `${folder}/${fileName}__${testName}`;
+  }
+  if (fileName) {
+    return `${fileName}__${testName}`;
+  }
+  return testName;
+}
+
 /**
  * Generate a session ID from test info
+ * Uses titlePath to create folder structure with test file name
+ * Supports both .spec.ts and .test.ts extensions
+ * Example: ['jobs/Create.spec.ts', 'create a job'] becomes 'jobs/Create__create-a-job'
+ * Example: ['users/Auth.test.ts', 'login test'] becomes 'users/Auth__login-test'
  * @param testInfo - Playwright test info object
  */
 export function generateSessionId(testInfo: PlaywrightTestInfo): string {
-  return testInfo.title.toLowerCase().replaceAll(/\s+/g, '-');
+  const { titlePath } = testInfo;
+
+  if (!titlePath || titlePath.length === 0) {
+    return testInfo.title.toLowerCase().replaceAll(/\s+/g, '-');
+  }
+
+  const { folder, fileName } = parseSpecFilePath(titlePath[0]);
+  const testName = titlePath.at(-1)!.toLowerCase().replaceAll(/\s+/g, '-');
+
+  return buildSessionPath(folder, fileName, testName);
 }
 
 /**

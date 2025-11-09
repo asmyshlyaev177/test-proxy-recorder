@@ -211,7 +211,10 @@ describe('ProxyServer', () => {
       });
 
       // Check if recording file exists
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, 'test-session.json');
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        'test-session.mock.json',
+      );
       let fileExists = false;
       try {
         await fs.access(recordingPath);
@@ -316,7 +319,10 @@ describe('ProxyServer', () => {
   describe('recording path', () => {
     it('should generate correct recording path', () => {
       const recordingPath = getRecordingPath(TEST_RECORDINGS_DIR, 'my-test-id');
-      const expectedPath = path.join(TEST_RECORDINGS_DIR, 'my-test-id.json');
+      const expectedPath = path.join(
+        TEST_RECORDINGS_DIR,
+        'my-test-id.mock.json',
+      );
 
       expect(recordingPath).toBe(expectedPath);
     });

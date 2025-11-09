@@ -305,7 +305,10 @@ describe('ProxyServer WebSocket Tests', () => {
       await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Verify recording file was created with WebSocket data
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       let recording;
       try {
         const recordingContent = await fs.readFile(recordingPath, 'utf8');
@@ -385,7 +388,10 @@ describe('ProxyServer WebSocket Tests', () => {
       expect(messages.length).toBeGreaterThan(0);
 
       // Verify all messages were recorded
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       let recording;
       try {
         const recordingContent = await fs.readFile(recordingPath, 'utf8');
@@ -480,7 +486,10 @@ describe('ProxyServer WebSocket Tests', () => {
         ],
       };
 
-      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
       await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
 
       await setProxyMode('replay', sessionId);
@@ -574,7 +583,7 @@ describe('ProxyServer WebSocket Tests', () => {
 
       const recordingPath = path.join(
         TEST_RECORDINGS_DIR,
-        `${multiSessionId}.json`,
+        `${multiSessionId}.mock.json`,
       );
       await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
       await setProxyMode('replay', multiSessionId);

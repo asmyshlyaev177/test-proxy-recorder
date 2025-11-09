@@ -205,12 +205,12 @@ const playwrightProxy = {
 
 ## Recording Format
 
-Recordings are stored as JSON files in the recordings directory:
+Recordings are stored as JSON files with `.mock.json` extension in the recordings directory:
 
 ```
 recordings/
-├── test-session-1.json
-├── test-session-2.json
+├── test-session-1.mock.json
+├── test-session-2.mock.json
 └── ...
 ```
 
