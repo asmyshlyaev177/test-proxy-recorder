@@ -203,11 +203,81 @@ const playwrightProxy = {
 };
 ```
 
+### Global Teardown and Hooks Setup (Recommended)
+
+For robust test setups, it's recommended to configure global teardown and afterEach hooks to ensure the proxy is properly reset even when tests fail. This prevents the proxy from staying in record/replay mode, which could affect subsequent test runs.
+
+#### 1. Create Global Teardown File
+
+Create `e2e/global-teardown.ts` to reset the proxy mode after all tests complete:
+
+```typescript
+import { setProxyMode } from 'test-proxy-recorder';
+
+async function globalTeardown() {
+  await setProxyMode('transparent', '');
+}
+
+export default globalTeardown;
+```
+
+#### 2. Create Global Hooks File
+
+Create `e2e/global-hooks.ts` to ensure proxy cleanup happens after each test, even on failure:
+
+```typescript
+import { test } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+/**
+ * Global afterEach hook to ensure proxy cleanup happens even when tests fail.
+ * This will run after every test across all test files.
+ */
+test.afterEach(async ({}, testInfo) => {
+  try {
+    await playwrightProxy.after(testInfo);
+  } catch (error) {
+    console.error('Error during proxy cleanup:', error);
+    // Don't throw - we want cleanup to continue even if this fails
+  }
+});
+```
+
+#### 3. Configure Playwright
+
+Update your `playwright.config.ts` to include the global teardown:
+
+```typescript
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './e2e',
+  globalTeardown: './e2e/global-teardown.ts',
+  // ... rest of your config
+});
+```
+
+#### 4. Import Global Hooks in Your Base Page or Test Setup
+
+Import the global hooks file in your base test file or base page to register the afterEach hook:
+
+```typescript
+// In your e2e/basePage.ts or similar base test file
+import { test as base } from '@playwright/test';
+
+// Import global hooks to register afterEach for proxy cleanup
+import './global-hooks';
+
+export const test = base.extend({
+  // your fixtures
+});
+```
+
 ## Recording Format
 
 Recordings are stored as JSON files with `.mock.json` extension in the recordings directory:
 
-```
+```text
 recordings/
 ├── test-session-1.mock.json
 ├── test-session-2.mock.json
