@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { ProxyServer } from './ProxyServer.js';
 import { getRecordingPath } from './utils/fileUtils.js';
-import { generateRequestKey } from './utils/requestKeyGenerator.js';
+import { getReqID } from './utils/getReqID.js';
 
 const TEST_RECORDINGS_DIR = path.join(process.cwd(), 'test-recordings');
 const TEST_PORT = 9876;
@@ -229,8 +229,8 @@ describe('ProxyServer', () => {
       const req1 = createMockRequest('GET', '/api/users');
       const req2 = createMockRequest('GET', '/api/users');
 
-      const key1 = generateRequestKey(req1);
-      const key2 = generateRequestKey(req2);
+      const key1 = getReqID(req1);
+      const key2 = getReqID(req2);
 
       expect(key1).toBe(key2);
     });
@@ -239,8 +239,8 @@ describe('ProxyServer', () => {
       const req1 = createMockRequest('GET', '/api/users');
       const req2 = createMockRequest('POST', '/api/users');
 
-      const key1 = generateRequestKey(req1);
-      const key2 = generateRequestKey(req2);
+      const key1 = getReqID(req1);
+      const key2 = getReqID(req2);
 
       expect(key1).not.toBe(key2);
     });
@@ -249,8 +249,8 @@ describe('ProxyServer', () => {
       const req1 = createMockRequest('GET', '/api/users');
       const req2 = createMockRequest('GET', '/api/posts');
 
-      const key1 = generateRequestKey(req1);
-      const key2 = generateRequestKey(req2);
+      const key1 = getReqID(req1);
+      const key2 = getReqID(req2);
 
       expect(key1).not.toBe(key2);
     });
@@ -259,8 +259,8 @@ describe('ProxyServer', () => {
       const req1 = createMockRequest('GET', '/api/users?page=1');
       const req2 = createMockRequest('GET', '/api/users?page=2');
 
-      const key1 = generateRequestKey(req1);
-      const key2 = generateRequestKey(req2);
+      const key1 = getReqID(req1);
+      const key2 = getReqID(req2);
 
       // Different query params should generate different keys
       expect(key1).not.toBe(key2);
@@ -268,14 +268,14 @@ describe('ProxyServer', () => {
 
     it('should normalize paths by replacing slashes', () => {
       const req = createMockRequest('GET', '/api/users/123');
-      const key = generateRequestKey(req);
+      const key = getReqID(req);
 
       expect(key).toContain('api_users_123');
     });
 
     it('should handle root path', () => {
       const req = createMockRequest('GET', '/');
-      const key = generateRequestKey(req);
+      const key = getReqID(req);
 
       expect(key).toBe('GET_root.json');
     });

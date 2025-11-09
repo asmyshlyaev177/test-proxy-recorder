@@ -1,21 +1,21 @@
 import http from 'node:http';
 
+import filenamify from 'filenamify';
+
 const QUERY_HASH_LENGTH = 8;
 
-export function generateRequestKey(req: http.IncomingMessage): string {
+export function getReqID(req: http.IncomingMessage): string {
   const urlParts = req.url!.split('?');
   const pathname = urlParts[0];
   const query = urlParts[1] || '';
 
-  const normalizedPath = normalizePathname(pathname);
+  // Handle root path and use filenamify to sanitize
+  const pathPart = pathname === '/' ? 'root' : pathname.slice(1);
+  const normalizedPath = filenamify(pathPart, { replacement: '_' });
   const queryHash = generateQueryHash(query);
 
-  return `${req.method}_${normalizedPath}${queryHash}.json`;
-}
-
-function normalizePathname(pathname: string): string {
-  const normalized = pathname.replaceAll('/', '_').replace(/^_/, '');
-  return normalized || 'root';
+  const filename = `${req.method}_${normalizedPath}${queryHash}.json`;
+  return filenamify(filename, { replacement: '_' });
 }
 
 function generateQueryHash(query: string): string {

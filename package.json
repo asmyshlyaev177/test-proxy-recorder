@@ -79,6 +79,7 @@
   },
   "dependencies": {
     "commander": "^12.0.0",
+    "filenamify": "^7.0.1",
     "http-proxy": "^1.18.1"
   },
   "peerDependencies": {

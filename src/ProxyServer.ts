@@ -26,8 +26,8 @@ import {
   loadRecordingSession,
   saveRecordingSession,
 } from './utils/fileUtils.js';
+import { getReqID } from './utils/getReqID';
 import { readRequestBody, sendJsonResponse } from './utils/httpHelpers.js';
-import { generateRequestKey } from './utils/requestKeyGenerator.js';
 
 export class ProxyServer {
   private targets: string[];
@@ -191,6 +191,7 @@ export class ProxyServer {
     this.recordingId = null;
     this.replayId = null;
     this.currentSession = null;
+    clearTimeout(this.modeTimeout || 0);
     console.log('Switched to transparent mode');
   }
 
@@ -255,7 +256,7 @@ export class ProxyServer {
       return;
     }
 
-    const key = generateRequestKey(req);
+    const key = getReqID(req);
     const record: Recording = {
       request: {
         method: req.method!,
@@ -278,7 +279,7 @@ export class ProxyServer {
       return;
     }
 
-    const key = generateRequestKey(req);
+    const key = getReqID(req);
     const record = this.currentSession.recordings.find((r) => r.key === key);
 
     if (!record) {
@@ -309,7 +310,7 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
-    const key = generateRequestKey(req);
+    const key = getReqID(req);
     const filePath = getRecordingPath(this.recordingsDir, this.replayId!);
 
     try {
