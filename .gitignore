@@ -5,3 +5,4 @@ dist/
 .last-run.json
 test-recordings-integration
 test-recordings-websocket
+coverage/
