@@ -1,3 +1,4 @@
+/* eslint-disable sonarjs/todo-tag */
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
@@ -5,6 +6,9 @@ import type { RecordingSession } from '../types.js';
 
 const JSON_INDENT_SPACES = 2;
 
+// TODO: use testInfo.titlePath ? e.g. titlePath: [ 'jobs/Create.spec.ts', 'create a job' ],
+// TODO: change mode back to transparent on test fail ?
+// TODO: set mode transparent afterAll
 export function getRecordingPath(recordingsDir: string, id: string): string {
   return path.join(recordingsDir, `${id}.json`);
 }

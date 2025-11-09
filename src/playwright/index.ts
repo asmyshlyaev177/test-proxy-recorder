@@ -9,7 +9,7 @@ export type PlaywrightTestInfo = Pick<TestInfo, 'title'>;
 
 interface ProxyControlRequest {
   mode: Mode;
-  id: string;
+  id?: string;
   timeout?: number;
 }
 
@@ -21,7 +21,7 @@ interface ProxyControlRequest {
  */
 export async function setProxyMode(
   mode: Mode,
-  sessionId: string,
+  sessionId?: string,
   timeout?: number,
 ): Promise<void> {
   if (!INTERNAL_API_URL) {

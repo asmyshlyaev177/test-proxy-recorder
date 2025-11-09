@@ -39,6 +39,8 @@ export class ProxyServer {
   private proxy: httpProxy;
   private currentSession: RecordingSession | null;
   private recordingsDir: string;
+  private requestSequenceMap: Map<string, number>; // Track sequence per request key
+  private replaySequenceMap: Map<string, number>; // Track replay position per request key
 
   constructor(targets: string[], recordingsDir: string) {
     this.targets = targets;
@@ -49,6 +51,8 @@ export class ProxyServer {
     this.modeTimeout = null;
     this.currentSession = null;
     this.recordingsDir = recordingsDir;
+    this.requestSequenceMap = new Map();
+    this.replaySequenceMap = new Map();
     this.proxy = httpProxy.createProxyServer({
       secure: false,
       changeOrigin: true,
@@ -107,9 +111,37 @@ export class ProxyServer {
     proxyRes: http.IncomingMessage,
     req: http.IncomingMessage,
   ): void {
+    // Add CORS headers to allow cross-origin requests
+    this.addCorsHeaders(proxyRes, req);
+
     if (this.mode === Modes.record && this.recordingId) {
       this.recordResponse(req, proxyRes);
     }
+  }
+
+  private addCorsHeaders(
+    proxyRes: http.IncomingMessage,
+    req: http.IncomingMessage,
+  ): void {
+    const origin = req.headers.origin;
+
+    // Allow the requesting origin
+    proxyRes.headers['access-control-allow-origin'] = origin || '*';
+
+    // Allow credentials
+    proxyRes.headers['access-control-allow-credentials'] = 'true';
+
+    // Allow common headers
+    proxyRes.headers['access-control-allow-headers'] =
+      req.headers['access-control-request-headers'] ||
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization';
+
+    // Allow common methods
+    proxyRes.headers['access-control-allow-methods'] =
+      'GET, POST, PUT, DELETE, PATCH, OPTIONS';
+
+    // Expose headers to the browser
+    proxyRes.headers['access-control-expose-headers'] = '*';
   }
 
   private getTarget(): string {
@@ -203,6 +235,7 @@ export class ProxyServer {
     this.recordingId = id;
     this.replayId = null;
     this.currentSession = { id, recordings: [], websocketRecordings: [] };
+    this.requestSequenceMap.clear(); // Reset sequence tracking
     console.log(`Switched to record mode with ID: ${id}`);
   }
 
@@ -214,6 +247,7 @@ export class ProxyServer {
     this.replayId = id;
     this.recordingId = null;
     this.currentSession = null;
+    this.replaySequenceMap.clear(); // Reset replay position tracking
     console.log(`Switched to replay mode with ID: ${id}`);
   }
 
@@ -257,6 +291,11 @@ export class ProxyServer {
     }
 
     const key = getReqID(req);
+
+    // Get and increment sequence number for this key
+    const currentSequence = this.requestSequenceMap.get(key) || 0;
+    this.requestSequenceMap.set(key, currentSequence + 1);
+
     const record: Recording = {
       request: {
         method: req.method!,
@@ -266,6 +305,7 @@ export class ProxyServer {
       },
       timestamp: new Date().toISOString(),
       key,
+      sequence: currentSequence,
     };
 
     this.currentSession.recordings.push(record);
@@ -280,7 +320,10 @@ export class ProxyServer {
     }
 
     const key = getReqID(req);
-    const record = this.currentSession.recordings.find((r) => r.key === key);
+    // Find the most recent record with this key that doesn't have a response yet
+    const record = this.currentSession.recordings.findLast(
+      (r) => r.key === key && !r.response,
+    );
 
     if (!record) {
       console.error('Request record not found for response:', key);
@@ -315,21 +358,44 @@ export class ProxyServer {
 
     try {
       const session = await loadRecordingSession(filePath);
-      const record = session.recordings.find((r) => r.key === key);
+
+      // Get current sequence for this key (defaults to 0)
+      const currentSequence = this.replaySequenceMap.get(key) || 0;
+
+      // Find recording with matching key and sequence
+      const record = session.recordings.find(
+        (r) => r.key === key && r.sequence === currentSequence,
+      );
 
       if (!record) {
-        throw new Error(`No recording found for ${key}`);
+        throw new Error(
+          `No recording found for ${key} with sequence ${currentSequence}`,
+        );
       }
 
       if (!record.response) {
         throw new Error('No response recorded for this request');
       }
 
+      // Increment sequence for next request with same key
+      this.replaySequenceMap.set(key, currentSequence + 1);
+
       const { statusCode, headers, body } = record.response;
-      res.writeHead(statusCode, headers);
+      const origin = req.headers.origin;
+
+      // Add CORS headers to replay response
+      const responseHeaders = {
+        ...headers,
+        'access-control-allow-origin': origin || '*',
+        'access-control-allow-credentials': 'true',
+      };
+
+      res.writeHead(statusCode, responseHeaders);
       res.end(body);
 
-      console.log(`Replayed: ${req.method} ${req.url}`);
+      console.log(
+        `Replayed: ${req.method} ${req.url} (sequence: ${currentSequence})`,
+      );
     } catch (error) {
       this.handleReplayError(res, error, key, filePath);
     }
@@ -359,6 +425,11 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
+    // Handle CORS preflight requests
+    if (req.method === 'OPTIONS') {
+      return this.handleCorsPreflightRequest(req, res);
+    }
+
     if (req.url === CONTROL_ENDPOINT) {
       return this.handleControlRequest(req, res);
     }
@@ -368,6 +439,25 @@ export class ProxyServer {
     }
 
     await this.handleProxyRequest(req, res);
+  }
+
+  private handleCorsPreflightRequest(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): void {
+    const origin = req.headers.origin;
+
+    res.writeHead(HTTP_STATUS_OK, {
+      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Allow-Headers':
+        req.headers['access-control-request-headers'] ||
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'Access-Control-Max-Age': '86400', // 24 hours
+    });
+
+    res.end();
   }
 
   private async handleProxyRequest(

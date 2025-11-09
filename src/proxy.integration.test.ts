@@ -304,6 +304,7 @@ describe('ProxyServer Integration Tests', () => {
         recordings: [
           {
             key: 'GET_api_data.json',
+            sequence: 0,
             request: {
               method: 'GET',
               url: '/api/data',
@@ -319,6 +320,7 @@ describe('ProxyServer Integration Tests', () => {
           },
           {
             key: 'POST_api_create.json',
+            sequence: 0,
             request: {
               method: 'POST',
               url: '/api/create',
@@ -397,6 +399,263 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(JSON.stringify(replayGetData));
       expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
+    });
+  });
+
+  describe('CORS Support in All Modes', () => {
+    const testOrigin = 'http://localhost:3000';
+
+    it('should add CORS headers in transparent mode', async () => {
+      const mockData = { data: 'test' };
+
+      mockResponses.set('GET:/api/cors-test', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mockData),
+      });
+
+      const response = await makeProxyRequest('GET', '/api/cors-test', {
+        headers: { Origin: testOrigin },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+    });
+
+    it('should add CORS headers in record mode', async () => {
+      const sessionId = 'cors-record-test';
+      const mockData = { recorded: true };
+
+      mockResponses.set('GET:/api/cors-record', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(mockData),
+      });
+
+      await setProxyMode('record', sessionId);
+
+      const response = await makeProxyRequest('GET', '/api/cors-record', {
+        headers: { Origin: testOrigin },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+
+      await setProxyMode('transparent', sessionId);
+    });
+
+    it('should add CORS headers in replay mode', async () => {
+      const sessionId = 'cors-replay-test';
+      const replayData = { replayed: true };
+
+      // Create recording
+      const recording = {
+        id: sessionId,
+        recordings: [
+          {
+            key: 'GET_api_cors-replay.json',
+            sequence: 0,
+            request: {
+              method: 'GET',
+              url: '/api/cors-replay',
+              headers: {},
+              body: null,
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(replayData),
+            },
+            timestamp: new Date().toISOString(),
+          },
+        ],
+        websocketRecordings: [],
+      };
+
+      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
+
+      await setProxyMode('replay', sessionId);
+
+      const response = await makeProxyRequest('GET', '/api/cors-replay', {
+        headers: { Origin: testOrigin },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+      expect(response.body).toBe(JSON.stringify(replayData));
+    });
+
+    it('should handle OPTIONS preflight in transparent mode', async () => {
+      const response = await makeProxyRequest('OPTIONS', '/api/preflight', {
+        headers: {
+          Origin: testOrigin,
+          'Access-Control-Request-Method': 'POST',
+          'Access-Control-Request-Headers': 'Content-Type, Authorization',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'POST',
+      );
+      expect(response.headers['access-control-allow-headers']).toContain(
+        'Content-Type',
+      );
+      expect(response.headers['access-control-max-age']).toBe('86400');
+    });
+
+    it('should handle OPTIONS preflight without origin', async () => {
+      const response = await makeProxyRequest('OPTIONS', '/api/preflight', {
+        headers: {
+          'Access-Control-Request-Method': 'GET',
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+    });
+
+    it('should preserve backend CORS headers and add proxy CORS headers', async () => {
+      const mockData = { test: true };
+      const backendCorsHeader = 'X-Backend-CORS';
+
+      mockResponses.set('GET:/api/backend-cors', {
+        statusCode: 200,
+        headers: {
+          'Content-Type': 'application/json',
+          [backendCorsHeader]: 'backend-value',
+        },
+        body: JSON.stringify(mockData),
+      });
+
+      const response = await makeProxyRequest('GET', '/api/backend-cors', {
+        headers: { Origin: testOrigin },
+      });
+
+      expect(response.statusCode).toBe(200);
+      // Proxy should add CORS headers
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      // Backend headers should be preserved (case-insensitive)
+      expect(response.headers[backendCorsHeader.toLowerCase()]).toBe(
+        'backend-value',
+      );
+    });
+  });
+
+  describe('Sequence Handling', () => {
+    it('should record and replay multiple requests to same endpoint in correct order', async () => {
+      const sessionId = 'multiple-requests-test';
+
+      // Mock endpoint that returns different responses
+      mockResponses.set('GET:/api/data', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Response 1', count: 1 }),
+      });
+
+      await setProxyMode('record', sessionId);
+
+      // Make 3 requests to the same endpoint
+      // Since mock returns same response, we'll update it between requests
+      const response1 = await makeProxyRequest('GET', '/api/data');
+      expect(response1.statusCode).toBe(200);
+
+      mockResponses.set('GET:/api/data', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Response 2', count: 2 }),
+      });
+      const response2 = await makeProxyRequest('GET', '/api/data');
+      expect(response2.statusCode).toBe(200);
+
+      mockResponses.set('GET:/api/data', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: 'Response 3', count: 3 }),
+      });
+      const response3 = await makeProxyRequest('GET', '/api/data');
+      expect(response3.statusCode).toBe(200);
+
+      await setProxyMode('transparent', sessionId);
+
+      // Verify the recording file has correct sequences
+      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const fileContent = await fs.readFile(recordingPath, 'utf8');
+      const session = JSON.parse(fileContent);
+
+      expect(session.recordings).toHaveLength(3);
+      expect(session.recordings[0].sequence).toBe(0);
+      expect(session.recordings[1].sequence).toBe(1);
+      expect(session.recordings[2].sequence).toBe(2);
+
+      // All recordings should have the same key
+      const key1 = session.recordings[0].key;
+      const key2 = session.recordings[1].key;
+      const key3 = session.recordings[2].key;
+      expect(key1).toBe(key2);
+      expect(key2).toBe(key3);
+
+      // Switch to replay mode
+      await setProxyMode('replay', sessionId);
+
+      // Replay the requests - they should return in the same order
+      const replay1 = await makeProxyRequest('GET', '/api/data');
+      const replay2 = await makeProxyRequest('GET', '/api/data');
+      const replay3 = await makeProxyRequest('GET', '/api/data');
+
+      expect(JSON.parse(replay1.body).message).toBe('Response 1');
+      expect(JSON.parse(replay2.body).message).toBe('Response 2');
+      expect(JSON.parse(replay3.body).message).toBe('Response 3');
+
+      await setProxyMode('transparent', sessionId);
+    });
+
+    it('should handle replay sequence reset when switching modes', async () => {
+      const sessionId = 'sequence-reset-test';
+
+      mockResponses.set('GET:/api/test', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: 'first' }),
+      });
+
+      await setProxyMode('record', sessionId);
+
+      await makeProxyRequest('GET', '/api/test');
+
+      mockResponses.set('GET:/api/test', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: 'second' }),
+      });
+
+      await makeProxyRequest('GET', '/api/test');
+
+      await setProxyMode('transparent', sessionId);
+
+      // Switch to replay mode
+      await setProxyMode('replay', sessionId);
+
+      // Replay first request
+      const replay1 = await makeProxyRequest('GET', '/api/test');
+      expect(JSON.parse(replay1.body).data).toBe('first');
+
+      // Switch back to transparent and then replay again
+      await setProxyMode('transparent', sessionId);
+      await setProxyMode('replay', sessionId);
+
+      // Should start from sequence 0 again
+      const replay2 = await makeProxyRequest('GET', '/api/test');
+      expect(JSON.parse(replay2.body).data).toBe('first');
+
+      await setProxyMode('transparent', sessionId);
     });
   });
 
