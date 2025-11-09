@@ -9,6 +9,7 @@ const JSON_INDENT_SPACES = 2;
 // TODO: use testInfo.titlePath ? e.g. titlePath: [ 'jobs/Create.spec.ts', 'create a job' ],
 // TODO: change mode back to transparent on test fail ?
 // TODO: set mode transparent afterAll
+// TODO: add some delay on after step, to wait for all requests?
 export function getRecordingPath(recordingsDir: string, id: string): string {
   return path.join(recordingsDir, `${id}.json`);
 }

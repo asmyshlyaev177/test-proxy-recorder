@@ -36,6 +36,7 @@ export default [
       // SonarJS
       ...sonarjs.configs.recommended.rules,
 
+      'sonarjs/cognitive-complexity': ["error", 7],
       // Unicorn - use recommended config
       ...unicorn.configs.recommended.rules,
       // Override specific rules
