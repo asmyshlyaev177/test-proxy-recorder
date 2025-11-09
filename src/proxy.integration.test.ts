@@ -34,6 +34,7 @@ describe('ProxyServer Integration Tests', () => {
   let mockServer: http.Server | null = null;
   const mockResponses: Map<string, MockResponse> = new Map();
   let backendRequestCount = 0;
+  let lastBackendRequestBody = '';
 
   beforeAll(async () => {
     // Create mock backend server
@@ -49,12 +50,14 @@ describe('ProxyServer Integration Tests', () => {
         return;
       }
 
-      // Collect request body (not used in mock but consumed from stream)
-      req.on('data', () => {
-        // Body consumed but not used in mock responses
+      // Collect request body and store it for verification
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => {
+        chunks.push(chunk);
       });
 
       req.on('end', () => {
+        lastBackendRequestBody = Buffer.concat(chunks).toString('utf8');
         res.writeHead(mockResponse.statusCode, mockResponse.headers);
         res.end(mockResponse.body);
       });
@@ -84,6 +87,7 @@ describe('ProxyServer Integration Tests', () => {
     // Reset mock responses and backend request counter
     mockResponses.clear();
     backendRequestCount = 0;
+    lastBackendRequestBody = '';
 
     // Create and start proxy server
     proxyServer = new ProxyServer([MOCK_SERVER_URL], TEST_RECORDINGS_DIR);
@@ -142,6 +146,48 @@ describe('ProxyServer Integration Tests', () => {
       });
 
       expect(response.statusCode).toBe(201);
+      expect(response.body).toBe(responseDataJson);
+    });
+
+    it('should proxy PUT requests with body', async () => {
+      const requestData = { name: 'Updated Charlie', age: 30 };
+      const responseData = { id: 123, name: 'Updated Charlie', age: 30 };
+      const requestDataJson = JSON.stringify(requestData);
+      const responseDataJson = JSON.stringify(responseData);
+
+      mockResponses.set('PUT:/api/users/123', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: responseDataJson,
+      });
+
+      const response = await makeProxyRequest('PUT', '/api/users/123', {
+        body: requestDataJson,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(responseDataJson);
+    });
+
+    it('should proxy PATCH requests with body', async () => {
+      const requestData = { age: 31 };
+      const responseData = { id: 123, name: 'Charlie', age: 31 };
+      const requestDataJson = JSON.stringify(requestData);
+      const responseDataJson = JSON.stringify(responseData);
+
+      mockResponses.set('PATCH:/api/users/123', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: responseDataJson,
+      });
+
+      const response = await makeProxyRequest('PATCH', '/api/users/123', {
+        body: requestDataJson,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(response.statusCode).toBe(200);
       expect(response.body).toBe(responseDataJson);
     });
 
@@ -229,6 +275,9 @@ describe('ProxyServer Integration Tests', () => {
         headers: { 'Content-Type': 'application/json' },
       });
 
+      // Verify backend received the request body
+      expect(lastBackendRequestBody).toBe(requestDataJson);
+
       await setProxyMode('transparent', sessionId);
 
       const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
@@ -238,6 +287,83 @@ describe('ProxyServer Integration Tests', () => {
       expect(recording.recordings[0].request.method).toBe('POST');
       expect(recording.recordings[0].request.body).toBe(requestDataJson);
       expect(recording.recordings[0].response.statusCode).toBe(201);
+    });
+
+    it('should record PUT request with body', async () => {
+      const requestData = {
+        name: 'Updated Name',
+        email: 'updated@example.com',
+      };
+      const responseData = {
+        id: 789,
+        name: 'Updated Name',
+        email: 'updated@example.com',
+      };
+      const requestDataJson = JSON.stringify(requestData);
+      const responseDataJson = JSON.stringify(responseData);
+
+      mockResponses.set('PUT:/api/users/789', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: responseDataJson,
+      });
+
+      await makeProxyRequest('PUT', '/api/users/789', {
+        body: requestDataJson,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      // Verify backend received the request body
+      expect(lastBackendRequestBody).toBe(requestDataJson);
+
+      await setProxyMode('transparent', sessionId);
+
+      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
+
+      expect(recording.recordings[0].request.method).toBe('PUT');
+      expect(recording.recordings[0].request.url).toBe('/api/users/789');
+      expect(recording.recordings[0].request.body).toBe(requestDataJson);
+      expect(recording.recordings[0].response.statusCode).toBe(200);
+      expect(recording.recordings[0].response.body).toBe(responseDataJson);
+    });
+
+    it('should record PATCH request with body', async () => {
+      const requestData = { email: 'patched@example.com' };
+      const responseData = {
+        id: 101,
+        email: 'patched@example.com',
+        updated: true,
+      };
+      const requestDataJson = JSON.stringify(requestData);
+      const responseDataJson = JSON.stringify(responseData);
+
+      mockResponses.set('PATCH:/api/users/101', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: responseDataJson,
+      });
+
+      await makeProxyRequest('PATCH', '/api/users/101', {
+        body: requestDataJson,
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      // Verify backend received the request body
+      expect(lastBackendRequestBody).toBe(requestDataJson);
+
+      await setProxyMode('transparent', sessionId);
+
+      const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
+
+      expect(recording.recordings[0].request.method).toBe('PATCH');
+      expect(recording.recordings[0].request.url).toBe('/api/users/101');
+      expect(recording.recordings[0].request.body).toBe(requestDataJson);
+      expect(recording.recordings[0].response.statusCode).toBe(200);
+      expect(recording.recordings[0].response.body).toBe(responseDataJson);
     });
 
     it('should record multiple requests', async () => {
@@ -296,6 +422,18 @@ describe('ProxyServer Integration Tests', () => {
     const replayGetData = { replayed: true, data: 'from-recording' };
     const replayPostRequestData = { name: 'Test' };
     const replayPostResponseData = { id: 999, created: true };
+    const replayPutRequestData = { name: 'Updated', status: 'active' };
+    const replayPutResponseData = {
+      id: 555,
+      name: 'Updated',
+      status: 'active',
+    };
+    const replayPatchRequestData = { status: 'inactive' };
+    const replayPatchResponseData = {
+      id: 666,
+      status: 'inactive',
+      patched: true,
+    };
 
     beforeEach(async () => {
       // Create a recording first
@@ -334,7 +472,40 @@ describe('ProxyServer Integration Tests', () => {
             },
             timestamp: new Date().toISOString(),
           },
+          {
+            key: 'PUT_api_update_555.json',
+            sequence: 0,
+            request: {
+              method: 'PUT',
+              url: '/api/update/555',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(replayPutRequestData),
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(replayPutResponseData),
+            },
+            timestamp: new Date().toISOString(),
+          },
+          {
+            key: 'PATCH_api_patch_666.json',
+            sequence: 0,
+            request: {
+              method: 'PATCH',
+              url: '/api/patch/666',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(replayPatchRequestData),
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(replayPatchResponseData),
+            },
+            timestamp: new Date().toISOString(),
+          },
         ],
+        websocketRecordings: [],
       };
 
       const recordingPath = path.join(TEST_RECORDINGS_DIR, `${sessionId}.json`);
@@ -364,6 +535,36 @@ describe('ProxyServer Integration Tests', () => {
 
       expect(response.statusCode).toBe(201);
       expect(response.body).toBe(JSON.stringify(replayPostResponseData));
+      expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
+    });
+
+    it('should replay PUT request from record', async () => {
+      const initialRequestCount = backendRequestCount;
+      await setProxyMode('replay', sessionId);
+
+      const response = await makeProxyRequest('PUT', '/api/update/555', {
+        body: JSON.stringify(replayPutRequestData),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toBe('application/json');
+      expect(response.body).toBe(JSON.stringify(replayPutResponseData));
+      expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
+    });
+
+    it('should replay PATCH request from record', async () => {
+      const initialRequestCount = backendRequestCount;
+      await setProxyMode('replay', sessionId);
+
+      const response = await makeProxyRequest('PATCH', '/api/patch/666', {
+        body: JSON.stringify(replayPatchRequestData),
+        headers: { 'Content-Type': 'application/json' },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['content-type']).toBe('application/json');
+      expect(response.body).toBe(JSON.stringify(replayPatchResponseData));
       expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
     });
 

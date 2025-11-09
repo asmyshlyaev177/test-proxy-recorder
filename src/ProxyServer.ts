@@ -1,5 +1,6 @@
 import fs from 'node:fs/promises';
 import http from 'node:http';
+import https from 'node:https';
 import { Duplex } from 'node:stream';
 
 import httpProxy from 'http-proxy';
@@ -468,25 +469,70 @@ export class ProxyServer {
     console.log(`[${this.mode}] ${req.method} ${req.url} -> ${target}`);
 
     if (this.mode === Modes.record) {
-      await this.bufferRequestForRecord(req);
+      await this.bufferAndProxyRequest(req, res, target);
+    } else {
+      this.proxy.web(req, res, { target });
     }
-
-    this.proxy.web(req, res, { target });
   }
 
-  private async bufferRequestForRecord(
+  private async bufferAndProxyRequest(
     req: http.IncomingMessage,
+    res: http.ServerResponse,
+    target: string,
   ): Promise<void> {
+    // Buffer the request body for recording
     const chunks: Buffer[] = [];
 
     req.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
     });
 
-    req.on('end', async () => {
-      const body = Buffer.concat(chunks).toString('utf8');
-      await this.saveRequestRecord(req, body);
+    await new Promise<void>((resolve) => {
+      req.on('end', () => resolve());
     });
+
+    // Save the buffered body for recording
+    const body = Buffer.concat(chunks).toString('utf8');
+    await this.saveRequestRecord(req, body);
+
+    // Determine if we need http or https
+    const targetUrl = new URL(target);
+    const isHttps = targetUrl.protocol === 'https:';
+    const requestModule = isHttps ? https : http;
+    const defaultPort = isHttps ? 443 : 80;
+
+    // Create a new request to proxy with the buffered body
+    const proxyReq = requestModule.request(
+      {
+        hostname: targetUrl.hostname,
+        port: targetUrl.port || defaultPort,
+        path: req.url,
+        method: req.method,
+        headers: req.headers,
+      },
+      (proxyRes) => {
+        // Add CORS headers
+        this.addCorsHeaders(proxyRes, req);
+
+        // Record the response
+        this.recordResponse(req, proxyRes);
+
+        // Forward response to client
+        res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
+        proxyRes.pipe(res);
+      },
+    );
+
+    proxyReq.on('error', (err) => {
+      this.handleProxyError(err, req, res);
+    });
+
+    // Write the buffered body to the proxy request
+    if (chunks.length > 0) {
+      proxyReq.write(Buffer.concat(chunks));
+    }
+
+    proxyReq.end();
   }
 
   private handleUpgrade(
