@@ -46,7 +46,8 @@ test('Test UI with API responses', async ({ page }, testInfo) => {
   await playwrightProxy.after(testInfo);
 });
 
-test('replay recorded responses', async ({ page }, testInfo) => {
+// keep the name of test the same, it will be used as mock id
+test('Test UI with API responses', async ({ page }, testInfo) => {
   // Set proxy to replay mode - uses recording from test above
   await playwrightProxy.before(testInfo, 'replay');
 
