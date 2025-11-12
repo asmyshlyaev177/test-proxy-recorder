@@ -26,7 +26,7 @@ yarn add test-proxy-recorder
 
 ## Quick Start
 
- 1. Run proxy with your backend API as a target `test-proxy-recorder --port 8100 --target http://localhost:8000 --recordings ./recordings`, here your backend on port 8000 as target, proxy on port 8100.
+ 1. Run proxy with your backend API as a target `test-proxy-recorder --port 8100 --recordings ./recordings http://localhost:8000 `, here your backend on port 8000 as target, proxy on port 8100.
  2. Point your Frontend app to proxy port, 8100 as example
  3. The proxy runs continuously in the background. Tests control the recording/replay mode using `playwrightProxy.before()` and `playwrightProxy.after()`:
 
@@ -155,14 +155,14 @@ await fetch('http://localhost:8100/__control', {
 
 ```bash
 # Start proxy server
-test-proxy-recorder --port 8100 --target http://localhost:8000 --recordings ./recordings
+test-proxy-recorder --port 8100 --recordings ./recordings http://localhost:8000 
 ```
 
 ### CLI Options
 
 - `--port, -p`: Port to listen on (default: 8080)
-- `--target, -t`: Backend target URL (can add multiple targets)
 - `--recordings, -r`: Directory to store recordings (default: ./recordings)
+- `--help, -h`: help
 
 ## API
 
