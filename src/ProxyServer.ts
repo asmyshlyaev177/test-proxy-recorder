@@ -102,11 +102,10 @@ export class ProxyServer {
     }
 
     if (!res.headersSent) {
-      const origin = req.headers.origin;
+      const corsHeaders = this.getCorsHeaders(req);
       res.writeHead(HTTP_STATUS_BAD_GATEWAY, {
         'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': origin || '*',
-        'Access-Control-Allow-Credentials': 'true',
+        ...corsHeaders,
       });
     }
 
@@ -125,29 +124,31 @@ export class ProxyServer {
     }
   }
 
+  /**
+   * Get CORS headers for a given request
+   * @param req The incoming HTTP request
+   * @returns An object containing CORS headers
+   */
+  private getCorsHeaders(req: http.IncomingMessage): Record<string, string> {
+    const origin = req.headers.origin;
+
+    return {
+      'access-control-allow-origin': origin || '*',
+      'access-control-allow-credentials': 'true',
+      'access-control-allow-headers':
+        req.headers['access-control-request-headers'] ||
+        'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+      'access-control-allow-methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      'access-control-expose-headers': '*',
+    };
+  }
+
   private addCorsHeaders(
     proxyRes: http.IncomingMessage,
     req: http.IncomingMessage,
   ): void {
-    const origin = req.headers.origin;
-
-    // Allow the requesting origin
-    proxyRes.headers['access-control-allow-origin'] = origin || '*';
-
-    // Allow credentials
-    proxyRes.headers['access-control-allow-credentials'] = 'true';
-
-    // Allow common headers
-    proxyRes.headers['access-control-allow-headers'] =
-      req.headers['access-control-request-headers'] ||
-      'Origin, X-Requested-With, Content-Type, Accept, Authorization';
-
-    // Allow common methods
-    proxyRes.headers['access-control-allow-methods'] =
-      'GET, POST, PUT, DELETE, PATCH, OPTIONS';
-
-    // Expose headers to the browser
-    proxyRes.headers['access-control-expose-headers'] = '*';
+    const corsHeaders = this.getCorsHeaders(req);
+    Object.assign(proxyRes.headers, corsHeaders);
   }
 
   private getTarget(): string {
@@ -157,15 +158,40 @@ export class ProxyServer {
     return target;
   }
 
+  private parseGetParams(req: http.IncomingMessage) {
+    // Parse query parameters from URL
+    const url = new URL(req.url || '', `http://${req.headers.host}`);
+    const mode = url.searchParams.get('mode') as Mode | null;
+    const id = url.searchParams.get('id') || undefined;
+    const timeoutParam = url.searchParams.get('timeout');
+    const timeout = timeoutParam
+      ? Number.parseInt(timeoutParam, 10)
+      : undefined;
+
+    if (!mode) {
+      throw new Error('Mode parameter is required');
+    }
+
+    return { mode, id, timeout };
+  }
+
   private async handleControlRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
     try {
-      const body = await readRequestBody(req);
-      console.log('MODE CHANGE', body);
+      let data: ControlRequest;
 
-      const data: ControlRequest = JSON.parse(body);
+      // Support both GET with query parameters and POST with JSON body
+      if (req.method === 'GET') {
+        data = this.parseGetParams(req);
+      } else {
+        // POST request with JSON body
+        const body = await readRequestBody(req);
+        console.log('MODE CHANGE (POST)', body);
+        data = JSON.parse(body);
+      }
+
       const { mode, id, timeout: requestTimeout } = data;
       const timeout = requestTimeout ?? DEFAULT_TIMEOUT_MS;
 
@@ -273,14 +299,6 @@ export class ProxyServer {
   ): Promise<void> {
     if (!this.currentSession) {
       console.log('No current session to save');
-      return;
-    }
-
-    if (
-      this.currentSession.recordings.length === 0 &&
-      this.currentSession.websocketRecordings.length === 0
-    ) {
-      console.log('Session has no recordings, skipping save');
       return;
     }
 
@@ -401,7 +419,6 @@ export class ProxyServer {
         body: body || null,
       };
 
-      await this.saveCurrentSession();
       console.log(`Recorded: ${req.method} ${req.url}`);
     });
   }
@@ -450,7 +467,6 @@ export class ProxyServer {
       body: body || null,
     };
 
-    await this.saveCurrentSession();
     console.log(
       `recordResponseData: Recorded response for ${req.method} ${req.url}`,
     );
@@ -502,19 +518,11 @@ export class ProxyServer {
       }
 
       const { statusCode, headers, body } = record.response;
-      const origin = req.headers.origin;
 
       // Add CORS headers to replay response
       const responseHeaders = {
         ...headers,
-        'access-control-allow-origin': origin || '*',
-        'access-control-allow-credentials': 'true',
-        'access-control-allow-headers':
-          req.headers['access-control-request-headers'] ||
-          'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-        'access-control-allow-methods':
-          'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-        'access-control-expose-headers': '*',
+        ...this.getCorsHeaders(req),
       };
 
       res.writeHead(statusCode, responseHeaders);
@@ -535,11 +543,10 @@ export class ProxyServer {
       err instanceof Error && 'code' in err && err.code === 'ENOENT';
     console.error('Replay error:', err);
 
-    const origin = req.headers.origin;
+    const corsHeaders = this.getCorsHeaders(req);
     res.writeHead(HTTP_STATUS_NOT_FOUND, {
       'Content-Type': 'application/json',
-      'Access-Control-Allow-Origin': origin || '*',
-      'Access-Control-Allow-Credentials': 'true',
+      ...corsHeaders,
     });
     res.end(
       JSON.stringify({
@@ -562,7 +569,9 @@ export class ProxyServer {
       return this.handleCorsPreflightRequest(req, res);
     }
 
-    if (req.url === CONTROL_ENDPOINT) {
+    // Check if URL starts with control endpoint (ignoring query parameters)
+    const urlPath = req.url?.split('?')[0] || '';
+    if (urlPath === CONTROL_ENDPOINT) {
       return this.handleControlRequest(req, res);
     }
 
@@ -577,15 +586,10 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): void {
-    const origin = req.headers.origin;
+    const corsHeaders = this.getCorsHeaders(req);
 
     res.writeHead(HTTP_STATUS_OK, {
-      'Access-Control-Allow-Origin': origin || '*',
-      'Access-Control-Allow-Credentials': 'true',
-      'Access-Control-Allow-Headers':
-        req.headers['access-control-request-headers'] ||
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-      'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+      ...corsHeaders,
       'Access-Control-Max-Age': '86400', // 24 hours
     });
 
@@ -682,17 +686,9 @@ export class ProxyServer {
           );
 
           // Build response headers with CORS
-          const origin = req.headers.origin;
           const responseHeaders = {
             ...proxyRes.headers,
-            'access-control-allow-origin': origin || '*',
-            'access-control-allow-credentials': 'true',
-            'access-control-allow-headers':
-              req.headers['access-control-request-headers'] ||
-              'Origin, X-Requested-With, Content-Type, Accept, Authorization',
-            'access-control-allow-methods':
-              'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-            'access-control-expose-headers': '*',
+            ...this.getCorsHeaders(req),
           };
 
           // Forward response to client with CORS headers
@@ -795,10 +791,6 @@ export class ProxyServer {
           if (backendWs.readyState === WebSocket.OPEN) {
             backendWs.send(message);
           }
-
-          this.saveCurrentSession().catch((error) => {
-            console.error('Failed to save WebSocket recording:', error);
-          });
         });
 
         // Forward messages from backend to client
@@ -816,10 +808,6 @@ export class ProxyServer {
           if (clientWs.readyState === WebSocket.OPEN) {
             clientWs.send(message);
           }
-
-          this.saveCurrentSession().catch((error) => {
-            console.error('Failed to save WebSocket recording:', error);
-          });
         });
 
         // Handle errors

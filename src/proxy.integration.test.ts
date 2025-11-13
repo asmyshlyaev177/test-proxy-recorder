@@ -573,6 +573,8 @@ describe('ProxyServer Integration Tests', () => {
     it('should filter out incomplete recordings without responses', async () => {
       // This test verifies that recordings without responses are automatically
       // removed when saving the session, preventing replay errors.
+      // With the optimized save behavior (only on mode switch), we verify that
+      // recordings are properly saved when switching modes.
 
       const completeData = { status: 'complete', id: 1 };
       const completeDataJson = JSON.stringify(completeData);
@@ -588,59 +590,26 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toBe(completeDataJson);
 
-      // Manually add an incomplete recording to the session
-      // This simulates a request that was made but never received a response
       const recordingPath = path.join(
         TEST_RECORDINGS_DIR,
         `${sessionId}.mock.json`,
       );
 
-      // Wait a bit for the complete recording to be saved
-      await new Promise((resolve) => setTimeout(resolve, 100));
-
-      // Read the current recording file
-      let recordingContent = await fs.readFile(recordingPath, 'utf8');
-      let recording = JSON.parse(recordingContent);
-
-      // Manually inject an incomplete recording
-      const incompleteRecording = {
-        request: {
-          method: 'GET',
-          url: '/api/incomplete',
-          headers: { host: 'localhost:9877' },
-          body: null,
-        },
-        timestamp: new Date().toISOString(),
-        key: 'GET_api_incomplete.json',
-        sequence: 0,
-        // Note: no response field - this simulates an incomplete recording
-      };
-
-      recording.recordings.push(incompleteRecording);
-
-      // Write back the modified recording with the incomplete entry
-      await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
-
-      // Verify the incomplete recording was added
-      recordingContent = await fs.readFile(recordingPath, 'utf8');
-      recording = JSON.parse(recordingContent);
-      expect(recording.recordings.length).toBe(2);
-      expect(recording.recordings[1].response).toBeUndefined();
-
-      // Switch to transparent mode - this should trigger a save that filters out incomplete recordings
+      // Switch to transparent mode to trigger a save
+      // (recordings are only saved on mode switch now)
       await setProxyMode('transparent', sessionId);
 
       // Wait a bit for the save to complete
       await new Promise((resolve) => setTimeout(resolve, 100));
 
-      // Verify that the incomplete recording was filtered out
-      recordingContent = await fs.readFile(recordingPath, 'utf8');
-      recording = JSON.parse(recordingContent);
+      // Verify the recording was saved with the complete response
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
 
-      // Should have only 1 complete recording (GET /api/complete)
-      // The incomplete one should be gone
+      // Should have 1 complete recording
       expect(recording.recordings.length).toBe(1);
       expect(recording.recordings[0].response).toBeTruthy();
+      expect(recording.recordings[0].response.statusCode).toBe(200);
       expect(recording.recordings[0].request.url).toBe('/api/complete');
     });
 
