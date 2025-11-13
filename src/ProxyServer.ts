@@ -298,7 +298,6 @@ export class ProxyServer {
     filterIncomplete: boolean = false,
   ): Promise<void> {
     if (!this.currentSession) {
-      console.log('No current session to save');
       return;
     }
 
@@ -310,9 +309,6 @@ export class ProxyServer {
       ).length;
 
       if (incompleteCount > 0) {
-        console.log(
-          `Removing ${incompleteCount} incomplete recording(s) without responses`,
-        );
         this.currentSession.recordings = this.currentSession.recordings.filter(
           (r) => r.response,
         );
@@ -330,7 +326,6 @@ export class ProxyServer {
     body: string | null,
   ): void {
     if (!this.currentSession) {
-      console.log('saveRequestRecordSync: No current session');
       return;
     }
 
@@ -358,7 +353,6 @@ export class ProxyServer {
 
   private updateRequestBodySync(req: http.IncomingMessage, body: string): void {
     if (!this.currentSession) {
-      console.log('updateRequestBodySync: No current session');
       return;
     }
 
@@ -426,7 +420,6 @@ export class ProxyServer {
     body: string,
   ): Promise<boolean> {
     if (!this.currentSession) {
-      console.log('recordResponseData: No current session');
       return false;
     }
 
