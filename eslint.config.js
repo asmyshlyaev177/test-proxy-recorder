@@ -44,6 +44,8 @@ export default [
       'unicorn/prevent-abbreviations': 'off', // Too strict for common abbreviations
       'unicorn/no-null': 'off', // null is valid in many APIs and interfaces
       'unicorn/no-process-exit': 'off', // Allowed in CLI tools
+      'unicorn/no-array-reduce': 'off',
+      'unicorn/prefer-at': 'off',
 
       // Simple Import Sort
       'simple-import-sort/imports': 'error',

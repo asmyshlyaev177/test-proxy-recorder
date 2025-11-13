@@ -336,10 +336,7 @@ export class ProxyServer {
 
     const key = getReqID(req);
 
-    // Get and increment sequence number for this key
-    const currentSequence = this.requestSequenceMap.get(key) || 0;
-    this.requestSequenceMap.set(key, currentSequence + 1);
-
+    // Don't assign sequence number yet - it will be assigned when response arrives
     const record: Recording = {
       request: {
         method: req.method!,
@@ -349,13 +346,13 @@ export class ProxyServer {
       },
       timestamp: new Date().toISOString(),
       key,
-      sequence: currentSequence,
+      sequence: -1, // Temporary, will be set when response arrives
     };
 
     this.currentSession.recordings.push(record);
     console.log(
       // eslint-disable-next-line sonarjs/no-nested-template-literals
-      `saveRequestRecordSync: Saved ${req.method} ${req.url} (key: ${key}, seq: ${currentSequence}, body: ${body ? `${body.length} chars` : 'null'}, total: ${this.currentSession.recordings.length}, sessionId: ${this.currentSession.id})`,
+      `saveRequestRecordSync: Saved ${req.method} ${req.url} (key: ${key}, body: ${body ? `${body.length} chars` : 'null'}, total: ${this.currentSession.recordings.length}, sessionId: ${this.currentSession.id})`,
     );
   }
 
@@ -467,8 +464,17 @@ export class ProxyServer {
       body: body || null,
     };
 
+    // Update timestamp to reflect when the response was actually received
+    record.timestamp = new Date().toISOString();
+
+    // Assign sequence number based on response arrival order
+    // This ensures sequence reflects the order responses were received
+    const currentSequence = this.requestSequenceMap.get(key) || 0;
+    record.sequence = currentSequence;
+    this.requestSequenceMap.set(key, currentSequence + 1);
+
     console.log(
-      `recordResponseData: Recorded response for ${req.method} ${req.url}`,
+      `recordResponseData: Recorded response for ${req.method} ${req.url} (seq: ${record.sequence})`,
     );
     return true;
   }
@@ -486,9 +492,9 @@ export class ProxyServer {
       const host = req.headers.host || 'unknown';
 
       // Find all recordings with matching key that have responses
-      const recordsWithKey = session.recordings.filter(
-        (r) => r.key === key && r.response,
-      );
+      const recordsWithKey = session.recordings
+        .filter((r) => r.key === key && r.response)
+        .toSorted((a, b) => a.sequence - b.sequence);
 
       if (recordsWithKey.length === 0) {
         throw new Error(
@@ -499,13 +505,20 @@ export class ProxyServer {
       // Get or initialize the usage count for this key
       const usageCount = this.replaySequenceMap.get(key) || 0;
 
-      // Use modulo to cycle through available responses
-      // This allows requests to come in any order and repeat
-      const recordIndex = usageCount % recordsWithKey.length;
-      const record = recordsWithKey[recordIndex];
+      // use the last sequence (latest response received)
+      // for duplicated recordings with the same key
+      let record: Recording;
+      if (recordsWithKey.length > 1) {
+        // Use the highest sequence number (last response received)
+        record = recordsWithKey[recordsWithKey.length - 1];
+      } else {
+        // use sequential replay
+        const recordIndex = usageCount % recordsWithKey.length;
+        record = recordsWithKey[recordIndex];
+      }
 
       console.log(
-        `Replaying ${req.method} ${req.url} (usage: ${usageCount}, using recording ${recordIndex}/${recordsWithKey.length})`,
+        `Replaying ${req.method} ${req.url} (usage: ${usageCount}, sequence: ${record.sequence}, body_len: ${record.response?.body?.length || 0})`,
       );
 
       // Increment usage count for next request with same key
