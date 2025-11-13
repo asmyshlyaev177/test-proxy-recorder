@@ -336,6 +336,7 @@ export class ProxyServer {
 
     this.currentSession.recordings.push(record);
     console.log(
+      // eslint-disable-next-line sonarjs/no-nested-template-literals
       `saveRequestRecordSync: Saved ${req.method} ${req.url} (key: ${key}, seq: ${currentSequence}, body: ${body ? `${body.length} chars` : 'null'}, total: ${this.currentSession.recordings.length}, sessionId: ${this.currentSession.id})`,
     );
   }

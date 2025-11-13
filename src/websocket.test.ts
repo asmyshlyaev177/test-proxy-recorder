@@ -19,8 +19,8 @@ const TEST_RECORDINGS_DIR = path.join(
   process.cwd(),
   'test-recordings-websocket',
 );
-const PROXY_PORT = 9879;
-const MOCK_SERVER_PORT = 9880;
+const PROXY_PORT = 9881;
+const MOCK_SERVER_PORT = 9882;
 const MOCK_SERVER_URL = `http://localhost:${MOCK_SERVER_PORT}`;
 
 describe('ProxyServer WebSocket Tests', () => {
