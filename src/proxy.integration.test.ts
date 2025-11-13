@@ -515,6 +515,135 @@ describe('ProxyServer Integration Tests', () => {
       expect(recording.recordings[0].request.url).toBe(searchUrl);
     });
 
+    it('should correctly record response body for GET requests (stream consumption fix)', async () => {
+      // This test verifies that the response body is properly captured
+      // even when the response stream is being forwarded to the client.
+      // Previously, there was a bug where piping the response stream to
+      // the client would prevent the recording mechanism from capturing
+      // the response body, resulting in null response bodies in recordings.
+
+      const statusData = {
+        status: 'active',
+        message: 'Channel manager is operational',
+        timestamp: new Date().toISOString()
+      };
+      const statusDataJson = JSON.stringify(statusData);
+
+      mockResponses.set('GET:/api/v1/channels/test/status', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: statusDataJson,
+      });
+
+      // Make the request
+      const response = await makeProxyRequest('GET', '/api/v1/channels/test/status');
+
+      // Verify the client receives the correct response
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(statusDataJson);
+      expect(JSON.parse(response.body)).toEqual(statusData);
+
+      // Switch back to transparent to save recording
+      await setProxyMode('transparent', sessionId);
+
+      // Verify the recording captured the response body
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
+
+      expect(recording.recordings).toHaveLength(1);
+
+      const recordedRequest = recording.recordings[0];
+      expect(recordedRequest.request.method).toBe('GET');
+      expect(recordedRequest.request.url).toBe('/api/v1/channels/test/status');
+
+      // This is the critical assertion - the response must not be null
+      expect(recordedRequest.response).toBeTruthy();
+      expect(recordedRequest.response.statusCode).toBe(200);
+      expect(recordedRequest.response.body).toBe(statusDataJson);
+
+      // Verify the recorded body matches what the backend sent
+      const recordedResponseData = JSON.parse(recordedRequest.response.body);
+      expect(recordedResponseData).toEqual(statusData);
+    });
+
+    it('should filter out incomplete recordings without responses', async () => {
+      // This test verifies that recordings without responses are automatically
+      // removed when saving the session, preventing replay errors.
+
+      const completeData = { status: 'complete', id: 1 };
+      const completeDataJson = JSON.stringify(completeData);
+
+      mockResponses.set('GET:/api/complete', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: completeDataJson,
+      });
+
+      // Make a request that will complete successfully
+      const response = await makeProxyRequest('GET', '/api/complete');
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toBe(completeDataJson);
+
+      // Manually add an incomplete recording to the session
+      // This simulates a request that was made but never received a response
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
+
+      // Wait a bit for the complete recording to be saved
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Read the current recording file
+      let recordingContent = await fs.readFile(recordingPath, 'utf8');
+      let recording = JSON.parse(recordingContent);
+
+      // Manually inject an incomplete recording
+      const incompleteRecording = {
+        request: {
+          method: 'GET',
+          url: '/api/incomplete',
+          headers: { host: 'localhost:9877' },
+          body: null,
+        },
+        timestamp: new Date().toISOString(),
+        key: 'GET_api_incomplete.json',
+        sequence: 0,
+        // Note: no response field - this simulates an incomplete recording
+      };
+
+      recording.recordings.push(incompleteRecording);
+
+      // Write back the modified recording with the incomplete entry
+      await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
+
+      // Verify the incomplete recording was added
+      recordingContent = await fs.readFile(recordingPath, 'utf8');
+      recording = JSON.parse(recordingContent);
+      expect(recording.recordings.length).toBe(2);
+      expect(recording.recordings[1].response).toBeUndefined();
+
+      // Switch to transparent mode - this should trigger a save that filters out incomplete recordings
+      await setProxyMode('transparent', sessionId);
+
+      // Wait a bit for the save to complete
+      await new Promise((resolve) => setTimeout(resolve, 100));
+
+      // Verify that the incomplete recording was filtered out
+      recordingContent = await fs.readFile(recordingPath, 'utf8');
+      recording = JSON.parse(recordingContent);
+
+      // Should have only 1 complete recording (GET /api/complete)
+      // The incomplete one should be gone
+      expect(recording.recordings.length).toBe(1);
+      expect(recording.recordings[0].response).toBeTruthy();
+      expect(recording.recordings[0].request.url).toBe('/api/complete');
+    });
+
     it('should record and forward 404 error responses', async () => {
       const errorBody = JSON.stringify({
         error: 'Resource not found',
@@ -742,6 +871,172 @@ describe('ProxyServer Integration Tests', () => {
       expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
     });
 
+    it('should handle repeated requests and cycle through available responses', async () => {
+      // This test verifies that when the same endpoint is called multiple times,
+      // the proxy cycles through available recorded responses using modulo.
+      // This is critical for endpoints that are polled (like status endpoints).
+
+      const statusResponse1 = { status: 'pending', progress: 25 };
+      const statusResponse2 = { status: 'processing', progress: 50 };
+      const statusResponse3 = { status: 'complete', progress: 100 };
+
+      // Create a recording with multiple responses for the same endpoint
+      const multiResponseRecording = {
+        id: 'test-multi-response-session',
+        recordings: [
+          {
+            request: {
+              method: 'GET',
+              url: '/api/status',
+              headers: {},
+              body: null,
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(statusResponse1),
+            },
+            timestamp: new Date().toISOString(),
+            key: 'GET_api_status.json',
+            sequence: 0,
+          },
+          {
+            request: {
+              method: 'GET',
+              url: '/api/status',
+              headers: {},
+              body: null,
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(statusResponse2),
+            },
+            timestamp: new Date().toISOString(),
+            key: 'GET_api_status.json',
+            sequence: 1,
+          },
+          {
+            request: {
+              method: 'GET',
+              url: '/api/status',
+              headers: {},
+              body: null,
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(statusResponse3),
+            },
+            timestamp: new Date().toISOString(),
+            key: 'GET_api_status.json',
+            sequence: 2,
+          },
+        ],
+        websocketRecordings: [],
+      };
+
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        'test-multi-response-session.mock.json',
+      );
+      await fs.writeFile(
+        recordingPath,
+        JSON.stringify(multiResponseRecording, null, 2),
+      );
+
+      const initialRequestCount = backendRequestCount;
+      await setProxyMode('replay', 'test-multi-response-session');
+
+      // Make 5 requests to the same endpoint
+      const response1 = await makeProxyRequest('GET', '/api/status');
+      const response2 = await makeProxyRequest('GET', '/api/status');
+      const response3 = await makeProxyRequest('GET', '/api/status');
+      const response4 = await makeProxyRequest('GET', '/api/status');
+      const response5 = await makeProxyRequest('GET', '/api/status');
+
+      // Verify all responses succeeded
+      expect(response1.statusCode).toBe(200);
+      expect(response2.statusCode).toBe(200);
+      expect(response3.statusCode).toBe(200);
+      expect(response4.statusCode).toBe(200);
+      expect(response5.statusCode).toBe(200);
+
+      // Verify responses cycle through the recorded responses
+      expect(JSON.parse(response1.body)).toEqual(statusResponse1); // index 0
+      expect(JSON.parse(response2.body)).toEqual(statusResponse2); // index 1
+      expect(JSON.parse(response3.body)).toEqual(statusResponse3); // index 2
+      expect(JSON.parse(response4.body)).toEqual(statusResponse1); // cycles back to index 0
+      expect(JSON.parse(response5.body)).toEqual(statusResponse2); // index 1
+
+      // Backend should never be called
+      expect(backendRequestCount).toBe(initialRequestCount);
+    });
+
+    it('should skip incomplete recordings during replay', async () => {
+      // This test verifies that recordings without responses are automatically
+      // skipped during replay, preventing errors.
+
+      const completeResponse = { data: 'complete response' };
+
+      // Create a recording with one incomplete and one complete recording
+      const mixedRecording = {
+        id: 'test-incomplete-replay-session',
+        recordings: [
+          {
+            request: {
+              method: 'GET',
+              url: '/api/mixed',
+              headers: {},
+              body: null,
+            },
+            timestamp: new Date().toISOString(),
+            key: 'GET_api_mixed.json',
+            sequence: 0,
+            // No response - incomplete
+          },
+          {
+            request: {
+              method: 'GET',
+              url: '/api/mixed',
+              headers: {},
+              body: null,
+            },
+            response: {
+              statusCode: 200,
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify(completeResponse),
+            },
+            timestamp: new Date().toISOString(),
+            key: 'GET_api_mixed.json',
+            sequence: 1,
+          },
+        ],
+        websocketRecordings: [],
+      };
+
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        'test-incomplete-replay-session.mock.json',
+      );
+      await fs.writeFile(
+        recordingPath,
+        JSON.stringify(mixedRecording, null, 2),
+      );
+
+      const initialRequestCount = backendRequestCount;
+      await setProxyMode('replay', 'test-incomplete-replay-session');
+
+      // Make a request - should skip the incomplete recording and use the complete one
+      const response = await makeProxyRequest('GET', '/api/mixed');
+
+      expect(response.statusCode).toBe(200);
+      expect(JSON.parse(response.body)).toEqual(completeResponse);
+
+      // Backend should not be called
+      expect(backendRequestCount).toBe(initialRequestCount);
+    });
+
     it('should return 404 when recording not found', async () => {
       const initialRequestCount = backendRequestCount;
       await setProxyMode('replay', sessionId);
@@ -796,6 +1091,9 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
       expect(response.headers['access-control-allow-credentials']).toBe('true');
+      expect(response.headers['access-control-allow-methods']).toContain('GET');
+      expect(response.headers['access-control-allow-methods']).toContain('POST');
+      expect(response.headers['access-control-expose-headers']).toBe('*');
     });
 
     it('should add CORS headers in record mode', async () => {
@@ -817,6 +1115,14 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
       expect(response.headers['access-control-allow-credentials']).toBe('true');
+      expect(response.headers['access-control-allow-methods']).toContain('GET');
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'POST',
+      );
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'DELETE',
+      );
+      expect(response.headers['access-control-expose-headers']).toBe('*');
 
       await setProxyMode('transparent', sessionId);
     });
@@ -864,6 +1170,14 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.statusCode).toBe(200);
       expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
       expect(response.headers['access-control-allow-credentials']).toBe('true');
+      expect(response.headers['access-control-allow-methods']).toContain('GET');
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'POST',
+      );
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'PATCH',
+      );
+      expect(response.headers['access-control-expose-headers']).toBe('*');
       expect(response.body).toBe(JSON.stringify(replayData));
     });
 
@@ -924,6 +1238,76 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.headers[backendCorsHeader.toLowerCase()]).toBe(
         'backend-value',
       );
+    });
+
+    it('should add CORS headers to error responses in transparent mode', async () => {
+      mockResponses.set('GET:/api/error-cors', {
+        statusCode: 500,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ error: 'Internal server error' }),
+      });
+
+      const response = await makeProxyRequest('GET', '/api/error-cors', {
+        headers: { Origin: testOrigin },
+      });
+
+      expect(response.statusCode).toBe(500);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+    });
+
+    it('should add CORS headers to replay error responses', async () => {
+      await setProxyMode('replay', 'nonexistent-session');
+
+      const response = await makeProxyRequest('GET', '/api/not-recorded', {
+        headers: { Origin: testOrigin },
+      });
+
+      expect(response.statusCode).toBe(404);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
+    });
+
+    it('should handle custom Access-Control-Request-Headers in record mode', async () => {
+      const sessionId = 'cors-custom-headers-test';
+      const customHeaders = 'X-Custom-Header, X-Another-Header, Authorization';
+
+      mockResponses.set('GET:/api/custom-headers', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ success: true }),
+      });
+
+      await setProxyMode('record', sessionId);
+
+      const response = await makeProxyRequest('GET', '/api/custom-headers', {
+        headers: {
+          Origin: testOrigin,
+          'Access-Control-Request-Headers': customHeaders,
+        },
+      });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
+      expect(response.headers['access-control-allow-headers']).toBe(
+        customHeaders,
+      );
+
+      await setProxyMode('transparent', sessionId);
+    });
+
+    it('should use wildcard origin when no origin header is provided', async () => {
+      mockResponses.set('GET:/api/no-origin', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: 'test' }),
+      });
+
+      const response = await makeProxyRequest('GET', '/api/no-origin');
+
+      expect(response.statusCode).toBe(200);
+      expect(response.headers['access-control-allow-origin']).toBe('*');
+      expect(response.headers['access-control-allow-credentials']).toBe('true');
     });
   });
 

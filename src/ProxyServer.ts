@@ -92,7 +92,7 @@ export class ProxyServer {
 
   private handleProxyError(
     err: Error,
-    _req: http.IncomingMessage,
+    req: http.IncomingMessage,
     res: unknown,
   ): void {
     console.error('Proxy error:', err);
@@ -102,8 +102,11 @@ export class ProxyServer {
     }
 
     if (!res.headersSent) {
+      const origin = req.headers.origin;
       res.writeHead(HTTP_STATUS_BAD_GATEWAY, {
         'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': origin || '*',
+        'Access-Control-Allow-Credentials': 'true',
       });
     }
 
@@ -195,7 +198,7 @@ export class ProxyServer {
     // Save current session before switching
     if (this.currentSession) {
       console.log('Switching mode, saving current session first');
-      await this.saveCurrentSession();
+      await this.saveCurrentSession(true); // Filter incomplete recordings when switching modes
       console.log('Session saved, continuing with mode switch');
     }
 
@@ -258,14 +261,16 @@ export class ProxyServer {
     if (timeout && timeout > 0) {
       this.modeTimeout = setTimeout(async () => {
         console.log('Timeout reached, switching back to transparent mode');
-        await this.saveCurrentSession();
+        await this.saveCurrentSession(true); // Filter incomplete recordings when timeout triggers mode switch
         this.switchToTransparentMode();
         this.modeTimeout = null;
       }, timeout);
     }
   }
 
-  private async saveCurrentSession(): Promise<void> {
+  private async saveCurrentSession(
+    filterIncomplete: boolean = false,
+  ): Promise<void> {
     if (!this.currentSession) {
       console.log('No current session to save');
       return;
@@ -279,17 +284,35 @@ export class ProxyServer {
       return;
     }
 
+    // Only filter out incomplete recordings when explicitly requested (e.g., when switching modes)
+    // During recording, we keep incomplete recordings to support concurrent requests
+    if (filterIncomplete) {
+      const incompleteCount = this.currentSession.recordings.filter(
+        (r) => !r.response,
+      ).length;
+
+      if (incompleteCount > 0) {
+        console.log(
+          `Removing ${incompleteCount} incomplete recording(s) without responses`,
+        );
+        this.currentSession.recordings = this.currentSession.recordings.filter(
+          (r) => r.response,
+        );
+      }
+    }
+
     console.log(
       `Saving session with ${this.currentSession.recordings.length} HTTP and ${this.currentSession.websocketRecordings.length} WebSocket recordings`,
     );
     await saveRecordingSession(this.recordingsDir, this.currentSession);
   }
 
-  private async saveRequestRecord(
+  private saveRequestRecordSync(
     req: http.IncomingMessage,
-    body: string,
-  ): Promise<void> {
+    body: string | null,
+  ): void {
     if (!this.currentSession) {
+      console.log('saveRequestRecordSync: No current session');
       return;
     }
 
@@ -312,6 +335,36 @@ export class ProxyServer {
     };
 
     this.currentSession.recordings.push(record);
+    console.log(
+      `saveRequestRecordSync: Saved ${req.method} ${req.url} (key: ${key}, seq: ${currentSequence}, body: ${body ? `${body.length} chars` : 'null'}, total: ${this.currentSession.recordings.length}, sessionId: ${this.currentSession.id})`,
+    );
+  }
+
+  private updateRequestBodySync(req: http.IncomingMessage, body: string): void {
+    if (!this.currentSession) {
+      console.log('updateRequestBodySync: No current session');
+      return;
+    }
+
+    const key = getReqID(req);
+
+    // Find the most recent record with this key that doesn't have a response yet
+    const record = this.currentSession.recordings.findLast(
+      (r) => r.key === key && !r.response,
+    );
+
+    if (!record) {
+      console.error(
+        `updateRequestBodySync: Could not find request record for ${req.method} ${req.url}`,
+      );
+      return;
+    }
+
+    // Update the body
+    record.request.body = body || null;
+    console.log(
+      `updateRequestBodySync: Updated body for ${req.method} ${req.url} (${body.length} chars)`,
+    );
   }
 
   private async recordResponse(
@@ -352,6 +405,57 @@ export class ProxyServer {
     });
   }
 
+  private async recordResponseData(
+    req: http.IncomingMessage,
+    proxyRes: http.IncomingMessage,
+    body: string,
+  ): Promise<boolean> {
+    if (!this.currentSession) {
+      console.log('recordResponseData: No current session');
+      return false;
+    }
+
+    const key = getReqID(req);
+    // Find the most recent record with this key that doesn't have a response yet
+    const record = this.currentSession.recordings.findLast(
+      (r) => r.key === key && !r.response,
+    );
+
+    if (!record) {
+      const host = req.headers.host || 'unknown';
+      const recordsWithKey = this.currentSession.recordings.filter(
+        (r) => r.key === key,
+      );
+
+      console.error(
+        `Request record not found for response: ${key} at ${req.method} ${host}${req.url}`,
+      );
+      console.error(
+        `  Total recordings: ${this.currentSession.recordings.length}, with this key: ${recordsWithKey.length}`,
+      );
+      console.error(
+        `  Records with key:`,
+        recordsWithKey.map((r) => ({
+          seq: r.sequence,
+          hasResponse: !!r.response,
+        })),
+      );
+      return false;
+    }
+
+    record.response = {
+      statusCode: proxyRes.statusCode!,
+      headers: proxyRes.headers,
+      body: body || null,
+    };
+
+    await this.saveCurrentSession();
+    console.log(
+      `recordResponseData: Recorded response for ${req.method} ${req.url}`,
+    );
+    return true;
+  }
+
   private async handleReplayRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -362,26 +466,39 @@ export class ProxyServer {
     try {
       const session = await loadRecordingSession(filePath);
 
-      // Get current sequence for this key (defaults to 0)
-      const currentSequence = this.replaySequenceMap.get(key) || 0;
+      const host = req.headers.host || 'unknown';
 
-      // Find recording with matching key and sequence
-      const record = session.recordings.find(
-        (r) => r.key === key && r.sequence === currentSequence,
+      // Find all recordings with matching key that have responses
+      const recordsWithKey = session.recordings.filter(
+        (r) => r.key === key && r.response,
       );
 
-      if (!record) {
+      if (recordsWithKey.length === 0) {
         throw new Error(
-          `No recording found for ${key} with sequence ${currentSequence}`,
+          `No recording found for ${key} at ${req.method} ${host}${req.url}`,
         );
       }
 
-      if (!record.response) {
-        throw new Error('No response recorded for this request');
-      }
+      // Get or initialize the usage count for this key
+      const usageCount = this.replaySequenceMap.get(key) || 0;
 
-      // Increment sequence for next request with same key
-      this.replaySequenceMap.set(key, currentSequence + 1);
+      // Use modulo to cycle through available responses
+      // This allows requests to come in any order and repeat
+      const recordIndex = usageCount % recordsWithKey.length;
+      const record = recordsWithKey[recordIndex];
+
+      console.log(
+        `Replaying ${req.method} ${req.url} (usage: ${usageCount}, using recording ${recordIndex}/${recordsWithKey.length})`,
+      );
+
+      // Increment usage count for next request with same key
+      this.replaySequenceMap.set(key, usageCount + 1);
+
+      if (!record.response) {
+        throw new Error(
+          `No response recorded for this request: ${req.method} ${host}${req.url}`,
+        );
+      }
 
       const { statusCode, headers, body } = record.response;
       const origin = req.headers.origin;
@@ -391,20 +508,23 @@ export class ProxyServer {
         ...headers,
         'access-control-allow-origin': origin || '*',
         'access-control-allow-credentials': 'true',
+        'access-control-allow-headers':
+          req.headers['access-control-request-headers'] ||
+          'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+        'access-control-allow-methods':
+          'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+        'access-control-expose-headers': '*',
       };
 
       res.writeHead(statusCode, responseHeaders);
       res.end(body);
-
-      console.log(
-        `Replayed: ${req.method} ${req.url} (sequence: ${currentSequence})`,
-      );
     } catch (error) {
-      this.handleReplayError(res, error, key, filePath);
+      this.handleReplayError(req, res, error, key, filePath);
     }
   }
 
   private handleReplayError(
+    req: http.IncomingMessage,
     res: http.ServerResponse,
     err: unknown,
     key: string,
@@ -414,14 +534,22 @@ export class ProxyServer {
       err instanceof Error && 'code' in err && err.code === 'ENOENT';
     console.error('Replay error:', err);
 
-    sendJsonResponse(res, HTTP_STATUS_NOT_FOUND, {
-      error: isFileNotFound
-        ? 'Recording file not found'
-        : 'Recording not found',
-      message: err instanceof Error ? err.message : 'Unknown error',
-      key,
-      filePath,
+    const origin = req.headers.origin;
+    res.writeHead(HTTP_STATUS_NOT_FOUND, {
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': origin || '*',
+      'Access-Control-Allow-Credentials': 'true',
     });
+    res.end(
+      JSON.stringify({
+        error: isFileNotFound
+          ? 'Recording file not found'
+          : 'Recording not found',
+        message: err instanceof Error ? err.message : 'Unknown error',
+        key,
+        filePath,
+      }),
+    );
   }
 
   private async handleRequest(
@@ -471,6 +599,11 @@ export class ProxyServer {
     console.log(`[${this.mode}] ${req.method} ${req.url} -> ${target}`);
 
     if (this.mode === Modes.record) {
+      // CRITICAL: Save request record IMMEDIATELY and SYNCHRONOUSLY before any async operations
+      // This prevents race conditions with concurrent requests where responses might arrive
+      // before request records are saved
+      this.saveRequestRecordSync(req, null);
+
       await this.bufferAndProxyRequest(req, res, target);
     } else {
       this.proxy.web(req, res, { target });
@@ -482,20 +615,34 @@ export class ProxyServer {
     res: http.ServerResponse,
     target: string,
   ): Promise<void> {
-    // Buffer the request body for recording
+    // Note: Request record already saved in handleProxyRequest
+    // Buffer the request body
     const chunks: Buffer[] = [];
 
     req.on('data', (chunk: Buffer) => {
       chunks.push(chunk);
     });
 
-    await new Promise<void>((resolve) => {
-      req.on('end', () => resolve());
-    });
+    // Wait for the request body to be fully buffered
+    try {
+      await new Promise<void>((resolve, reject) => {
+        req.on('end', () => resolve());
+        req.on('error', (err) => reject(err));
+        // Add timeout to prevent hanging
+        setTimeout(
+          () => reject(new Error('Request buffering timeout')),
+          30_000,
+        );
+      });
+    } catch (error) {
+      console.error('Error buffering request:', error);
+      // Continue anyway - request record already exists
+    }
 
-    // Save the buffered body for recording
     const body = Buffer.concat(chunks).toString('utf8');
-    await this.saveRequestRecord(req, body);
+
+    // Update the request record with the actual body
+    this.updateRequestBodySync(req, body);
 
     // Determine if we need http or https
     const targetUrl = new URL(target);
@@ -516,12 +663,52 @@ export class ProxyServer {
         // Add CORS headers
         this.addCorsHeaders(proxyRes, req);
 
-        // Record the response (including error responses)
-        this.recordResponse(req, proxyRes);
+        // Buffer response data for recording
+        const responseChunks: Buffer[] = [];
 
-        // Forward response to client with original status code and headers
-        res.writeHead(proxyRes.statusCode || 200, proxyRes.headers);
-        proxyRes.pipe(res);
+        proxyRes.on('data', (chunk: Buffer) => {
+          responseChunks.push(chunk);
+        });
+
+        proxyRes.on('end', async () => {
+          const responseBody = Buffer.concat(responseChunks);
+
+          // Record the response
+          const recorded = await this.recordResponseData(
+            req,
+            proxyRes,
+            responseBody.toString('utf8'),
+          );
+
+          // Build response headers with CORS
+          const origin = req.headers.origin;
+          const responseHeaders = {
+            ...proxyRes.headers,
+            'access-control-allow-origin': origin || '*',
+            'access-control-allow-credentials': 'true',
+            'access-control-allow-headers':
+              req.headers['access-control-request-headers'] ||
+              'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+            'access-control-allow-methods':
+              'GET, POST, PUT, DELETE, PATCH, OPTIONS',
+            'access-control-expose-headers': '*',
+          };
+
+          // Forward response to client with CORS headers
+          res.writeHead(proxyRes.statusCode || 200, responseHeaders);
+          res.end(responseBody);
+
+          if (recorded) {
+            console.log(`Recorded: ${req.method} ${req.url}`);
+          }
+        });
+
+        proxyRes.on('error', (err) => {
+          console.error('Proxy response error:', err);
+          if (!res.headersSent) {
+            this.handleProxyError(err, req, res);
+          }
+        });
       },
     );
 
