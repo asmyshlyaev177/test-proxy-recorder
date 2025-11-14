@@ -492,6 +492,77 @@ describe('ProxyServer Integration Tests', () => {
       expect(recording.recordings[1].request.url).toBe('/api/posts');
     });
 
+    it('should record return different responses to the same endpoint', async () => {
+      const getResponse1 = { data: 'first get' };
+      const postRequest = { name: 'test' };
+      const postResponse = { id: 1, name: 'test' };
+      const getResponse2 = { data: 'second get' };
+
+      mockResponses.set('GET:/api', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(getResponse1),
+      });
+
+      mockResponses.set('POST:/api-post', {
+        statusCode: 201,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(postResponse),
+      });
+
+      // First GET request
+      const response1 = await makeProxyRequest('GET', '/api');
+      expect(response1.statusCode).toBe(200);
+      expect(response1.body).toBe(JSON.stringify(getResponse1));
+
+      // POST request
+      const response2 = await makeProxyRequest('POST', '/api-post', {
+        body: JSON.stringify(postRequest),
+        headers: { 'Content-Type': 'application/json' },
+      });
+      expect(response2.statusCode).toBe(201);
+      expect(response2.body).toBe(JSON.stringify(postResponse));
+
+      // Update mock for second GET
+      mockResponses.set('GET:/api', {
+        statusCode: 200,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(getResponse2),
+      });
+
+      // Second GET request with different response
+      const response3 = await makeProxyRequest('GET', '/api');
+      expect(response3.statusCode).toBe(200);
+      expect(response3.body).toBe(JSON.stringify(getResponse2));
+
+      await setProxyMode('transparent', sessionId);
+
+      // Verify recording
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
+      const recordingContent = await fs.readFile(recordingPath, 'utf8');
+      const recording = JSON.parse(recordingContent);
+
+      expect(recording.recordings).toHaveLength(3);
+      expect(recording.recordings[0].request.method).toBe('GET');
+      expect(recording.recordings[0].request.url).toBe('/api');
+      expect(recording.recordings[0].response.body).toBe(
+        JSON.stringify(getResponse1),
+      );
+      expect(recording.recordings[1].request.method).toBe('POST');
+      expect(recording.recordings[1].request.url).toBe('/api-post');
+      expect(recording.recordings[1].response.body).toBe(
+        JSON.stringify(postResponse),
+      );
+      expect(recording.recordings[2].request.method).toBe('GET');
+      expect(recording.recordings[2].request.url).toBe('/api');
+      expect(recording.recordings[2].response.body).toBe(
+        JSON.stringify(getResponse2),
+      );
+    });
+
     it('should record requests with query parameters', async () => {
       const searchUrl = '/api/search?q=test&page=1';
       const resultsData = { results: [] };
