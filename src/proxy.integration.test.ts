@@ -1002,12 +1002,17 @@ describe('ProxyServer Integration Tests', () => {
       expect(response4.statusCode).toBe(200);
       expect(response5.statusCode).toBe(200);
 
-      // Verify GET requests always return the last sequence (statusResponse3)
-      expect(JSON.parse(response1.body)).toEqual(statusResponse3);
-      expect(JSON.parse(response2.body)).toEqual(statusResponse3);
+      // Verify GET requests cycle through responses sequentially
+      // Request 1 -> sequence 0 (statusResponse1)
+      // Request 2 -> sequence 1 (statusResponse2)
+      // Request 3 -> sequence 2 (statusResponse3)
+      // Request 4 -> sequence 0 again (wraps around via modulo)
+      // Request 5 -> sequence 1 again
+      expect(JSON.parse(response1.body)).toEqual(statusResponse1);
+      expect(JSON.parse(response2.body)).toEqual(statusResponse2);
       expect(JSON.parse(response3.body)).toEqual(statusResponse3);
-      expect(JSON.parse(response4.body)).toEqual(statusResponse3);
-      expect(JSON.parse(response5.body)).toEqual(statusResponse3);
+      expect(JSON.parse(response4.body)).toEqual(statusResponse1);
+      expect(JSON.parse(response5.body)).toEqual(statusResponse2);
 
       // Backend should never be called
       expect(backendRequestCount).toBe(initialRequestCount);
@@ -1410,13 +1415,13 @@ describe('ProxyServer Integration Tests', () => {
       // Switch to replay mode
       await setProxyMode('replay', sessionId);
 
-      // Replay the requests - GET requests always return the last sequence (Response 3)
+      // Replay the requests - GET requests cycle through responses sequentially
       const replay1 = await makeProxyRequest('GET', '/api/data');
       const replay2 = await makeProxyRequest('GET', '/api/data');
       const replay3 = await makeProxyRequest('GET', '/api/data');
 
-      expect(JSON.parse(replay1.body).message).toBe('Response 3');
-      expect(JSON.parse(replay2.body).message).toBe('Response 3');
+      expect(JSON.parse(replay1.body).message).toBe('Response 1');
+      expect(JSON.parse(replay2.body).message).toBe('Response 2');
       expect(JSON.parse(replay3.body).message).toBe('Response 3');
 
       await setProxyMode('transparent', sessionId);
@@ -1448,17 +1453,21 @@ describe('ProxyServer Integration Tests', () => {
       // Switch to replay mode
       await setProxyMode('replay', sessionId);
 
-      // Replay first request - GET requests always return the last sequence ('second')
+      // Replay first request - sequential replay returns first response
       const replay1 = await makeProxyRequest('GET', '/api/test');
-      expect(JSON.parse(replay1.body).data).toBe('second');
+      expect(JSON.parse(replay1.body).data).toBe('first');
 
-      // Switch back to transparent and then replay again
+      // Second replay request returns second response
+      const replay1b = await makeProxyRequest('GET', '/api/test');
+      expect(JSON.parse(replay1b.body).data).toBe('second');
+
+      // Switch back to transparent and then replay again - resets sequence counter
       await setProxyMode('transparent', sessionId);
       await setProxyMode('replay', sessionId);
 
-      // GET requests still return the last sequence ('second')
+      // After reset, starts from first response again
       const replay2 = await makeProxyRequest('GET', '/api/test');
-      expect(JSON.parse(replay2.body).data).toBe('second');
+      expect(JSON.parse(replay2.body).data).toBe('first');
 
       await setProxyMode('transparent', sessionId);
     });

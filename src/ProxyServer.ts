@@ -498,17 +498,10 @@ export class ProxyServer {
       // Get or initialize the usage count for this key
       const usageCount = this.replaySequenceMap.get(key) || 0;
 
-      // use the last sequence (latest response received)
-      // for duplicated recordings with the same key
-      let record: Recording;
-      if (recordsWithKey.length > 1) {
-        // Use the highest sequence number (last response received)
-        record = recordsWithKey[recordsWithKey.length - 1];
-      } else {
-        // use sequential replay
-        const recordIndex = usageCount % recordsWithKey.length;
-        record = recordsWithKey[recordIndex];
-      }
+      // Always use sequential replay to ensure requests are replayed in the same order
+      // they were recorded, preserving state changes (e.g., before/after POST operations)
+      const recordIndex = usageCount % recordsWithKey.length;
+      const record = recordsWithKey[recordIndex];
 
       console.log(
         `Replaying ${req.method} ${req.url} (usage: ${usageCount}, sequence: ${record.sequence}, body_len: ${record.response?.body?.length || 0})`,
