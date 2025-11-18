@@ -33,6 +33,7 @@ export interface Recording {
   timestamp: string;
   key: string;
   sequence: number; // Sequence number for handling multiple requests to same endpoint
+  recordingId: number; // Unique ID for matching responses to requests
 }
 
 export interface WebSocketMessage {

@@ -1,8 +1,7 @@
+import crypto from 'node:crypto';
 import http from 'node:http';
 
 import filenamify from 'filenamify';
-
-const QUERY_HASH_LENGTH = 8;
 
 export function getReqID(req: http.IncomingMessage): string {
   const urlParts = req.url!.split('?');
@@ -23,10 +22,14 @@ function generateQueryHash(query: string): string {
     return '';
   }
 
-  const hash = Buffer.from(query)
-    .toString('base64')
-    .replaceAll(/[^a-zA-Z0-9]/g, '')
-    .slice(0, Math.max(0, QUERY_HASH_LENGTH));
+  // Use MD5 hash to ensure unique keys for different query parameters
+  // This prevents collisions that could cause wrong responses to be replayed
+  // eslint-disable-next-line sonarjs/hashing
+  const hash = crypto
+    .createHash('md5')
+    .update(query)
+    .digest('hex')
+    .slice(0, 16); // Use 16 characters for reasonable uniqueness while keeping filenames manageable
 
   return `_${hash}`;
 }

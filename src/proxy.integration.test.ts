@@ -911,7 +911,7 @@ describe('ProxyServer Integration Tests', () => {
       expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
     });
 
-    it('should handle repeated requests and cycle through available responses', async () => {
+    it('should handle repeated requests and return last recorded response', async () => {
       // This test verifies that when the same endpoint is called multiple times,
       // the proxy cycles through available recorded responses using modulo.
       // This is critical for endpoints that are polled (like status endpoints).
@@ -1006,13 +1006,12 @@ describe('ProxyServer Integration Tests', () => {
       // Request 1 -> sequence 0 (statusResponse1)
       // Request 2 -> sequence 1 (statusResponse2)
       // Request 3 -> sequence 2 (statusResponse3)
-      // Request 4 -> sequence 0 again (wraps around via modulo)
-      // Request 5 -> sequence 1 again
+      // Request 4 -> sequence 2 again
       expect(JSON.parse(response1.body)).toEqual(statusResponse1);
       expect(JSON.parse(response2.body)).toEqual(statusResponse2);
       expect(JSON.parse(response3.body)).toEqual(statusResponse3);
-      expect(JSON.parse(response4.body)).toEqual(statusResponse1);
-      expect(JSON.parse(response5.body)).toEqual(statusResponse2);
+      expect(JSON.parse(response4.body)).toEqual(statusResponse3);
+      expect(JSON.parse(response5.body)).toEqual(statusResponse3);
 
       // Backend should never be called
       expect(backendRequestCount).toBe(initialRequestCount);
@@ -1082,15 +1081,21 @@ describe('ProxyServer Integration Tests', () => {
       expect(backendRequestCount).toBe(initialRequestCount);
     });
 
-    it('should return 404 when recording not found', async () => {
+    it('should return default response when recording not found', async () => {
       const initialRequestCount = backendRequestCount;
       await setProxyMode('replay', sessionId);
 
       const response = await makeProxyRequest('GET', '/api/nonexistent');
 
-      expect(response.statusCode).toBe(404);
-      expect(response.body).toContain('Recording not found');
-      expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called even for 404
+      expect(response.statusCode).toBe(200);
+      const body = JSON.parse(response.body);
+      expect(body).toEqual({
+        data: [],
+        items: [],
+        results: [],
+        updated_at: '0001-01-01T00:00:00Z',
+      });
+      expect(backendRequestCount).toBe(initialRequestCount); // Backend should not be called
     });
 
     it('should return 404 when recording file does not exist', async () => {
