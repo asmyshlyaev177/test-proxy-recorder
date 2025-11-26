@@ -102,7 +102,7 @@ Create `e2e/global-teardown.ts`:
 import { setProxyMode } from 'test-proxy-recorder';
 
 async function globalTeardown() {
-  await setProxyMode('transparent');
+  await setProxyMode('transparent').catch(err => { console.error(err) });
 }
 
 export default globalTeardown;
@@ -247,7 +247,7 @@ Create `e2e/global-teardown.ts`:
 import { setProxyMode } from 'test-proxy-recorder';
 
 async function globalTeardown() {
-  await setProxyMode('transparent');
+  await setProxyMode('transparent').catch(err => { console.error(err) });
 }
 
 export default globalTeardown;
