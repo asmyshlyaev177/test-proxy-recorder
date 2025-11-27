@@ -32,6 +32,7 @@ export interface Recording {
   response?: RecordedResponse;
   timestamp: string;
   key: string;
+  sequence?: number; // Sequence number for same endpoint (0, 1, 2, ...)
   recordingId: number; // Unique ID for matching responses to requests
 }
 
