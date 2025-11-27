@@ -186,11 +186,6 @@ describe('ProxyServer Recording Edge Cases', () => {
 
       expect(session.recordings).toHaveLength(3);
 
-      // Check sequence numbers
-      expect(session.recordings[0].sequence).toBe(0);
-      expect(session.recordings[1].sequence).toBe(1);
-      expect(session.recordings[2].sequence).toBe(2);
-
       // All should have responses
       for (const recording of session.recordings) {
         expect(recording.response).toBeDefined();

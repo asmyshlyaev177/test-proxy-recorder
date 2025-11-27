@@ -30,6 +30,17 @@ import {
 import { getReqID } from './utils/getReqID';
 import { readRequestBody, sendJsonResponse } from './utils/httpHelpers.js';
 
+/**
+ * State for a single replay session
+ * Allows multiple concurrent test runners to replay different recordings simultaneously
+ */
+interface ReplaySessionState {
+  recordingId: string;
+  servedRecordingIdsByKey: Map<string, Set<number>>;
+  loadedSession: RecordingSession | null;
+  lastAccessTime: number;
+}
+
 export class ProxyServer {
   private targets: string[];
   private currentTargetIndex: number;
@@ -40,12 +51,12 @@ export class ProxyServer {
   private proxy: httpProxy;
   private currentSession: RecordingSession | null;
   private recordingsDir: string;
-  private requestSequenceMap: Map<string, number>; // Track sequence per request key
-  private replaySequenceMap: Map<string, number>; // Track replay position per request key
   private recordingIdCounter: number; // Unique ID for each recording entry
+  private replaySessions: Map<string, ReplaySessionState>; // Track multiple concurrent replay sessions by recording ID
 
   constructor(targets: string[], recordingsDir: string) {
     this.targets = targets;
+    // TODO: not used?
     this.currentTargetIndex = 0;
     this.mode = Modes.transparent;
     this.recordingId = null;
@@ -54,11 +65,11 @@ export class ProxyServer {
     this.modeTimeout = null;
     this.currentSession = null;
     this.recordingsDir = recordingsDir;
-    this.requestSequenceMap = new Map();
-    this.replaySequenceMap = new Map();
+    this.replaySessions = new Map();
     this.proxy = httpProxy.createProxyServer({
       secure: false,
       changeOrigin: true,
+      ws: true,
     });
 
     this.setupProxyEventHandlers();
@@ -160,6 +171,48 @@ export class ProxyServer {
     return target;
   }
 
+  /**
+   * Extract recording ID from request cookie
+   * Used for concurrent replay session routing
+   * @param req The incoming HTTP request
+   * @returns The recording ID from cookie, or null if not found
+   */
+  private getRecordingIdFromCookie(req: http.IncomingMessage): string | null {
+    const cookies = req.headers.cookie;
+    if (!cookies) {
+      return null;
+    }
+
+    const match = cookies.match(/proxy-recording-id=([^;]+)/);
+    return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  /**
+   * Get or create a replay session state for a given recording ID
+   * @param recordingId The recording ID to get/create session for
+   * @returns The replay session state
+   */
+  private getOrCreateReplaySession(recordingId: string): ReplaySessionState {
+    let session = this.replaySessions.get(recordingId);
+
+    if (session) {
+      session.lastAccessTime = Date.now();
+    } else {
+      session = {
+        recordingId,
+        servedRecordingIdsByKey: new Map(),
+        loadedSession: null,
+        lastAccessTime: Date.now(),
+      };
+      this.replaySessions.set(recordingId, session);
+      console.log(
+        `[CONCURRENT REPLAY] Created new session for recording: ${recordingId}`,
+      );
+    }
+
+    return session;
+  }
+
   private parseGetParams(req: http.IncomingMessage) {
     // Parse query parameters from URL
     const url = new URL(req.url || '', `http://${req.headers.host}`);
@@ -187,11 +240,12 @@ export class ProxyServer {
       // Support both GET with query parameters and POST with JSON body
       if (req.method === 'GET') {
         data = this.parseGetParams(req);
-      } else {
-        // POST request with JSON body
+      } else if (req.method === 'POST') {
         const body = await readRequestBody(req);
-        console.log('MODE CHANGE (POST)', body);
+        console.log(`MODE CHANGE (${req.method})`, body);
         data = JSON.parse(body);
+      } else {
+        return;
       }
 
       const { mode, id, timeout: requestTimeout } = data;
@@ -200,6 +254,15 @@ export class ProxyServer {
       this.clearModeTimeout();
       await this.switchMode(mode, id);
       this.setupModeTimeout(timeout);
+
+      // Set cookie for replay mode to enable concurrent session routing
+      if (mode === Modes.replay && id) {
+        res.setHeader(
+          'Set-Cookie',
+          `proxy-recording-id=${encodeURIComponent(id)}; HttpOnly; Path=/; SameSite=Lax`,
+        );
+        console.log(`[CONCURRENT REPLAY] Set cookie for recording: ${id}`);
+      }
 
       sendJsonResponse(res, HTTP_STATUS_OK, {
         success: true,
@@ -216,17 +279,16 @@ export class ProxyServer {
   }
 
   private clearModeTimeout(): void {
-    if (this.modeTimeout) {
-      clearTimeout(this.modeTimeout);
-      this.modeTimeout = null;
-    }
+    clearTimeout(this.modeTimeout || 0);
+    this.modeTimeout = null;
   }
 
   private async switchMode(mode: Mode, id?: string): Promise<void> {
+    console.log(`Switching to ${mode.toUpperCase()} mode`);
+
     // Save current session before switching
-    if (this.currentSession) {
-      console.log('Switching mode, saving current session first');
-      await this.saveCurrentSession(true); // Filter incomplete recordings when switching modes
+    if (this.currentSession && this.mode === Modes.record) {
+      await this.saveCurrentSession(true);
       console.log('Session saved, continuing with mode switch');
     }
 
@@ -237,12 +299,18 @@ export class ProxyServer {
         break;
       }
       case Modes.record: {
+        if (!id) {
+          throw new Error('Record ID is required');
+        }
         this.switchToRecordMode(id);
 
         break;
       }
       case Modes.replay: {
-        this.switchToReplayMode(id);
+        if (!id) {
+          throw new Error('Replay ID is required');
+        }
+        await this.switchToReplayMode(id);
 
         break;
       }
@@ -261,39 +329,40 @@ export class ProxyServer {
     console.log('Switched to transparent mode');
   }
 
-  private switchToRecordMode(id?: string): void {
-    if (!id) {
-      throw new Error('Record ID is required');
-    }
+  private switchToRecordMode(id: string): void {
     this.mode = Modes.record;
     this.recordingId = id;
     this.replayId = null;
     this.currentSession = { id, recordings: [], websocketRecordings: [] };
-    this.requestSequenceMap.clear(); // Reset sequence tracking
     console.log(`Switched to record mode with ID: ${id}`);
   }
 
-  private switchToReplayMode(id?: string): void {
-    if (!id) {
-      throw new Error('Replay ID is required');
-    }
+  private async switchToReplayMode(id: string): Promise<void> {
     this.mode = Modes.replay;
     this.replayId = id;
     this.recordingId = null;
     this.currentSession = null;
-    this.replaySequenceMap.clear(); // Reset replay position tracking
+
+    // Reset the replay session to start fresh
+    // This ensures served recordings tracker is cleared when re-entering replay mode
+    const session = this.replaySessions.get(id);
+    if (session) {
+      session.servedRecordingIdsByKey.clear();
+      console.log(`Reset served recordings tracker for session: ${id}`);
+    } else {
+      this.getOrCreateReplaySession(id);
+    }
+
     console.log(`Switched to replay mode with ID: ${id}`);
   }
 
   private setupModeTimeout(timeout: number): void {
-    if (timeout && timeout > 0) {
-      this.modeTimeout = setTimeout(async () => {
-        console.log('Timeout reached, switching back to transparent mode');
-        await this.saveCurrentSession(true); // Filter incomplete recordings when timeout triggers mode switch
-        this.switchToTransparentMode();
-        this.modeTimeout = null;
-      }, timeout);
-    }
+    this.modeTimeout = setTimeout(async () => {
+      console.log('Timeout reached, switching back to transparent mode');
+      await this.saveCurrentSession(true);
+      this.switchToTransparentMode();
+      this.modeTimeout = null;
+    }, timeout);
   }
 
   private async saveCurrentSession(
@@ -333,12 +402,6 @@ export class ProxyServer {
 
     const key = getReqID(req);
 
-    // Assign sequence number based on REQUEST order, not response arrival order
-    // This ensures replay matches requests correctly even if responses arrive out of order
-    const currentSequence = this.requestSequenceMap.get(key) || 0;
-    const sequence = currentSequence;
-    this.requestSequenceMap.set(key, currentSequence + 1);
-
     // Assign a unique ID to this recording
     // Store it both on the request object (for quick access) and in the recording (for persistence)
     const recordingId = this.recordingIdCounter++;
@@ -353,14 +416,13 @@ export class ProxyServer {
       },
       timestamp: new Date().toISOString(),
       key,
-      sequence,
       recordingId,
     };
 
     this.currentSession.recordings.push(record);
     console.log(
       // eslint-disable-next-line sonarjs/no-nested-template-literals
-      `saveRequestRecordSync: Saved ${req.method} ${req.url} (key: ${key}, seq: ${sequence}, recordingId: ${recordingId}, body: ${body ? `${body.length} chars` : 'null'}, total: ${this.currentSession.recordings.length}, sessionId: ${this.currentSession.id})`,
+      `saveRequestRecordSync: Saved ${req.method} ${req.url} (key: ${key}, recordingId: ${recordingId}, body: ${body ? `${body.length} chars` : 'null'}, total: ${this.currentSession.recordings.length}, sessionId: ${this.currentSession.id})`,
     );
   }
 
@@ -439,7 +501,7 @@ export class ProxyServer {
       };
 
       console.log(
-        `Recorded: ${req.method} ${req.url} (seq: ${record.sequence}, recordingId: ${recordingId})`,
+        `Recorded: ${req.method} ${req.url} (recordingId: ${recordingId})`,
       );
     });
   }
@@ -480,7 +542,7 @@ export class ProxyServer {
     };
 
     console.log(
-      `recordResponseData: Recorded response for ${req.method} ${req.url} (seq: ${record.sequence}, recordingId: ${recordingId})`,
+      `recordResponseData: Recorded response for ${req.method} ${req.url} (recordingId: ${recordingId})`,
     );
     return true;
   }
@@ -489,66 +551,100 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
+    // Get recording ID from cookie, fallback to this.replayId for backward compatibility
+    const recordingId = this.getRecordingIdFromCookie(req) || this.replayId;
+
+    if (!recordingId) {
+      const corsHeaders = this.getCorsHeaders(req);
+      res.writeHead(HTTP_STATUS_BAD_REQUEST, {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      });
+      res.end(JSON.stringify({ error: 'No replay session active' }));
+      return;
+    }
+
     const key = getReqID(req);
-    const filePath = getRecordingPath(this.recordingsDir, this.replayId!);
+    const filePath = getRecordingPath(this.recordingsDir, recordingId);
 
     try {
-      const session = await loadRecordingSession(filePath);
+      // Get or create session state
+      const sessionState = this.getOrCreateReplaySession(recordingId);
+
+      // Load recording session if not already loaded
+      if (!sessionState.loadedSession) {
+        sessionState.loadedSession = await loadRecordingSession(filePath);
+        console.log(`[REPLAY] Loaded recording session: ${recordingId}`);
+      }
+
+      const session = sessionState.loadedSession;
+
+      // Get or create the set of served recording IDs for this endpoint
+      if (!sessionState.servedRecordingIdsByKey.has(key)) {
+        sessionState.servedRecordingIdsByKey.set(key, new Set());
+      }
+      const servedForThisKey = sessionState.servedRecordingIdsByKey.get(key)!;
 
       const host = req.headers.host || 'unknown';
 
       // Find all recordings with matching key that have responses
       const recordsWithKey = session.recordings
         .filter((r) => r.key === key && r.response)
-        .toSorted((a, b) => a.sequence - b.sequence);
+        .toSorted((a, b) => a.recordingId - b.recordingId);
 
       if (recordsWithKey.length === 0) {
-        // No recording found - return a default empty successful response
-        // This handles cases where requests were made during recording but responses never arrived
-        console.warn(
-          `No recording found for ${key} at ${req.method} ${host}${req.url}, returning default response`,
+        const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}`;
+        console.error(`[REPLAY ERROR] ${errorMsg} (session: ${recordingId})`);
+        console.error(
+          `[REPLAY ERROR] This request was not made during recording - possible test non-determinism`,
         );
 
-        // Return a sensible default based on the request method
-        const defaultResponse =
-          req.method === 'GET'
-            ? {
-                data: [],
-                items: [],
-                results: [],
-                updated_at: '0001-01-01T00:00:00Z',
-              }
-            : { success: true };
+        const errorResponse = {
+          error: 'No recording found',
+          message: errorMsg,
+          key,
+          sessionId: recordingId,
+        };
 
         const corsHeaders = this.getCorsHeaders(req);
-        res.writeHead(HTTP_STATUS_OK, {
+        res.writeHead(HTTP_STATUS_NOT_FOUND, {
           'Content-Type': 'application/json',
           ...corsHeaders,
         });
-        res.end(JSON.stringify(defaultResponse));
+        res.end(JSON.stringify(errorResponse));
         return;
       }
 
-      // Get or initialize the usage count for this key
-      const usageCount = this.replaySequenceMap.get(key) || 0;
+      // Log incoming request details
+      const requestCount = servedForThisKey.size + 1;
+      console.log(
+        `[REPLAY REQUEST #${requestCount}] ${req.method} ${req.url} (session: ${recordingId}, total: ${recordsWithKey.length}, served: ${servedForThisKey.size})`,
+      );
 
-      // Sequential replay - serve recordings in the order they were made
-      let record: (typeof recordsWithKey)[number];
-      // eslint-disable-next-line unicorn/prefer-ternary
-      if (usageCount < recordsWithKey.length) {
-        // Use the next recording in sequence
-        record = recordsWithKey[usageCount];
-      } else {
-        // Exhausted all recordings, serve the last one
+      // Find the first unserved response for this endpoint (in recordingId order)
+      let record: (typeof recordsWithKey)[number] | undefined;
+
+      for (const rec of recordsWithKey) {
+        if (!servedForThisKey.has(rec.recordingId)) {
+          record = rec;
+          break;
+        }
+      }
+
+      // If all have been served, use the last one
+      if (!record) {
+        console.log(
+          `[REPLAY WARNING] All ${recordsWithKey.length} recordings already served for ${key} (session: ${recordingId}), reusing last one`,
+        );
         record = recordsWithKey[recordsWithKey.length - 1];
       }
 
-      console.log(
-        `Replaying ${req.method} ${req.url} (usage: ${usageCount}, sequence: ${record.sequence}, body_len: ${record.response?.body?.length || 0})`,
-      );
+      // Mark this recording as served for this endpoint
+      servedForThisKey.add(record.recordingId);
 
-      // Increment usage count for next request with same key
-      this.replaySequenceMap.set(key, usageCount + 1);
+      console.log(
+        `[REPLAY SERVING] recordingId: ${record.recordingId}, session: ${recordingId}, body_len: ${record.response?.body?.length || 0}`,
+      );
 
       if (!record.response) {
         throw new Error(
@@ -654,6 +750,7 @@ export class ProxyServer {
     }
   }
 
+  // TODO: check if can handle streaming requests
   private async bufferAndProxyRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -724,13 +821,11 @@ export class ProxyServer {
             responseBody.toString('utf8'),
           );
 
-          // Build response headers with CORS
           const responseHeaders = {
             ...proxyRes.headers,
             ...this.getCorsHeaders(req),
           };
 
-          // Forward response to client with CORS headers
           res.writeHead(proxyRes.statusCode || 200, responseHeaders);
           res.end(responseBody);
 

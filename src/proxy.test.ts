@@ -395,7 +395,6 @@ describe('ProxyServer', () => {
       expect(response.headers['access-control-allow-methods']).toContain(
         'OPTIONS',
       );
-      expect(response.headers['access-control-max-age']).toBe('86400');
     });
 
     it('should handle OPTIONS preflight requests without origin', async () => {

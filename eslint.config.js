@@ -46,6 +46,7 @@ export default [
       'unicorn/no-process-exit': 'off', // Allowed in CLI tools
       'unicorn/no-array-reduce': 'off',
       'unicorn/prefer-at': 'off',
+      'unicorn/prefer-ternary': 'warn',
 
       // Simple Import Sort
       'simple-import-sort/imports': 'error',
@@ -66,6 +67,7 @@ export default [
     rules: {
       'sonarjs/no-nested-functions': 'off', // Tests often have nested functions
       'sonarjs/assertions-in-tests': 'off', // Some tests check for errors/side effects
+      'unicorn/consistent-function-scoping': 'off'
     },
   },
   // ProxyServer has complex event handling with necessary nesting
