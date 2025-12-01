@@ -596,7 +596,7 @@ describe('ProxyServer Integration Tests', () => {
       const statusData = {
         status: 'active',
         message: 'Channel manager is operational',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       };
       const statusDataJson = JSON.stringify(statusData);
 
@@ -607,7 +607,10 @@ describe('ProxyServer Integration Tests', () => {
       });
 
       // Make the request
-      const response = await makeProxyRequest('GET', '/api/v1/channels/test/status');
+      const response = await makeProxyRequest(
+        'GET',
+        '/api/v1/channels/test/status',
+      );
 
       // Verify the client receives the correct response
       expect(response.statusCode).toBe(200);
@@ -1143,7 +1146,9 @@ describe('ProxyServer Integration Tests', () => {
       expect(response.headers['access-control-allow-origin']).toBe(testOrigin);
       expect(response.headers['access-control-allow-credentials']).toBe('true');
       expect(response.headers['access-control-allow-methods']).toContain('GET');
-      expect(response.headers['access-control-allow-methods']).toContain('POST');
+      expect(response.headers['access-control-allow-methods']).toContain(
+        'POST',
+      );
       expect(response.headers['access-control-expose-headers']).toBe('*');
     });
 
