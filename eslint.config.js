@@ -47,6 +47,9 @@ export default [
       'unicorn/no-array-reduce': 'off',
       'unicorn/prefer-at': 'off',
       'unicorn/prefer-ternary': 'warn',
+      'unicorn/prefer-array-find': 'warn',
+      'unicorn/no-negated-condition': 'off',
+      'unicorn/no-array-sort': 'warn',
 
       // Simple Import Sort
       'simple-import-sort/imports': 'error',

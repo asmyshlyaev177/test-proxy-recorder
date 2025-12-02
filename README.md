@@ -99,10 +99,10 @@ This marks recording files as binary, which causes long mock files to be collaps
 Create `e2e/global-teardown.ts`:
 
 ```typescript
-import { setProxyMode } from 'test-proxy-recorder';
+import { playwrightProxy } from 'test-proxy-recorder';
 
 async function globalTeardown() {
-  await setProxyMode('transparent').catch(err => { console.error(err) });
+  await playwrightProxy.teardown();
 }
 
 export default globalTeardown;
@@ -128,15 +128,17 @@ Create `e2e/example.spec.ts`:
 import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+// Setup afterEach hook to reset proxy after each test
+test.afterEach(async ({ page: _page }, testInfo) => {
+  await playwrightProxy.after(testInfo);
+});
+
 test('example test with proxy', async ({ page }, testInfo) => {
   // Set proxy mode: 'record' to capture, 'replay' to use recordings
   await playwrightProxy.before(testInfo, 'replay');
 
   await page.goto('/');
   await expect(page.getByText('Welcome')).toBeVisible();
-
-  // Always cleanup after test
-  await playwrightProxy.after(testInfo);
 });
 ```
 
@@ -186,11 +188,16 @@ test-proxy-recorder http://localhost:8000 http://localhost:9000 --port 8100
 
 ### Basic Test Structure
 
-Every test using the proxy should follow this pattern:
+Every test file using the proxy should follow this pattern:
 
 ```typescript
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
+
+// Setup afterEach hook once per test file
+test.afterEach(async ({ page: _page }, testInfo) => {
+  await playwrightProxy.after(testInfo);
+});
 
 test('test name', async ({ page }, testInfo) => {
   // 1. Set mode BEFORE test actions
@@ -198,15 +205,21 @@ test('test name', async ({ page }, testInfo) => {
 
   // 2. Test code
   await page.goto('/page');
-
-  // 3. Reset mode AFTER test completes
-  await playwrightProxy.after(testInfo);
+  // Test assertions...
 });
 ```
 
 ### Recording vs Replay
 
 ```typescript
+import { test } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+// Setup afterEach hook to automatically cleanup after each test
+test.afterEach(async ({ page: _page }, testInfo) => {
+  await playwrightProxy.after(testInfo);
+});
+
 // Recording mode - captures API responses
 test('create user', async ({ page }, testInfo) => {
   await playwrightProxy.before(testInfo, 'record');
@@ -214,8 +227,6 @@ test('create user', async ({ page }, testInfo) => {
   await page.goto('/users/new');
   await page.fill('[name="username"]', 'testuser');
   await page.click('button[type="submit"]');
-
-  await playwrightProxy.after(testInfo);
 });
 
 // Replay mode - uses recorded responses
@@ -225,8 +236,6 @@ test('create user', async ({ page }, testInfo) => {
   await page.goto('/users/new');
   await page.fill('[name="username"]', 'testuser');
   await page.click('button[type="submit"]');
-
-  await playwrightProxy.after(testInfo);
 });
 ```
 
@@ -244,10 +253,10 @@ Recording files are auto-generated from test names:
 Create `e2e/global-teardown.ts`:
 
 ```typescript
-import { setProxyMode } from 'test-proxy-recorder';
+import { playwrightProxy } from 'test-proxy-recorder';
 
 async function globalTeardown() {
-  await setProxyMode('transparent').catch(err => { console.error(err) });
+  await playwrightProxy.teardown();
 }
 
 export default globalTeardown;
@@ -412,8 +421,13 @@ const playwrightProxy = {
     timeout?: number
   ): Promise<void>;
 
-  // Reset to transparent mode after test
+  // Reset replay session and return to transparent mode after test
+  // Resets sequence counters to ensure next replay starts fresh
   async after(testInfo: TestInfo): Promise<void>;
+
+  // Global teardown - switches proxy to transparent mode
+  // Use in Playwright's globalTeardown configuration
+  async teardown(): Promise<void>;
 };
 
 // Direct mode control
@@ -437,6 +451,8 @@ async function setProxyMode(
   timeout?: number; // Auto-reset timeout in ms (default: 120000)
 }
 ```
+
+**Note**: Switching to replay mode automatically resets session counters (clears served recordings tracker), allowing replay from the beginning.
 
 **Response**:
 

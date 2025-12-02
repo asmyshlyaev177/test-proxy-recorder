@@ -588,9 +588,15 @@ export class ProxyServer {
       const host = req.headers.host || 'unknown';
 
       // Find all recordings with matching key that have responses
+      // Sort by sequence number (if available) to preserve correct response order
       const recordsWithKey = session.recordings
         .filter((r) => r.key === key && r.response)
-        .toSorted((a, b) => a.recordingId - b.recordingId);
+        .toSorted((a, b) => {
+          // Use sequence if available (preferred), fallback to recordingId
+          const aSeq = a.sequence !== undefined ? a.sequence : a.recordingId;
+          const bSeq = b.sequence !== undefined ? b.sequence : b.recordingId;
+          return aSeq - bSeq;
+        });
 
       if (recordsWithKey.length === 0) {
         const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}`;
@@ -618,7 +624,7 @@ export class ProxyServer {
       // Log incoming request details
       const requestCount = servedForThisKey.size + 1;
       console.log(
-        `[REPLAY REQUEST #${requestCount}] ${req.method} ${req.url} (session: ${recordingId}, total: ${recordsWithKey.length}, served: ${servedForThisKey.size})`,
+        `[replay request #${requestCount}] ${req.method} ${req.url} (session: ${recordingId}, total: ${recordsWithKey.length}, served: ${servedForThisKey.size})`,
       );
 
       // Find the first unserved response for this endpoint (in recordingId order)
@@ -643,7 +649,7 @@ export class ProxyServer {
       servedForThisKey.add(record.recordingId);
 
       console.log(
-        `[REPLAY SERVING] recordingId: ${record.recordingId}, session: ${recordingId}, body_len: ${record.response?.body?.length || 0}`,
+        `[replay serving] recordingId: ${record.recordingId}, session: ${recordingId}, body_len: ${record.response?.body?.length || 0}`,
       );
 
       if (!record.response) {

@@ -160,19 +160,33 @@ export const playwrightProxy = {
    * Setup before test - sets the proxy mode
    * @param testInfo - Playwright test info object
    * @param mode - The proxy mode to use for this test
+   * @param timeout - Optional timeout in milliseconds
    */
-  async before(testInfo: PlaywrightTestInfo, mode: Mode): Promise<void> {
+  async before(
+    testInfo: PlaywrightTestInfo,
+    mode: Mode,
+    timeout?: number,
+  ): Promise<void> {
     const sessionId = generateSessionId(testInfo);
-    console.log('Proxy setup:', { mode, sessionId });
-    await setProxyMode(mode, sessionId);
+    await setProxyMode(mode, sessionId, timeout);
   },
 
   /**
-   * Cleanup after test - returns to transparent mode
+   * Cleanup after test - resets replay session by re-entering replay mode
+   * switchToReplayMode automatically clears sequence counters
    * @param testInfo - Playwright test info object
    */
   async after(testInfo: PlaywrightTestInfo): Promise<void> {
     const sessionId = generateSessionId(testInfo);
-    await setProxyMode(Modes.transparent, sessionId);
+    // Re-entering replay mode automatically resets the session counters
+    await setProxyMode(Modes.replay, sessionId);
+  },
+
+  /**
+   * Global teardown - switches proxy to transparent mode
+   * Use this in Playwright's globalTeardown to ensure clean state
+   */
+  async teardown(): Promise<void> {
+    await setProxyMode(Modes.transparent);
   },
 };
