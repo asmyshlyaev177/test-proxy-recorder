@@ -1,4 +1,3 @@
-/* eslint-disable unicorn/consistent-function-scoping */
 import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';

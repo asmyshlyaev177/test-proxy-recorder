@@ -1,3 +1,4 @@
+export { RECORDING_ID_HEADER } from './constants';
 export { ProxyServer } from './ProxyServer';
 export type {
   ControlRequest,
@@ -17,3 +18,10 @@ export {
   startReplay,
   stopProxy,
 } from './playwright';
+
+// Next.js integration
+export {
+  createHeadersWithRecordingId,
+  getRecordingId,
+  setNextProxyHeaders,
+} from './nextjs';

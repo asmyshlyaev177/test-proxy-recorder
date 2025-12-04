@@ -6,6 +6,7 @@ export default defineConfig([
     entry: {
       index: 'src/index.ts',
       'playwright/index': 'src/playwright/index.ts',
+      'nextjs/index': 'src/nextjs-only.ts',
     },
     format: ['esm', 'cjs'],
     dts: true,

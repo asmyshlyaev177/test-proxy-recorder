@@ -21,6 +21,7 @@ HTTP proxy server for recording and replaying network requests in testing. Works
 - [Complete Setup Guide](#complete-setup-guide)
 - [CLI Usage](#cli-usage)
 - [Playwright Integration](#playwright-integration)
+- [Next.js Integration](#nextjs-integration)
 - [Control Endpoint](#control-endpoint)
 - [Typical Workflow](#typical-workflow)
 - [Recording Format](#recording-format)
@@ -128,14 +129,10 @@ Create `e2e/example.spec.ts`:
 import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-// Setup afterEach hook to reset proxy after each test
-test.afterEach(async ({ page: _page }, testInfo) => {
-  await playwrightProxy.after(testInfo);
-});
-
 test('example test with proxy', async ({ page }, testInfo) => {
   // Set proxy mode: 'record' to capture, 'replay' to use recordings
-  await playwrightProxy.before(testInfo, 'replay');
+  // This automatically sets up page.on('close') for cleanup
+  await playwrightProxy.before(page, testInfo, 'replay');
 
   await page.goto('/');
   await expect(page.getByText('Welcome')).toBeVisible();
@@ -147,13 +144,13 @@ test('example test with proxy', async ({ page }, testInfo) => {
 **First run (record mode)**:
 
 ```typescript
-await playwrightProxy.before(testInfo, 'record');
+await playwrightProxy.before(page, testInfo, 'record');
 ```
 
 **Subsequent runs (replay mode)**:
 
 ```typescript
-await playwrightProxy.before(testInfo, 'replay');
+await playwrightProxy.before(page, testInfo, 'replay');
 ```
 
 ## CLI Usage
@@ -186,24 +183,26 @@ test-proxy-recorder http://localhost:8000 http://localhost:9000 --port 8100
 
 ## Playwright Integration
 
+### Session Identification
+
+The proxy uses a **custom HTTP header** (`x-test-rcrd-id`) to identify recording sessions. This header is automatically set by the `playwrightProxy.before()` method and works seamlessly with Next.js and other server-side rendering frameworks.
+
+**Cookie fallback**: For backward compatibility, the proxy also supports cookie-based session identification, but the custom header is preferred.
+
 ### Basic Test Structure
 
-Every test file using the proxy should follow this pattern:
+Every test using the proxy should follow this pattern:
 
 ```typescript
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-// Setup afterEach hook once per test file
-test.afterEach(async ({ page: _page }, testInfo) => {
-  await playwrightProxy.after(testInfo);
-});
-
 test('test name', async ({ page }, testInfo) => {
-  // 1. Set mode BEFORE test actions
-  await playwrightProxy.before(testInfo, 'replay');
+  // Set mode BEFORE test actions
+  // This automatically sets the recording ID header and cleanup handler
+  await playwrightProxy.before(page, testInfo, 'replay');
 
-  // 2. Test code
+  // Test code
   await page.goto('/page');
   // Test assertions...
 });
@@ -215,14 +214,9 @@ test('test name', async ({ page }, testInfo) => {
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-// Setup afterEach hook to automatically cleanup after each test
-test.afterEach(async ({ page: _page }, testInfo) => {
-  await playwrightProxy.after(testInfo);
-});
-
 // Recording mode - captures API responses
 test('create user', async ({ page }, testInfo) => {
-  await playwrightProxy.before(testInfo, 'record');
+  await playwrightProxy.before(page, testInfo, 'record');
 
   await page.goto('/users/new');
   await page.fill('[name="username"]', 'testuser');
@@ -231,7 +225,7 @@ test('create user', async ({ page }, testInfo) => {
 
 // Replay mode - uses recorded responses
 test('create user', async ({ page }, testInfo) => {
-  await playwrightProxy.before(testInfo, 'replay');
+  await playwrightProxy.before(page, testInfo, 'replay');
 
   await page.goto('/users/new');
   await page.fill('[name="username"]', 'testuser');
@@ -272,6 +266,78 @@ export default defineConfig({
   globalTeardown: './e2e/global-teardown.ts',
   // ... rest of config
 });
+```
+
+## Next.js Integration
+
+When testing Next.js applications with server-side rendering (SSR) or API routes, you need to ensure the recording ID header is forwarded to the proxy. The package provides helpers for this.
+
+### Option 1: Using Next.js Middleware (Recommended)
+
+Create or update `middleware.ts` in your Next.js project root:
+
+```typescript
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
+
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+
+  // Forward the recording ID header during tests
+  // Only runs in non-production or when TEST_PROXY_RECORDER_ENABLED=true
+  setNextProxyHeaders(request, response);
+
+  return response;
+}
+```
+
+**Environment Variables:**
+- Automatically skipped when `NODE_ENV=production`
+- Can be explicitly enabled in production with `TEST_PROXY_RECORDER_ENABLED=true`
+
+### Option 2: Manual Header Forwarding in API Routes
+
+For API routes or server components, manually include the header in fetch requests:
+
+```typescript
+// app/api/data/route.ts
+import { headers } from 'next/headers';
+import { createHeadersWithRecordingId } from 'test-proxy-recorder/nextjs';
+
+export async function GET() {
+  const requestHeaders = await headers();
+
+  const response = await fetch('http://localhost:8100/api/data', {
+    headers: createHeadersWithRecordingId(requestHeaders, {
+      'Content-Type': 'application/json',
+    })
+  });
+
+  return Response.json(await response.json());
+}
+```
+
+### Option 3: Using getRecordingId Helper
+
+For more control, extract the recording ID and use it manually:
+
+```typescript
+import { headers } from 'next/headers';
+import { getRecordingId, RECORDING_ID_HEADER } from 'test-proxy-recorder/nextjs';
+
+export async function GET() {
+  const recordingId = getRecordingId(await headers());
+
+  const response = await fetch('http://localhost:8100/api/data', {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(recordingId && { [RECORDING_ID_HEADER]: recordingId })
+    }
+  });
+
+  return Response.json(await response.json());
+}
 ```
 
 ## Control Endpoint
@@ -410,20 +476,20 @@ class ProxyServer {
 ### Playwright Integration
 
 ```typescript
-import { playwrightProxy, setProxyMode } from 'test-proxy-recorder';
+import { playwrightProxy, setProxyMode, RECORDING_ID_HEADER } from 'test-proxy-recorder';
+import type { Page } from '@playwright/test';
 
 // Main helper for Playwright tests
 const playwrightProxy = {
-  // Set proxy mode before test
+  // Set proxy mode before test and configure page with recording ID header
+  // Automatically sets up page.on('close') handler for cleanup
   async before(
+    page: Page,
     testInfo: TestInfo,
     mode: 'record' | 'replay' | 'transparent',
     timeout?: number
   ): Promise<void>;
 
-  // Reset replay session and return to transparent mode after test
-  // Resets sequence counters to ensure next replay starts fresh
-  async after(testInfo: TestInfo): Promise<void>;
 
   // Global teardown - switches proxy to transparent mode
   // Use in Playwright's globalTeardown configuration
@@ -436,6 +502,41 @@ async function setProxyMode(
   id?: string,
   timeout?: number
 ): Promise<void>;
+
+// Recording ID header constant
+const RECORDING_ID_HEADER: string; // 'x-test-rcrd-id'
+```
+
+### Next.js Integration
+
+**IMPORTANT**: Use the `/nextjs` import path to avoid webpack bundling issues in Next.js:
+
+```typescript
+import {
+  setNextProxyHeaders,
+  getRecordingId,
+  createHeadersWithRecordingId,
+  RECORDING_ID_HEADER
+} from 'test-proxy-recorder/nextjs';
+import type { NextRequest, NextResponse } from 'next/server';
+
+// Forward recording ID header in Next.js middleware
+// Automatically skipped in production unless TEST_PROXY_RECORDER_ENABLED=true
+function setNextProxyHeaders(
+  request: NextRequest,
+  response: NextResponse
+): void;
+
+// Get recording ID from request headers
+function getRecordingId(
+  requestHeaders: NextRequest | Headers
+): string | null;
+
+// Create headers object with recording ID for fetch requests
+function createHeadersWithRecordingId(
+  requestHeaders: NextRequest | Headers,
+  additionalHeaders?: Record<string, string>
+): Record<string, string>;
 ```
 
 ### Control Endpoint

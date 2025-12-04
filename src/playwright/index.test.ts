@@ -1,3 +1,4 @@
+import { Page } from '@playwright/test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaywrightTestInfo } from './index.js';
@@ -6,6 +7,21 @@ import { generateSessionId, playwrightProxy } from './index.js';
 // Mock fetch globally
 const mockFetch = vi.fn();
 globalThis.fetch = mockFetch as unknown as typeof fetch;
+
+// Mock Page object
+const createMockPage = () => {
+  const eventHandlers = new Map<string, Function>();
+  return {
+    setExtraHTTPHeaders: vi.fn().mockResolvedValue(),
+    on: vi.fn((event: string, handler: Function) => {
+      eventHandlers.set(event, handler);
+    }),
+    _triggerEvent: (event: string) => {
+      const handler = eventHandlers.get(event);
+      if (handler) handler();
+    },
+  };
+};
 
 describe('Playwright Integration', () => {
   beforeEach(() => {
@@ -20,6 +36,7 @@ describe('Playwright Integration', () => {
 
   describe('playwrightProxy.before', () => {
     it('should call setProxyMode with correct mode and sessionId', async () => {
+      const mockPage = createMockPage();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ success: true }),
@@ -30,7 +47,11 @@ describe('Playwright Integration', () => {
         titlePath: ['Test.spec.ts', 'test name'],
       };
 
-      await playwrightProxy.before(testInfo, 'record');
+      await playwrightProxy.before(
+        mockPage as unknown as Page,
+        testInfo,
+        'record',
+      );
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
@@ -44,9 +65,14 @@ describe('Playwright Integration', () => {
           }),
         },
       );
+      expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith({
+        'x-test-rcrd-id': 'Test__test-name',
+      });
+      expect(mockPage.on).toHaveBeenCalledWith('close', expect.any(Function));
     });
 
     it('should call setProxyMode with replay mode', async () => {
+      const mockPage = createMockPage();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ success: true }),
@@ -57,7 +83,11 @@ describe('Playwright Integration', () => {
         titlePath: ['users/Auth.spec.ts', 'replay test'],
       };
 
-      await playwrightProxy.before(testInfo, 'replay');
+      await playwrightProxy.before(
+        mockPage as unknown as Page,
+        testInfo,
+        'replay',
+      );
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
@@ -71,9 +101,13 @@ describe('Playwright Integration', () => {
           }),
         },
       );
+      expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith({
+        'x-test-rcrd-id': 'users/Auth__replay-test',
+      });
     });
 
     it('should include timeout if provided', async () => {
+      const mockPage = createMockPage();
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ success: true }),
@@ -84,7 +118,12 @@ describe('Playwright Integration', () => {
         titlePath: [],
       };
 
-      await playwrightProxy.before(testInfo, 'record', 30_000);
+      await playwrightProxy.before(
+        mockPage as unknown as Page,
+        testInfo,
+        'record',
+        30_000,
+      );
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://127.0.0.1:8100/__control',
@@ -101,6 +140,7 @@ describe('Playwright Integration', () => {
     });
 
     it('should use custom port from environment variable', async () => {
+      const mockPage = createMockPage();
       process.env.TEST_PROXY_RECORDER_PORT = '9999';
       mockFetch.mockResolvedValue({
         ok: true,
@@ -112,7 +152,11 @@ describe('Playwright Integration', () => {
         titlePath: [],
       };
 
-      await playwrightProxy.before(testInfo, 'record');
+      await playwrightProxy.before(
+        mockPage as unknown as Page,
+        testInfo,
+        'record',
+      );
 
       expect(mockFetch).toHaveBeenCalledWith(
         'http://127.0.0.1:9999/__control',
@@ -125,6 +169,7 @@ describe('Playwright Integration', () => {
     });
 
     it('should throw error if proxy request fails', async () => {
+      const mockPage = createMockPage();
       mockFetch.mockResolvedValue({
         ok: false,
         text: async () => 'Connection refused',
@@ -135,12 +180,13 @@ describe('Playwright Integration', () => {
         titlePath: [],
       };
 
-      await expect(playwrightProxy.before(testInfo, 'record')).rejects.toThrow(
-        'Failed to set proxy mode',
-      );
+      await expect(
+        playwrightProxy.before(mockPage as unknown as Page, testInfo, 'record'),
+      ).rejects.toThrow('Failed to set proxy mode');
     });
 
     it('should throw error if fetch throws', async () => {
+      const mockPage = createMockPage();
       mockFetch.mockRejectedValue(new Error('Network error'));
 
       const testInfo: PlaywrightTestInfo = {
@@ -148,98 +194,9 @@ describe('Playwright Integration', () => {
         titlePath: [],
       };
 
-      await expect(playwrightProxy.before(testInfo, 'record')).rejects.toThrow(
-        'Network error',
-      );
-    });
-  });
-
-  describe('playwrightProxy.after', () => {
-    it('should reset session by re-entering replay mode', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
-
-      const testInfo: PlaywrightTestInfo = {
-        title: 'cleanup test',
-        titlePath: ['Cleanup.spec.ts', 'cleanup test'],
-      };
-
-      await playwrightProxy.after(testInfo);
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      // Should switch to replay mode, which automatically resets session counters
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mode: 'replay',
-            id: 'Cleanup__cleanup-test',
-          }),
-        },
-      );
-    });
-
-    it('should throw error if cleanup fails', async () => {
-      mockFetch.mockResolvedValue({
-        ok: false,
-        text: async () => 'Cleanup failed',
-      });
-
-      const testInfo: PlaywrightTestInfo = {
-        title: 'error test',
-        titlePath: [],
-      };
-
-      await expect(playwrightProxy.after(testInfo)).rejects.toThrow(
-        'Failed to set proxy mode',
-      );
-    });
-
-    it('should throw error if fetch throws', async () => {
-      mockFetch.mockRejectedValue(new Error('Network error'));
-
-      const testInfo: PlaywrightTestInfo = {
-        title: 'network error test',
-        titlePath: [],
-      };
-
-      await expect(playwrightProxy.after(testInfo)).rejects.toThrow(
-        'Network error',
-      );
-    });
-
-    it('should handle nested folder structure in after', async () => {
-      mockFetch.mockResolvedValue({
-        ok: true,
-        json: async () => ({ success: true }),
-      });
-
-      const testInfo: PlaywrightTestInfo = {
-        title: 'nested test',
-        titlePath: ['api/v1/Users.spec.ts', 'nested test'],
-      };
-
-      await playwrightProxy.after(testInfo);
-
-      expect(mockFetch).toHaveBeenCalledTimes(1);
-
-      // Verify sessionId includes folder structure
-      expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            mode: 'replay',
-            id: 'api/v1/Users__nested-test',
-          }),
-        },
-      );
+      await expect(
+        playwrightProxy.before(mockPage as unknown as Page, testInfo, 'record'),
+      ).rejects.toThrow('Network error');
     });
   });
 

@@ -1,5 +1,6 @@
-import type { TestInfo } from '@playwright/test';
+import type { Page, TestInfo } from '@playwright/test';
 
+import { RECORDING_ID_HEADER } from '../constants.js';
 import { type Mode, Modes } from '../types';
 
 export type PlaywrightTestInfo = Pick<TestInfo, 'title' | 'titlePath'>;
@@ -153,33 +154,45 @@ export async function stopProxy(testInfo: PlaywrightTestInfo): Promise<void> {
 
 /**
  * Playwright test fixture helper for managing proxy mode
- * Use this in beforeEach/afterEach hooks
+ * Use this in test functions with page.on('close') for automatic cleanup
  */
 export const playwrightProxy = {
   /**
-   * Setup before test - sets the proxy mode
+   * Setup before test - sets the proxy mode and configures page with custom header
+   * Automatically sets up page.on('close') handler for cleanup
+   * @param page - Playwright page object
    * @param testInfo - Playwright test info object
    * @param mode - The proxy mode to use for this test
    * @param timeout - Optional timeout in milliseconds
    */
   async before(
+    page: Page,
     testInfo: PlaywrightTestInfo,
     mode: Mode,
     timeout?: number,
   ): Promise<void> {
     const sessionId = generateSessionId(testInfo);
-    await setProxyMode(mode, sessionId, timeout);
-  },
 
-  /**
-   * Cleanup after test - resets replay session by re-entering replay mode
-   * switchToReplayMode automatically clears sequence counters
-   * @param testInfo - Playwright test info object
-   */
-  async after(testInfo: PlaywrightTestInfo): Promise<void> {
-    const sessionId = generateSessionId(testInfo);
-    // Re-entering replay mode automatically resets the session counters
-    await setProxyMode(Modes.replay, sessionId);
+    // Set the custom header on the page for Next.js and other frameworks
+    await page.setExtraHTTPHeaders({
+      [RECORDING_ID_HEADER]: sessionId,
+    });
+
+    // Set the proxy mode
+    await setProxyMode(mode, sessionId, timeout);
+
+    // Setup cleanup handler on page close
+    page.on('close', async () => {
+      try {
+        // reset session on cleanup
+        await setProxyMode(Modes.replay, sessionId);
+        console.log(
+          `[Cleanup] Switched to transparent mode for session: ${sessionId}`,
+        );
+      } catch (error) {
+        console.error('[Cleanup] Error during page close cleanup:', error);
+      }
+    });
   },
 
   /**

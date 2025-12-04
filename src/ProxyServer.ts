@@ -13,6 +13,7 @@ import {
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_OK,
+  RECORDING_ID_HEADER,
 } from './constants.js';
 import {
   type ControlRequest,
@@ -150,7 +151,7 @@ export class ProxyServer {
       'access-control-allow-credentials': 'true',
       'access-control-allow-headers':
         req.headers['access-control-request-headers'] ||
-        'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+        `Origin, X-Requested-With, Content-Type, Accept, Authorization, ${RECORDING_ID_HEADER}`,
       'access-control-allow-methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
       'access-control-expose-headers': '*',
     };
@@ -172,8 +173,22 @@ export class ProxyServer {
   }
 
   /**
+   * Extract recording ID from custom HTTP header
+   * Used for concurrent replay session routing, especially with Next.js
+   * @param req The incoming HTTP request
+   * @returns The recording ID from header, or null if not found
+   */
+  private getRecordingIdFromHeader(req: http.IncomingMessage): string | null {
+    const headerValue = req.headers[RECORDING_ID_HEADER];
+    if (!headerValue) {
+      return null;
+    }
+    return Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  }
+
+  /**
    * Extract recording ID from request cookie
-   * Used for concurrent replay session routing
+   * Used for concurrent replay session routing (fallback method)
    * @param req The incoming HTTP request
    * @returns The recording ID from cookie, or null if not found
    */
@@ -185,6 +200,18 @@ export class ProxyServer {
 
     const match = cookies.match(/proxy-recording-id=([^;]+)/);
     return match ? decodeURIComponent(match[1]) : null;
+  }
+
+  /**
+   * Extract recording ID from request using custom header (preferred) or cookie (fallback)
+   * @param req The incoming HTTP request
+   * @returns The recording ID, or null if not found
+   */
+  private getRecordingIdFromRequest(req: http.IncomingMessage): string | null {
+    // Prefer custom header over cookie for Next.js compatibility
+    return (
+      this.getRecordingIdFromHeader(req) || this.getRecordingIdFromCookie(req)
+    );
   }
 
   /**
@@ -551,8 +578,8 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
-    // Get recording ID from cookie, fallback to this.replayId for backward compatibility
-    const recordingId = this.getRecordingIdFromCookie(req) || this.replayId;
+    // Get recording ID from custom header (preferred) or cookie (fallback), then this.replayId for backward compatibility
+    const recordingId = this.getRecordingIdFromRequest(req) || this.replayId;
 
     if (!recordingId) {
       const corsHeaders = this.getCorsHeaders(req);
