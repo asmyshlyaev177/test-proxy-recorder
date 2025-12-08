@@ -50,6 +50,21 @@ export default [
       'unicorn/prefer-array-find': 'warn',
       'unicorn/no-negated-condition': 'off',
       'unicorn/no-array-sort': 'warn',
+      'unicorn/no-array-for-each': 'warn',
+      'sonarjs/hashing': 'off',
+      'sonarjs/no-unused-vars': 'off',
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "args": "all",
+          "argsIgnorePattern": "^_",
+          "caughtErrors": "all",
+          "caughtErrorsIgnorePattern": "^_",
+          "destructuredArrayIgnorePattern": "^_",
+          "varsIgnorePattern": "^_",
+          "ignoreRestSiblings": true
+        }
+      ],
 
       // Simple Import Sort
       'simple-import-sort/imports': 'error',

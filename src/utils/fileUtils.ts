@@ -59,21 +59,40 @@ export async function loadRecordingSession(
 
 /**
  * Process recordings to add sequence numbers
+ * Sorts recordings by recordingId (request send order) to ensure
+ * deterministic replay order that matches the logical test flow
  * @param recordings Raw recordings from proxy
  * @returns Processed recordings with sequence numbers
  */
 function processRecordings(recordings: Recording[]): Recording[] {
-  // Track sequence number for each key
-  const keySequenceMap = new Map<string, number>();
-
-  // Add sequence numbers to recordings
-  return recordings.map((recording) => {
+  // Group recordings by key
+  const recordingsByKey = new Map<string, Recording[]>();
+  for (const recording of recordings) {
     const key = recording.key;
-    const currentSeq = keySequenceMap.get(key) || 0;
-    keySequenceMap.set(key, currentSeq + 1);
+    if (!recordingsByKey.has(key)) {
+      recordingsByKey.set(key, []);
+    }
+    recordingsByKey.get(key)!.push(recording);
+  }
 
-    return { ...recording, sequence: currentSeq };
-  });
+  // Sort each group by recordingId and assign sequences
+  const processedRecordings: Recording[] = [];
+  for (const [_key, keyRecordings] of recordingsByKey) {
+    // Sort by recordingId (order requests were sent)
+    // This ensures replay serves responses in the order requests were made,
+    // matching the logical test flow (e.g., browser request after POST gets fresh data)
+    keyRecordings.sort((a, b) => a.recordingId - b.recordingId);
+
+    // Assign sequence numbers based on sorted order
+    keyRecordings.forEach((recording, index) => {
+      processedRecordings.push({ ...recording, sequence: index });
+    });
+  }
+
+  // Sort by recordingId to maintain overall order in the file
+  processedRecordings.sort((a, b) => a.recordingId - b.recordingId);
+
+  return processedRecordings;
 }
 
 export async function saveRecordingSession(

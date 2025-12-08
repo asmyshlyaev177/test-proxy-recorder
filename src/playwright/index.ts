@@ -187,7 +187,7 @@ export const playwrightProxy = {
         // reset session on cleanup
         await setProxyMode(Modes.replay, sessionId);
         console.log(
-          `[Cleanup] Switched to transparent mode for session: ${sessionId}`,
+          `[Cleanup] Switched to replay mode for session: ${sessionId}`,
         );
       } catch (error) {
         console.error('[Cleanup] Error during page close cleanup:', error);

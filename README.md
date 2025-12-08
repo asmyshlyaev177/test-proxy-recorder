@@ -59,7 +59,7 @@ Add to `package.json`:
 ```json
 {
   "scripts": {
-    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --recordings-dir ./e2e/recordings"
+    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings"
   }
 }
 ```
@@ -73,7 +73,7 @@ npm install --save-dev concurrently
 ```json
 {
   "scripts": {
-    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --recordings-dir ./e2e/recordings",
+    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
     "dev:proxy": "concurrently -n \"proxy,app\" -c \"blue,green\" \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\""
   }
 }
@@ -165,7 +165,7 @@ test-proxy-recorder <target-url> [options]
 
 - `<target-url>` - Backend API URL (positional argument, required)
 - `--port, -p <number>` - Port to listen on (default: 8080)
-- `--recordings-dir, -r <path>` - Directory to store recordings (default: ./recordings)
+- `--dir, -d <path>` - Directory to store recordings (default: ./recordings)
 - `--help, -h` - Show help
 
 ### Examples
@@ -175,7 +175,7 @@ test-proxy-recorder <target-url> [options]
 test-proxy-recorder http://localhost:8000
 
 # Custom port and recordings directory
-test-proxy-recorder http://localhost:8000 --port 8100 --recordings-dir ./mocks
+test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 
 # Multiple targets (experimental)
 test-proxy-recorder http://localhost:8000 http://localhost:9000 --port 8100

@@ -31,7 +31,7 @@ export function parseCliArgs(): CliOptions {
       String(DEFAULT_PORT),
     )
     .option(
-      '-r, --recordings-dir <path>',
+      '-d, --dir <path>',
       'Directory to store recordings (relative to CWD)',
       DEFAULT_RECORDINGS_DIR,
     )
@@ -42,7 +42,7 @@ export function parseCliArgs(): CliOptions {
   program.parse();
 
   const targets = program.args;
-  const options = program.opts<{ port: string; recordingsDir: string }>();
+  const options = program.opts<{ port: string; dir: string }>();
 
   const port = Number.parseInt(options.port, 10);
   if (Number.isNaN(port) || port < 1025 || port > 65_535) {
@@ -55,7 +55,7 @@ export function parseCliArgs(): CliOptions {
   }
 
   // Resolve recordings directory relative to the current working directory (where the command is run)
-  const recordingsDir = path.resolve(process.cwd(), options.recordingsDir);
+  const recordingsDir = path.resolve(process.cwd(), options.dir);
 
   return { targets, port, recordingsDir };
 }
