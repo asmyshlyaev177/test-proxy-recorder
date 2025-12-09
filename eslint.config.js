@@ -53,6 +53,8 @@ export default [
       'unicorn/no-array-for-each': 'warn',
       'sonarjs/hashing': 'off',
       'sonarjs/no-unused-vars': 'off',
+      'unicorn/prefer-spread': 'warn',
+      'sonarjs/no-commented-code': 'warn',
       "@typescript-eslint/no-unused-vars": [
         "error",
         {

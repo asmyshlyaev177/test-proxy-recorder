@@ -9,9 +9,10 @@ export const Modes = {
 export type Mode = (typeof Modes)[keyof typeof Modes];
 
 export interface ControlRequest {
-  mode: Mode;
+  mode?: Mode;
   id?: string;
   timeout?: number;
+  cleanup?: boolean; // When true, cleans up the session (unloads recording, resets counters)
 }
 
 export interface RecordedRequest {

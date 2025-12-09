@@ -201,9 +201,24 @@ export class ProxyServer {
    */
   private getRecordingIdFromRequest(req: http.IncomingMessage): string | null {
     // Prefer custom header over cookie for Next.js compatibility
-    return (
-      this.getRecordingIdFromHeader(req) || this.getRecordingIdFromCookie(req)
-    );
+    const fromHeader = this.getRecordingIdFromHeader(req);
+    const fromCookie = this.getRecordingIdFromCookie(req);
+
+    if (fromHeader) {
+      // console.debug(
+      //   `[SESSION] Using header for ${req.method} ${req.url} -> ${fromCookie}`,
+      // );
+      return fromHeader;
+    }
+
+    if (fromCookie) {
+      // console.debug(
+      //   `[SESSION] Using cookie for ${req.method} ${req.url} -> ${fromCookie}`,
+      // );
+      return fromCookie;
+    }
+
+    return null;
   }
 
   /**
@@ -230,6 +245,34 @@ export class ProxyServer {
     }
 
     return session;
+  }
+
+  /**
+   * Clean up a session - removes it from memory and resets counters
+   * @param sessionId The session ID to clean up
+   */
+  private async cleanupSession(sessionId: string): Promise<void> {
+    // Remove from replay sessions
+    if (this.replaySessions.has(sessionId)) {
+      console.log(`[CLEANUP] Removing replay session: ${sessionId}`);
+      this.replaySessions.delete(sessionId);
+    }
+
+    // If this was the active recording session, save it before clearing
+    if (this.recordingId === sessionId) {
+      console.log(`[CLEANUP] Saving and clearing active recording session: ${sessionId}`);
+      await this.saveCurrentSession();
+      this.currentSession = null;
+      this.recordingId = null;
+    }
+
+    // If this was the active replay session (legacy single-session mode), clear it
+    if (this.replayId === sessionId) {
+      console.log(`[CLEANUP] Clearing active replay session: ${sessionId}`);
+      this.replayId = null;
+    }
+
+    console.log(`[CLEANUP] Session ${sessionId} cleaned up successfully`);
   }
 
   private parseGetParams(req: http.IncomingMessage) {
@@ -269,9 +312,37 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
+    // GET request returns server configuration
+    if (req.method === 'GET') {
+      sendJsonResponse(res, HTTP_STATUS_OK, {
+        recordingsDir: this.recordingsDir,
+        mode: this.mode,
+        id: this.recordingId || this.replayId,
+      });
+      return;
+    }
+
+    // POST request sets mode or performs cleanup
     try {
       const data = await this.parseControlRequest(req);
-      const { mode, id, timeout: requestTimeout } = data;
+      const { mode, id, timeout: requestTimeout, cleanup } = data;
+
+      // Handle cleanup request
+      if (cleanup && id) {
+        await this.cleanupSession(id);
+        sendJsonResponse(res, HTTP_STATUS_OK, {
+          success: true,
+          message: `Session ${id} cleaned up`,
+          mode: this.mode,
+        });
+        return;
+      }
+
+      // Handle mode switch
+      if (!mode) {
+        throw new Error('Mode parameter is required when cleanup is not specified');
+      }
+
       const timeout = requestTimeout ?? DEFAULT_TIMEOUT_MS;
 
       this.clearModeTimeout();
@@ -291,6 +362,7 @@ export class ProxyServer {
         mode: this.mode,
         id: this.recordingId || this.replayId,
         timeout,
+        recordingsDir: this.recordingsDir,
       });
     } catch (error) {
       console.error('Control request error:', error);
@@ -381,6 +453,7 @@ export class ProxyServer {
   }
 
   private setupModeTimeout(timeout: number): void {
+    clearTimeout(this.modeTimeout || 0);
     this.modeTimeout = setTimeout(async () => {
       console.log('Timeout reached, switching back to transparent mode');
       await this.saveCurrentSession();
@@ -429,7 +502,44 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): string | null {
-    const recordingId = this.getRecordingIdFromRequest(req) || this.replayId;
+    const recordingIdFromRequest = this.getRecordingIdFromRequest(req);
+
+    // If we have a recording ID from the request (header or cookie), use it
+    if (recordingIdFromRequest) {
+      return recordingIdFromRequest;
+    }
+
+    // Fallback to this.replayId only if there's exactly one active session (backward compatibility)
+    // For concurrent sessions with multiple active sessions, we MUST NOT use this.replayId
+    // as it can point to the wrong session (race condition)
+    if (this.replaySessions.size > 1) {
+      // In concurrent mode, if no recording ID is provided, we cannot determine
+      // which session this request belongs to. Log the error and fail.
+      console.warn(
+        `[CONCURRENT REPLAY WARNING] Request to ${req.method} ${req.url} is missing ${RECORDING_ID_HEADER} header/cookie. ` +
+          `Active sessions: ${[...this.replaySessions.keys()].join(', ')}. ` +
+          `this.replayId fallback would be: ${this.replayId} (NOT USING - could be wrong session)`,
+      );
+
+      // Return error - we cannot safely determine which session to use
+      const corsHeaders = this.getCorsHeaders(req);
+      res.writeHead(HTTP_STATUS_BAD_REQUEST, {
+        'Content-Type': 'application/json',
+        ...corsHeaders,
+      });
+      res.end(
+        JSON.stringify({
+          error:
+            'Missing recording ID in concurrent replay mode. Ensure x-test-rcrd-id header is set.',
+          activeSessions: [...this.replaySessions.keys()],
+          hint: 'This usually means page.setExtraHTTPHeaders() did not apply to this request type',
+        }),
+      );
+      return null;
+    }
+
+    // Single session or no active sessions - use fallback for backward compatibility
+    const recordingId = this.replayId;
     if (!recordingId) {
       const corsHeaders = this.getCorsHeaders(req);
       res.writeHead(HTTP_STATUS_BAD_REQUEST, {
@@ -439,6 +549,10 @@ export class ProxyServer {
       res.end(JSON.stringify({ error: 'No replay session active' }));
       return null;
     }
+
+    console.log(
+      `[FALLBACK] Using replayId fallback for ${req.method} ${req.url} -> session: ${recordingId} (single session mode)`,
+    );
     return recordingId;
   }
 

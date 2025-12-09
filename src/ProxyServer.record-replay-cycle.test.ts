@@ -89,9 +89,11 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Switch to record mode
-    await fetch(
-      `http://localhost:${proxyPort}/__control?mode=record&id=${sessionId}`,
-    );
+    await fetch(`http://localhost:${proxyPort}/__control`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'record', id: sessionId }),
+    });
 
     // Step 3: Make requests in sequence (simulating a real test)
     // First: GET requests before POST (should return old data)
@@ -142,7 +144,11 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     expect(getData4[2].id).toBe('old-post-2');
 
     // Switch to transparent mode to save the recording
-    await fetch(`http://localhost:${proxyPort}/__control?mode=transparent`);
+    await fetch(`http://localhost:${proxyPort}/__control`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'transparent' }),
+    });
 
     await new Promise((resolve) => setTimeout(resolve, 100));
 
@@ -208,9 +214,11 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     await new Promise((resolve) => setTimeout(resolve, 100));
 
     // Switch to replay mode
-    await fetch(
-      `http://localhost:${proxyPort}/__control?mode=replay&id=${sessionId}`,
-    );
+    await fetch(`http://localhost:${proxyPort}/__control`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode: 'replay', id: sessionId }),
+    });
 
     // Step 6: Replay the requests and verify they return the correct data
     // First GET - should return old data

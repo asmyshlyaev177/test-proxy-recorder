@@ -11,8 +11,24 @@ globalThis.fetch = mockFetch as unknown as typeof fetch;
 // Mock Page object
 const createMockPage = () => {
   const eventHandlers = new Map<string, Function>();
+  const contextEventHandlers = new Map<string, Function>();
+
+  const mockContext = {
+    on: vi.fn((event: string, handler: Function) => {
+      contextEventHandlers.set(event, handler);
+    }),
+    _guid: 'test-context-guid',
+    _triggerEvent: (event: string) => {
+      const handler = contextEventHandlers.get(event);
+      if (handler) handler();
+    },
+  };
+
   return {
-    setExtraHTTPHeaders: vi.fn().mockResolvedValue(),
+    setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
+    route: vi.fn().mockResolvedValue(undefined),
+    routeFromHAR: vi.fn().mockResolvedValue(undefined),
+    context: vi.fn(() => mockContext),
     on: vi.fn((event: string, handler: Function) => {
       eventHandlers.set(event, handler);
     }),
@@ -20,6 +36,7 @@ const createMockPage = () => {
       const handler = eventHandlers.get(event);
       if (handler) handler();
     },
+    _mockContext: mockContext,
   };
 };
 
@@ -28,6 +45,12 @@ describe('Playwright Integration', () => {
     mockFetch.mockReset();
     // Set default port via environment variable
     process.env.TEST_PROXY_RECORDER_PORT = '8100';
+    // Clear global handler registrations
+    Object.keys(global).forEach((key) => {
+      if (key.startsWith('cleanup_')) {
+        delete (global as any)[key];
+      }
+    });
   });
 
   afterEach(() => {
@@ -68,7 +91,9 @@ describe('Playwright Integration', () => {
       expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith({
         'x-test-rcrd-id': 'Test__test-name',
       });
-      expect(mockPage.on).toHaveBeenCalledWith('close', expect.any(Function));
+      expect(mockPage.route).toHaveBeenCalled();
+      expect(mockPage.context).toHaveBeenCalled();
+      expect(mockPage._mockContext.on).toHaveBeenCalledWith('close', expect.any(Function));
     });
 
     it('should call setProxyMode with replay mode', async () => {
@@ -104,6 +129,9 @@ describe('Playwright Integration', () => {
       expect(mockPage.setExtraHTTPHeaders).toHaveBeenCalledWith({
         'x-test-rcrd-id': 'users/Auth__replay-test',
       });
+      expect(mockPage.route).toHaveBeenCalled();
+      expect(mockPage.context).toHaveBeenCalled();
+      expect(mockPage._mockContext.on).toHaveBeenCalledWith('close', expect.any(Function));
     });
 
     it('should include timeout if provided', async () => {
@@ -197,6 +225,54 @@ describe('Playwright Integration', () => {
       await expect(
         playwrightProxy.before(mockPage as unknown as Page, testInfo, 'record'),
       ).rejects.toThrow('Network error');
+    });
+
+    it('should cleanup and switch to transparent mode when context closes', async () => {
+      const mockPage = createMockPage();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true }),
+      });
+
+      const testInfo: PlaywrightTestInfo = {
+        title: 'cleanup test',
+        titlePath: [],
+      };
+
+      await playwrightProxy.before(
+        mockPage as unknown as Page,
+        testInfo,
+        'record',
+      );
+
+      // Verify context handler was registered
+      expect(mockPage._mockContext.on).toHaveBeenCalledWith('close', expect.any(Function));
+
+      // Reset fetch mock to track cleanup call
+      mockFetch.mockReset();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ success: true }),
+      });
+
+      // Trigger context close event
+      mockPage._mockContext._triggerEvent('close');
+
+      // Wait for async cleanup to complete
+      await new Promise((resolve) => setTimeout(resolve, 10));
+
+      // Verify cleanup was called for the specific session
+      expect(mockFetch).toHaveBeenCalledWith(
+        'http://127.0.0.1:8100/__control',
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            cleanup: true,
+            id: 'cleanup-test',
+          }),
+        },
+      );
     });
   });
 

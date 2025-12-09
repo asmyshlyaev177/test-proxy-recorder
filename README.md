@@ -268,6 +268,67 @@ export default defineConfig({
 });
 ```
 
+### Client-Side Recording for 3rd Party APIs
+
+For applications that make client-side requests to 3rd party services (e.g., AWS Cognito, Stream.io, analytics services), you can use client-side recording to capture these requests directly in the browser using Playwright's HAR (HTTP Archive) format.
+
+**Why use client-side recording?**
+- Server-side proxy cannot intercept requests made directly from the browser to external services
+- HAR files are a standard format supported by Playwright and browser dev tools
+- Automatically handles CORS and other browser-specific request behaviors
+
+**Example:**
+
+```typescript
+import { test } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+test('authentication flow', async ({ page }, testInfo) => {
+  // Record both server-side (via proxy) and client-side (via HAR) requests
+  await playwrightProxy.before(
+    page,
+    testInfo,
+    'replay',
+    {
+      // Client-side URL pattern using Playwright's format
+      url: /cognito-.*amazonaws\.com|\.stream-io-api\.com/,
+      timeout: 60000 // Optional: custom timeout
+    }
+  );
+
+  await page.goto('/login');
+  // Cognito authentication requests are recorded to HAR files
+  await page.fill('[name="email"]', 'user@example.com');
+  await page.click('button[type="submit"]');
+});
+```
+
+**URL Pattern Options:**
+```typescript
+// RegExp pattern (recommended for multiple domains)
+{ url: /cognito-.*amazonaws\.com|\.stream-io-api\.com/ }
+
+// String glob pattern
+{ url: 'https://api.example.com/**' }
+
+// Specific domain
+{ url: /api\.external-service\.com/ }
+```
+
+**Storage:**
+Client-side recordings are stored as HAR files alongside server-side recordings:
+```
+e2e/recordings/
+├── my-test.mock.json  # Server-side recordings (proxy)
+└── my-test.har        # Client-side recordings (browser)
+```
+
+**Recording vs Replay:**
+- **Record mode**: Creates/updates HAR file with actual responses from 3rd party services
+- **Replay mode**: Uses recorded HAR file, no network requests made to 3rd party services
+
+**Note:** The recordings directory is automatically retrieved from the proxy server, ensuring both server-side and client-side recordings are stored in the same location.
+
 ## Next.js Integration
 
 When testing Next.js applications with server-side rendering (SSR) or API routes, you need to ensure the recording ID header is forwarded to the proxy. The package provides helpers for this.
@@ -342,10 +403,37 @@ export async function GET() {
 
 ## Control Endpoint
 
-The proxy exposes a control endpoint at `/__control` for programmatic mode switching.
+The proxy exposes a control endpoint at `/__control` for programmatic mode switching and configuration retrieval.
 
-### Via HTTP
+### GET - Retrieve Proxy Configuration
 
+Get the current proxy configuration including recordings directory, mode, and active session ID.
+
+**Via HTTP:**
+```bash
+curl http://localhost:8100/__control
+```
+
+**Response:**
+```json
+{
+  "recordingsDir": "/path/to/e2e/recordings",
+  "mode": "replay",
+  "id": "my-test-1"
+}
+```
+
+**Via JavaScript:**
+```javascript
+const config = await fetch('http://localhost:8100/__control').then(r => r.json());
+console.log(config.recordingsDir); // "/path/to/e2e/recordings"
+console.log(config.mode);          // "replay"
+console.log(config.id);            // "my-test-1"
+```
+
+### POST - Switch Proxy Mode
+
+**Via HTTP:**
 ```bash
 # Switch to record mode
 curl -X POST http://localhost:8100/__control \
@@ -363,8 +451,7 @@ curl -X POST http://localhost:8100/__control \
   -d '{"mode": "transparent"}'
 ```
 
-### Via JavaScript
-
+**Via JavaScript:**
 ```javascript
 await fetch('http://localhost:8100/__control', {
   method: 'POST',
@@ -384,6 +471,12 @@ interface ControlRequest {
   mode: 'transparent' | 'record' | 'replay';
   id?: string;      // Recording ID, required for record/replay
   timeout?: number; // Auto-reset timeout in ms (default: 120000)
+}
+
+interface ControlResponse {
+  recordingsDir: string;
+  mode: string;
+  id?: string;
 }
 ```
 
@@ -414,14 +507,20 @@ interface ControlRequest {
 
 ## Recording Format
 
-Recordings are stored as JSON files with `.mock.json` extension:
+Recordings are stored in two formats depending on the recording type:
+
+**Server-side recordings** (via proxy): JSON files with `.mock.json` extension
+**Client-side recordings** (via HAR): HTTP Archive files with `.har` extension
 
 ```text
 e2e/recordings/
-├── create-a-user.mock.json
+├── create-a-user.mock.json       # Server-side API calls
+├── create-a-user.har             # Client-side 3rd party requests
 ├── fetch-users-list.mock.json
 └── delete-user.mock.json
 ```
+
+Both file types use the same naming convention based on the test name, making it easy to identify which recordings belong to which test.
 
 ## Troubleshooting
 
@@ -479,17 +578,27 @@ class ProxyServer {
 import { playwrightProxy, setProxyMode, RECORDING_ID_HEADER } from 'test-proxy-recorder';
 import type { Page } from '@playwright/test';
 
+// Client-side recording options
+interface ClientSideRecordingOptions {
+  /**
+   * URL pattern for client-side requests to record/replay
+   * Uses Playwright's native format (string or RegExp)
+   * Example: /cognito-.*amazonaws\.com|\.stream-io-api\.com/
+   * Example: 'https://api.example.com/**'
+   */
+  url?: string | RegExp;
+}
+
 // Main helper for Playwright tests
 const playwrightProxy = {
   // Set proxy mode before test and configure page with recording ID header
-  // Automatically sets up page.on('close') handler for cleanup
+  // Supports optional client-side recording for 3rd party APIs
   async before(
     page: Page,
     testInfo: TestInfo,
     mode: 'record' | 'replay' | 'transparent',
-    timeout?: number
+    options?: number | (ClientSideRecordingOptions & { timeout?: number })
   ): Promise<void>;
-
 
   // Global teardown - switches proxy to transparent mode
   // Use in Playwright's globalTeardown configuration
@@ -506,6 +615,12 @@ async function setProxyMode(
 // Recording ID header constant
 const RECORDING_ID_HEADER: string; // 'x-test-rcrd-id'
 ```
+
+**Options Parameter:**
+- `number` - Legacy format: timeout in milliseconds
+- `ClientSideRecordingOptions & { timeout?: number }` - Object with optional client-side recording and timeout:
+  - `url?: string | RegExp` - URL pattern for client-side recording (uses Playwright's HAR format)
+  - `timeout?: number` - Auto-reset timeout in milliseconds
 
 ### Next.js Integration
 
@@ -541,30 +656,40 @@ function createHeadersWithRecordingId(
 
 ### Control Endpoint
 
-**Endpoint**: `POST http://localhost:8100/__control`
+The control endpoint supports both GET and POST methods.
 
-**Request Body**:
+**GET `/__control`** - Retrieve proxy configuration:
 
 ```typescript
+// Response
+{
+  recordingsDir: string;  // Path to recordings directory
+  mode: string;           // Current mode: 'transparent' | 'record' | 'replay'
+  id?: string;            // Active recording/replay session ID
+}
+```
+
+**POST `/__control`** - Switch proxy mode:
+
+```typescript
+// Request Body
 {
   mode: 'transparent' | 'record' | 'replay';
   id?: string;      // Recording ID (required for record/replay)
   timeout?: number; // Auto-reset timeout in ms (default: 120000)
 }
-```
 
-**Note**: Switching to replay mode automatically resets session counters (clears served recordings tracker), allowing replay from the beginning.
-
-**Response**:
-
-```typescript
+// Response
 {
   success: boolean;
   mode: string;
   id: string | null;
   timeout: number;
+  recordingsDir: string;
 }
 ```
+
+**Note**: Switching to replay mode automatically resets session counters (clears served recordings tracker), allowing replay from the beginning.
 
 ## Requirements
 

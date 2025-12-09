@@ -185,6 +185,90 @@ describe('ProxyServer', () => {
 
       // The mode should have switched back (we can verify this by checking console logs in actual usage)
     });
+
+    it('should support GET request to retrieve proxy configuration', async () => {
+      // First set a mode
+      await sendControlRequest({
+        mode: 'replay',
+        id: 'test-config-1',
+      });
+
+      // Then GET the configuration
+      const config = await sendGetControlRequest();
+
+      expect(config.recordingsDir).toBe(TEST_RECORDINGS_DIR);
+      expect(config.mode).toBe('replay');
+      expect(config.id).toBe('test-config-1');
+    });
+
+    it('should return configuration in transparent mode', async () => {
+      const config = await sendGetControlRequest();
+
+      expect(config.recordingsDir).toBe(TEST_RECORDINGS_DIR);
+      expect(config.mode).toBe('transparent');
+    });
+
+    it('should cleanup a specific session', async () => {
+      // Start a replay session
+      await sendControlRequest({
+        mode: 'replay',
+        id: 'test-cleanup-session',
+      });
+
+      // Cleanup the session
+      const response = await sendControlRequest({
+        cleanup: true,
+        id: 'test-cleanup-session',
+      });
+
+      expect(response.success).toBe(true);
+      expect(response.message).toContain('test-cleanup-session');
+      expect(response.message).toContain('cleaned up');
+    });
+
+    it('should reject cleanup without session id', async () => {
+      const response = await sendControlRequest({
+        cleanup: true,
+      });
+
+      expect(response.error).toBeDefined();
+    });
+
+    it('should save active recording session before cleanup', async () => {
+      const sessionId = 'test-cleanup-with-recording';
+
+      // Start a recording session
+      await sendControlRequest({
+        mode: 'record',
+        id: sessionId,
+      });
+
+      // Cleanup the session (should save session even if empty before clearing)
+      const cleanupResponse = await sendControlRequest({
+        cleanup: true,
+        id: sessionId,
+      });
+
+      expect(cleanupResponse.success).toBe(true);
+      expect(cleanupResponse.message).toContain(sessionId);
+      expect(cleanupResponse.message).toContain('cleaned up');
+
+      // Verify the recording file was created (even if empty)
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
+      let fileExists = false;
+      try {
+        await fs.access(recordingPath);
+        fileExists = true;
+      } catch {
+        fileExists = false;
+      }
+
+      // File should exist after cleanup (cleanup calls saveCurrentSession)
+      expect(fileExists).toBe(true);
+    });
   });
 
   describe('record mode', () => {
@@ -436,9 +520,10 @@ describe('ProxyServer', () => {
 
 // Helper functions
 interface ControlRequestData {
-  mode: string;
+  mode?: string;
   id?: string;
   timeout?: number;
+  cleanup?: boolean;
 }
 
 interface ControlResponse {
@@ -447,6 +532,7 @@ interface ControlResponse {
   id?: string;
   timeout?: number;
   error?: string;
+  message?: string;
 }
 
 async function sendControlRequest(
@@ -572,6 +658,43 @@ async function sendControlRequestWithHeaders(
 
     req.on('error', reject);
     req.write(postData);
+    req.end();
+  });
+}
+
+interface GetControlResponse {
+  recordingsDir: string;
+  mode: string;
+  id?: string;
+}
+
+async function sendGetControlRequest(): Promise<GetControlResponse> {
+  return new Promise((resolve, reject) => {
+    const req = http.request(
+      {
+        hostname: 'localhost',
+        port: TEST_PORT,
+        path: '/__control',
+        method: 'GET',
+      },
+      (res) => {
+        let responseData = '';
+
+        res.on('data', (chunk) => {
+          responseData += chunk;
+        });
+
+        res.on('end', () => {
+          try {
+            resolve(JSON.parse(responseData));
+          } catch (error) {
+            reject(error);
+          }
+        });
+      },
+    );
+
+    req.on('error', reject);
     req.end();
   });
 }

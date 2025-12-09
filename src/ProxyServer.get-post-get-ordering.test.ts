@@ -71,11 +71,11 @@ describe('ProxyServer - GET before POST then GET with updated data', () => {
   };
 
   const setMode = async (mode: string, id?: string): Promise<Response> => {
-    const params = new URLSearchParams({ mode });
-    if (id) params.set('id', id);
-    return fetch(
-      `http://localhost:${proxyPort}/__control?${params.toString()}`,
-    );
+    return fetch(`http://localhost:${proxyPort}/__control`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, ...(id && { id }) }),
+    });
   };
 
   const makeRequest = async (
