@@ -307,7 +307,9 @@ export const playwrightProxy = {
     // This is important because Playwright processes routes in REVERSE order of registration
     // We want proxy route handler to run FIRST, so we register it LAST
     if (clientSideOptions?.url) {
-      console.log(`[Setup] Setting up client-side recording with pattern: ${clientSideOptions.url}`);
+      console.log(
+        `[Setup] Setting up client-side recording with pattern: ${clientSideOptions.url}`,
+      );
       await setupClientSideRecording(
         page,
         sessionId,
@@ -329,25 +331,25 @@ export const playwrightProxy = {
         // Match any request to the proxy, regardless of protocol
         const urlStr = url.toString();
         const matches = urlStr.includes(proxyUrl);
-        if (matches) {
-          console.log(`[Route Matcher] Matched proxy request: ${urlStr}`);
-        }
+        // if (matches) {
+        //   console.log(`[Route Matcher] Matched proxy request: ${urlStr}`);
+        // }
         return matches;
       },
       async (route) => {
         try {
-          const url = route.request().url();
-          const method = route.request().method();
+          // const url = route.request().url();
+          // const method = route.request().method();
           const headers = route.request().headers();
-          const hadHeader = !!headers[RECORDING_ID_HEADER];
+          // const hadHeader = !!headers[RECORDING_ID_HEADER];
 
           // Always set/override the header to ensure it's present
           headers[RECORDING_ID_HEADER] = sessionId;
 
-          console.log(
-            `[Route Intercept] ${method} ${url} ` +
-              `(had header: ${hadHeader}, adding session: ${sessionId})`,
-          );
+          // console.log(
+          //   `[Route Intercept] ${method} ${url} ` +
+          //     `(had header: ${hadHeader}, adding session: ${sessionId})`,
+          // );
 
           // Use continue() to pass the request to the network with modified headers
           await route.continue({ headers });
