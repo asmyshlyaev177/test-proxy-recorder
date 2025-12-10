@@ -40,6 +40,8 @@ interface ReplaySessionState {
   servedRecordingIdsByKey: Map<string, Set<number>>;
   loadedSession: RecordingSession | null;
   lastAccessTime: number;
+  // Cache of sorted recordings per key to avoid re-filtering and re-sorting
+  sortedRecordingsByKey: Map<string, Recording[]>;
 }
 
 export class ProxyServer {
@@ -56,6 +58,7 @@ export class ProxyServer {
   private sequenceCounterByKey: Map<string, number>; // Sequence counter per key (endpoint)
   private replaySessions: Map<string, ReplaySessionState>; // Track multiple concurrent replay sessions by recording ID
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
+  private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
 
   constructor(targets: string[], recordingsDir: string) {
     this.targets = targets;
@@ -71,6 +74,7 @@ export class ProxyServer {
     this.recordingsDir = recordingsDir;
     this.replaySessions = new Map();
     this.recordingPromises = [];
+    this.flushPromise = null;
     this.proxy = httpProxy.createProxyServer({
       secure: false,
       changeOrigin: true,
@@ -237,6 +241,7 @@ export class ProxyServer {
         servedRecordingIdsByKey: new Map(),
         loadedSession: null,
         lastAccessTime: Date.now(),
+        sortedRecordingsByKey: new Map(),
       };
       this.replaySessions.set(recordingId, session);
       console.log(
@@ -252,15 +257,13 @@ export class ProxyServer {
    * @param sessionId The session ID to clean up
    */
   private async cleanupSession(sessionId: string): Promise<void> {
-    // Remove from replay sessions
+    // Remove from replay sessions (this also disposes of loaded session data)
     if (this.replaySessions.has(sessionId)) {
-      console.log(`[CLEANUP] Removing replay session: ${sessionId}`);
       this.replaySessions.delete(sessionId);
     }
 
     // If this was the active recording session, save it before clearing
     if (this.recordingId === sessionId) {
-      console.log(`[CLEANUP] Saving and clearing active recording session: ${sessionId}`);
       await this.saveCurrentSession();
       this.currentSession = null;
       this.recordingId = null;
@@ -268,7 +271,6 @@ export class ProxyServer {
 
     // If this was the active replay session (legacy single-session mode), clear it
     if (this.replayId === sessionId) {
-      console.log(`[CLEANUP] Clearing active replay session: ${sessionId}`);
       this.replayId = null;
     }
 
@@ -340,7 +342,9 @@ export class ProxyServer {
 
       // Handle mode switch
       if (!mode) {
-        throw new Error('Mode parameter is required when cleanup is not specified');
+        throw new Error(
+          'Mode parameter is required when cleanup is not specified',
+        );
       }
 
       const timeout = requestTimeout ?? DEFAULT_TIMEOUT_MS;
@@ -439,14 +443,24 @@ export class ProxyServer {
     this.recordingId = null;
     this.currentSession = null;
 
+    // Get or create the replay session
+    const sessionState = this.getOrCreateReplaySession(id);
+
     // Reset the replay session to start fresh
     // This ensures served recordings tracker is cleared when re-entering replay mode
-    const session = this.replaySessions.get(id);
-    if (session) {
-      session.servedRecordingIdsByKey.clear();
-      console.log(`Reset served recordings tracker for session: ${id}`);
-    } else {
-      this.getOrCreateReplaySession(id);
+    sessionState.servedRecordingIdsByKey.clear();
+    sessionState.sortedRecordingsByKey.clear();
+
+    // Load the session file immediately instead of on first request
+    // If the file doesn't exist, we'll still switch to replay mode but requests will fail
+    const filePath = getRecordingPath(this.recordingsDir, id);
+    try {
+      sessionState.loadedSession = await loadRecordingSession(filePath);
+      console.log(`[REPLAY] Loaded recording session: ${id}`);
+    } catch (error) {
+      console.error(`[REPLAY ERROR] Failed to load session ${id}:`, error);
+      sessionState.loadedSession = null;
+      // Don't throw - allow mode switch to succeed, but requests will fail with 404
     }
 
     console.log(`Switched to replay mode with ID: ${id}`);
@@ -463,26 +477,43 @@ export class ProxyServer {
   }
 
   private async flushPendingRecordings(): Promise<void> {
+    // If a flush is already in progress, wait for it to complete
+    // This prevents concurrent flushes from processing the same promises twice
+    if (this.flushPromise) {
+      await this.flushPromise;
+      return;
+    }
+
     if (this.recordingPromises.length === 0) {
       return;
     }
 
-    const results = await Promise.allSettled(this.recordingPromises);
+    // Set the flush promise to prevent concurrent flushes
+    this.flushPromise = (async () => {
+      try {
+        const results = await Promise.allSettled(this.recordingPromises);
 
-    // Add completed recordings to current session in the order they were received
-    if (this.currentSession) {
-      for (const result of results) {
-        if (result.status === 'fulfilled' && result.value) {
-          this.currentSession.recordings.push(result.value);
+        // Add completed recordings to current session in the order they were received
+        if (this.currentSession) {
+          for (const result of results) {
+            if (result.status === 'fulfilled' && result.value) {
+              this.currentSession.recordings.push(result.value);
+            }
+          }
+          console.log(
+            `Flushed ${results.length} recordings to session (total: ${this.currentSession.recordings.length})`,
+          );
         }
-      }
-      console.log(
-        `Flushed ${results.length} recordings to session (total: ${this.currentSession.recordings.length})`,
-      );
-    }
 
-    // Clear the promises array
-    this.recordingPromises = [];
+        // Clear the promises array
+        this.recordingPromises = [];
+      } finally {
+        // Clear the flush promise to allow future flushes
+        this.flushPromise = null;
+      }
+    })();
+
+    await this.flushPromise;
   }
 
   private async saveCurrentSession(): Promise<void> {
@@ -556,18 +587,6 @@ export class ProxyServer {
     return recordingId;
   }
 
-  private async ensureSessionLoaded(
-    recordingId: string,
-    filePath: string,
-  ): Promise<ReplaySessionState> {
-    const sessionState = this.getOrCreateReplaySession(recordingId);
-    if (!sessionState.loadedSession) {
-      sessionState.loadedSession = await loadRecordingSession(filePath);
-      console.log(`[REPLAY] Loaded recording session: ${recordingId}`);
-    }
-    return sessionState;
-  }
-
   private getServedTracker(
     sessionState: ReplaySessionState,
     key: string,
@@ -576,6 +595,30 @@ export class ProxyServer {
       sessionState.servedRecordingIdsByKey.set(key, new Set());
     }
     return sessionState.servedRecordingIdsByKey.get(key)!;
+  }
+
+  private getSortedRecordings(
+    sessionState: ReplaySessionState,
+    key: string,
+  ): Recording[] {
+    // Return cached sorted recordings if available
+    if (sessionState.sortedRecordingsByKey.has(key)) {
+      return sessionState.sortedRecordingsByKey.get(key)!;
+    }
+
+    // Filter and sort recordings for this key
+    const session = sessionState.loadedSession!;
+    const sortedRecords = session.recordings
+      .filter((r) => r.key === key && r.response)
+      .toSorted((a, b) => {
+        const aSeq = a.sequence !== undefined ? a.sequence : a.recordingId;
+        const bSeq = b.sequence !== undefined ? b.sequence : b.recordingId;
+        return aSeq - bSeq;
+      });
+
+    // Cache the sorted recordings
+    sessionState.sortedRecordingsByKey.set(key, sortedRecords);
+    return sortedRecords;
   }
 
   private selectReplayRecord(
@@ -614,21 +657,23 @@ export class ProxyServer {
     const filePath = getRecordingPath(this.recordingsDir, recordingId);
 
     try {
-      const sessionState = await this.ensureSessionLoaded(
-        recordingId,
-        filePath,
-      );
-      const session = sessionState.loadedSession!;
+      // Session is already loaded in switchToReplayMode (or load failed)
+      const sessionState = this.getOrCreateReplaySession(recordingId);
+
+      // If session failed to load, throw appropriate error
+      if (!sessionState.loadedSession) {
+        const error: any = new Error(
+          `Recording session file not found: ${filePath}`,
+        );
+        error.code = 'ENOENT';
+        throw error;
+      }
+
       const servedForThisKey = this.getServedTracker(sessionState, key);
       const host = req.headers.host || 'unknown';
 
-      const recordsWithKey = session.recordings
-        .filter((r) => r.key === key && r.response)
-        .toSorted((a, b) => {
-          const aSeq = a.sequence !== undefined ? a.sequence : a.recordingId;
-          const bSeq = b.sequence !== undefined ? b.sequence : b.recordingId;
-          return aSeq - bSeq;
-        });
+      // Use cached sorted recordings to avoid re-filtering and re-sorting
+      const recordsWithKey = this.getSortedRecordings(sessionState, key);
 
       if (recordsWithKey.length === 0) {
         const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}`;
@@ -919,10 +964,6 @@ export class ProxyServer {
 
     // Add promise to stack immediately - this preserves request order!
     this.recordingPromises.push(recordingPromise);
-
-    // Wait for this specific request to complete (for sending response to client)
-    // but don't add to session yet - that happens in flushPendingRecordings in order
-    await recordingPromise;
   }
 
   private handleUpgrade(

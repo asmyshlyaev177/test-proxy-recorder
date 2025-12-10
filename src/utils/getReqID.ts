@@ -59,7 +59,6 @@ function generateQueryHash(query: string): string {
 
   // Use MD5 hash to ensure unique keys for different query parameters
   // This prevents collisions that could cause wrong responses to be replayed
-  // eslint-disable-next-line sonarjs/hashing
   const hash = crypto
     .createHash('md5')
     .update(query)

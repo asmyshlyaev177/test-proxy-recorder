@@ -62,7 +62,6 @@ export async function setProxyMode(
     }
 
     await response.json();
-    console.log(`Proxy mode set to: ${mode} (session: ${sessionId})`);
   } catch (error) {
     console.error(`Error setting proxy mode:`, error);
     throw error;
@@ -95,9 +94,8 @@ export async function cleanupSession(sessionId: string): Promise<void> {
     }
 
     await response.json();
-    console.log(`Session cleaned up: ${sessionId}`);
   } catch (error) {
-    console.error(`Error cleaning up session:`, error);
+    console.error(`Error cleaning up session: ${sessionId}`, error);
     throw error;
   }
 }
@@ -236,10 +234,6 @@ async function setupClientSideRecording(
   const recordingsDir = await getRecordingsDir();
   const harPath = path.join(recordingsDir, `${harFileName}.har`);
 
-  console.log(
-    `[Client-Side Recording] Setting up HAR for session: ${sessionId}, mode: ${mode}, path: ${harPath}`,
-  );
-
   try {
     await page.routeFromHAR(harPath, {
       url,
@@ -299,24 +293,18 @@ export const playwrightProxy = {
     });
 
     // Set the proxy mode FIRST before setting up any route handlers
-    console.log(`[Setup] Setting proxy mode: ${mode}, session: ${sessionId}`);
     await setProxyMode(mode, sessionId, timeout);
-    console.log(`[Setup] Proxy mode set successfully`);
 
     // Setup optional client-side recording/replay for 3rd party services BEFORE proxy route handler
     // This is important because Playwright processes routes in REVERSE order of registration
     // We want proxy route handler to run FIRST, so we register it LAST
     if (clientSideOptions?.url) {
-      console.log(
-        `[Setup] Setting up client-side recording with pattern: ${clientSideOptions.url}`,
-      );
       await setupClientSideRecording(
         page,
         sessionId,
         mode,
         clientSideOptions.url,
       );
-      console.log(`[Setup] Client-side recording setup complete`);
     }
 
     // IMPORTANT: Register proxy route handler LAST so it runs FIRST (highest priority)
@@ -325,35 +313,22 @@ export const playwrightProxy = {
     const proxyPort = process.env.TEST_PROXY_RECORDER_PORT || '8100';
     const proxyUrl = `localhost:${proxyPort}`;
 
-    console.log(`[Setup] Registering proxy route handler for: ${proxyUrl}`);
     await page.route(
       (url) => {
         // Match any request to the proxy, regardless of protocol
         const urlStr = url.toString();
         const matches = urlStr.includes(proxyUrl);
-        // if (matches) {
-        //   console.log(`[Route Matcher] Matched proxy request: ${urlStr}`);
-        // }
         return matches;
       },
       async (route) => {
         try {
-          // const url = route.request().url();
-          // const method = route.request().method();
           const headers = route.request().headers();
-          // const hadHeader = !!headers[RECORDING_ID_HEADER];
 
           // Always set/override the header to ensure it's present
           headers[RECORDING_ID_HEADER] = sessionId;
 
-          // console.log(
-          //   `[Route Intercept] ${method} ${url} ` +
-          //     `(had header: ${hadHeader}, adding session: ${sessionId})`,
-          // );
-
           // Use continue() to pass the request to the network with modified headers
           await route.continue({ headers });
-          // console.log(`[Route Intercept] Request continued successfully`);
         } catch (error) {
           console.error(
             `[Route Handler Error] Failed to add ${RECORDING_ID_HEADER} header:`,
@@ -365,7 +340,6 @@ export const playwrightProxy = {
       },
       { times: Infinity }, // Ensure the handler applies to all matching requests
     );
-    console.log(`[Setup] Proxy route handler registered`);
 
     // Setup cleanup handler for UI mode and manual test runs
     // Use context.on('close') instead of page.on('close') because:
@@ -383,9 +357,6 @@ export const playwrightProxy = {
 
       context.on('close', async () => {
         try {
-          console.log(
-            `[Cleanup] Browser context closed, cleaning up session: ${sessionId}`,
-          );
           await cleanupSession(sessionId);
         } catch (error) {
           // Ignore errors during cleanup (proxy might already be stopped)
