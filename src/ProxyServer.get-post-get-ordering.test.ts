@@ -96,7 +96,7 @@ describe('ProxyServer - GET before POST then GET with updated data', () => {
 
     await startBackend();
 
-    proxyServer = new ProxyServer([backendUrl], recordingsDir);
+    proxyServer = new ProxyServer(backendUrl, recordingsDir);
     await proxyServer.init();
     proxyHttpServer = proxyServer.listen(proxyPort);
     await new Promise((resolve) => setTimeout(resolve, 50));
@@ -186,7 +186,7 @@ describe('ProxyServer - GET before POST then GET with updated data', () => {
     proxyHttpServer.close();
     proxyHttpServer = null;
 
-    proxyServer = new ProxyServer([backendUrl], recordingsDir);
+    proxyServer = new ProxyServer(backendUrl, recordingsDir);
     await proxyServer.init();
     proxyHttpServer = proxyServer.listen(proxyPort);
     await new Promise((resolve) => setTimeout(resolve, 50));

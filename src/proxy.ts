@@ -1,9 +1,9 @@
 import { parseCliArgs } from './cli.js';
 import { ProxyServer } from './ProxyServer.js';
 
-const { targets, port, recordingsDir } = parseCliArgs();
+const { target, port, recordingsDir } = parseCliArgs();
 
-const proxy = new ProxyServer(targets, recordingsDir);
+const proxy = new ProxyServer(target, recordingsDir);
 await proxy.init();
 proxy.listen(port);
 

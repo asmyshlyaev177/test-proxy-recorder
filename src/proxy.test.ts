@@ -37,20 +37,19 @@ describe('ProxyServer', () => {
 
   describe('constructor', () => {
     it('should create a ProxyServer instance with default values', () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       expect(proxyServer).toBeDefined();
     });
 
-    it('should accept multiple targets', () => {
-      const targets = ['http://localhost:3000', 'http://localhost:4000'];
-      proxyServer = new ProxyServer(targets, TEST_RECORDINGS_DIR);
+    it('should accept a target string', () => {
+      proxyServer = new ProxyServer('http://localhost:3000', TEST_RECORDINGS_DIR);
       expect(proxyServer).toBeDefined();
     });
   });
 
   describe('init', () => {
     it('should create recordings directory', async () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
 
       const stats = await fs.stat(TEST_RECORDINGS_DIR);
@@ -59,7 +58,7 @@ describe('ProxyServer', () => {
 
     it('should not fail if directory already exists', async () => {
       await fs.mkdir(TEST_RECORDINGS_DIR, { recursive: true });
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
 
       const stats = await fs.stat(TEST_RECORDINGS_DIR);
@@ -69,7 +68,7 @@ describe('ProxyServer', () => {
 
   describe('listen', () => {
     it('should start the server on specified port', async () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
 
       server = proxyServer.listen(TEST_PORT);
@@ -85,7 +84,7 @@ describe('ProxyServer', () => {
 
   describe('control endpoint', () => {
     beforeEach(async () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
       server = proxyServer.listen(TEST_PORT);
 
@@ -273,7 +272,7 @@ describe('ProxyServer', () => {
 
   describe('record mode', () => {
     beforeEach(async () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
       server = proxyServer.listen(TEST_PORT);
 
@@ -369,28 +368,9 @@ describe('ProxyServer', () => {
     });
   });
 
-  describe('target rotation', () => {
-    it('should rotate through multiple targets', () => {
-      const targets = [
-        'http://localhost:3000',
-        'http://localhost:4000',
-        'http://localhost:5000',
-      ];
-      proxyServer = new ProxyServer(targets, TEST_RECORDINGS_DIR);
-
-      const target1 = proxyServer['getTarget']();
-      const target2 = proxyServer['getTarget']();
-      const target3 = proxyServer['getTarget']();
-      const target4 = proxyServer['getTarget']();
-
-      expect(target1).toBe('http://localhost:3000');
-      expect(target2).toBe('http://localhost:4000');
-      expect(target3).toBe('http://localhost:5000');
-      expect(target4).toBe('http://localhost:3000'); // Should wrap around
-    });
-
-    it('should work with single target', () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+  describe('target', () => {
+    it('should return the configured target', () => {
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
 
       const target1 = proxyServer['getTarget']();
       const target2 = proxyServer['getTarget']();
@@ -414,7 +394,7 @@ describe('ProxyServer', () => {
 
   describe('multiple requests to same endpoint', () => {
     it('should assign sequence numbers to recordings', async () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
       server = proxyServer.listen(TEST_PORT);
 
@@ -453,7 +433,7 @@ describe('ProxyServer', () => {
 
   describe('CORS support', () => {
     beforeEach(async () => {
-      proxyServer = new ProxyServer([TEST_TARGET], TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
       server = proxyServer.listen(TEST_PORT);
 

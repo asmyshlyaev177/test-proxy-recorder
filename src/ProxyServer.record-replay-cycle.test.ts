@@ -82,7 +82,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     });
 
     // Step 2: Start proxy in record mode
-    proxyServer = new ProxyServer([`http://localhost:${backendPort}`], tempDir);
+    proxyServer = new ProxyServer(`http://localhost:${backendPort}`, tempDir);
     await proxyServer.init();
     proxyHttpServer = proxyServer.listen(proxyPort);
 
@@ -208,7 +208,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     proxyHttpServer.close();
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    proxyServer = new ProxyServer([`http://localhost:${backendPort}`], tempDir);
+    proxyServer = new ProxyServer(`http://localhost:${backendPort}`, tempDir);
     await proxyServer.init();
     proxyHttpServer = proxyServer.listen(proxyPort);
     await new Promise((resolve) => setTimeout(resolve, 100));

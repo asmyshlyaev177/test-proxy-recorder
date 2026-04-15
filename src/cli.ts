@@ -8,7 +8,7 @@ const DEFAULT_PORT = 8000;
 const DEFAULT_RECORDINGS_DIR = './recordings';
 
 export interface CliOptions {
-  targets: string[];
+  target: string;
   port: number;
   recordingsDir: string;
 }
@@ -22,8 +22,8 @@ export function parseCliArgs(): CliOptions {
       'Development proxy server with recording and replay capabilities',
     )
     .argument(
-      '<targets...>',
-      'Target API service URLs (e.g., http://localhost:3000)',
+      '<target>',
+      'Target API service URL (e.g., http://localhost:3000)',
     )
     .option(
       '-p, --port <number>',
@@ -41,7 +41,7 @@ export function parseCliArgs(): CliOptions {
 
   program.parse();
 
-  const targets = program.args;
+  const target = program.args[0];
   const options = program.opts<{ port: string; dir: string }>();
 
   const port = Number.parseInt(options.port, 10);
@@ -50,12 +50,12 @@ export function parseCliArgs(): CliOptions {
     process.exit(1);
   }
 
-  if (targets.length === 0) {
+  if (!target) {
     program.help();
   }
 
   // Resolve recordings directory relative to the current working directory (where the command is run)
   const recordingsDir = path.resolve(process.cwd(), options.dir);
 
-  return { targets, port, recordingsDir };
+  return { target, port, recordingsDir };
 }

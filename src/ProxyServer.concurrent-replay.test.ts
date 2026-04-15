@@ -87,7 +87,7 @@ describe('ProxyServer Concurrent Replay', () => {
     await fs.rm(TEST_RECORDINGS_DIR, { recursive: true, force: true });
     await fs.mkdir(TEST_RECORDINGS_DIR, { recursive: true });
 
-    proxyServer = new ProxyServer([MOCK_SERVER_URL], TEST_RECORDINGS_DIR);
+    proxyServer = new ProxyServer(MOCK_SERVER_URL, TEST_RECORDINGS_DIR);
     proxyHttpServer = proxyServer.listen(PROXY_PORT);
 
     await new Promise<void>((resolve) => {

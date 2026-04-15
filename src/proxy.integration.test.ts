@@ -90,7 +90,7 @@ describe('ProxyServer Integration Tests', () => {
     lastBackendRequestBody = '';
 
     // Create and start proxy server
-    proxyServer = new ProxyServer([MOCK_SERVER_URL], TEST_RECORDINGS_DIR);
+    proxyServer = new ProxyServer(MOCK_SERVER_URL, TEST_RECORDINGS_DIR);
     await proxyServer.init();
     proxyHttpServer = proxyServer.listen(PROXY_PORT);
 

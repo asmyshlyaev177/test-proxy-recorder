@@ -45,8 +45,7 @@ interface ReplaySessionState {
 }
 
 export class ProxyServer {
-  private targets: string[];
-  private currentTargetIndex: number;
+  private target: string;
   private mode: Mode;
   private recordingId: string | null;
   private replayId: string | null;
@@ -60,10 +59,8 @@ export class ProxyServer {
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
 
-  constructor(targets: string[], recordingsDir: string) {
-    this.targets = targets;
-    // Track current target for potential round-robin (single target today)
-    this.currentTargetIndex = 0;
+  constructor(target: string, recordingsDir: string) {
+    this.target = target;
     this.mode = Modes.transparent;
     this.recordingId = null;
     this.recordingIdCounter = 0;
@@ -162,10 +159,7 @@ export class ProxyServer {
   }
 
   private getTarget(): string {
-    const target = this.targets[this.currentTargetIndex];
-    this.currentTargetIndex =
-      (this.currentTargetIndex + 1) % this.targets.length;
-    return target;
+    return this.target;
   }
 
   /**
@@ -1190,7 +1184,7 @@ export class ProxyServer {
   private logServerStartup(port: number): void {
     console.log(`Proxy server running on http://localhost:${port}`);
     console.log(`Mode: ${this.mode}`);
-    console.log(`Targets: ${this.targets.join(', ')}`);
+    console.log(`Target: ${this.target}`);
     console.log(
       `Control endpoint: http://localhost:${port}${CONTROL_ENDPOINT}`,
     );
