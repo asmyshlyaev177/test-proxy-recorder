@@ -2,8 +2,9 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { DEFAULT_TIMEOUT_MS } from './constants.js';
 import { ProxyServer } from './ProxyServer.js';
 import { getRecordingPath } from './utils/fileUtils.js';
 import { getReqID } from './utils/getReqID.js';
@@ -42,7 +43,10 @@ describe('ProxyServer', () => {
     });
 
     it('should accept a target string', () => {
-      proxyServer = new ProxyServer('http://localhost:3000', TEST_RECORDINGS_DIR);
+      proxyServer = new ProxyServer(
+        'http://localhost:3000',
+        TEST_RECORDINGS_DIR,
+      );
       expect(proxyServer).toBeDefined();
     });
   });
@@ -369,14 +373,10 @@ describe('ProxyServer', () => {
   });
 
   describe('target', () => {
-    it('should return the configured target', () => {
+    it('should store the configured target', () => {
       proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
 
-      const target1 = proxyServer['getTarget']();
-      const target2 = proxyServer['getTarget']();
-
-      expect(target1).toBe(TEST_TARGET);
-      expect(target2).toBe(TEST_TARGET);
+      expect(proxyServer['target']).toBe(TEST_TARGET);
     });
   });
 
@@ -494,6 +494,86 @@ describe('ProxyServer', () => {
       expect(response.headers['access-control-allow-headers']).toBe(
         'X-Custom-Header, Authorization',
       );
+    });
+  });
+
+  describe('replay session eviction', () => {
+    beforeEach(async () => {
+      vi.useFakeTimers();
+      proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
+      await proxyServer.init();
+    });
+
+    afterEach(() => {
+      vi.useRealTimers();
+    });
+
+    it('should evict idle replay sessions after DEFAULT_TIMEOUT_MS', () => {
+      const sessions = proxyServer['replaySessions'] as Map<string, unknown>;
+
+      // Simulate creating a replay session
+      proxyServer['getOrCreateReplaySession']('session-1');
+      expect(sessions.size).toBe(1);
+
+      // Advance past DEFAULT_TIMEOUT_MS + one check interval (30s)
+      vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS + 30_000);
+
+      expect(sessions.size).toBe(0);
+    });
+
+    it('should not evict sessions that are still being accessed', () => {
+      const sessions = proxyServer['replaySessions'] as Map<string, unknown>;
+
+      proxyServer['getOrCreateReplaySession']('session-1');
+
+      // Advance partway, then access the session again
+      vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS - 10_000);
+      proxyServer['getOrCreateReplaySession']('session-1');
+
+      // Advance another check interval — session was recently accessed, should survive
+      vi.advanceTimersByTime(30_000);
+      expect(sessions.size).toBe(1);
+
+      // Now let it go fully idle past the timeout
+      vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS + 30_000);
+      expect(sessions.size).toBe(0);
+    });
+
+    it('should evict only the idle session when multiple sessions exist', () => {
+      const sessions = proxyServer['replaySessions'] as Map<string, unknown>;
+
+      proxyServer['getOrCreateReplaySession']('session-a');
+      proxyServer['getOrCreateReplaySession']('session-b');
+      expect(sessions.size).toBe(2);
+
+      // Advance most of the timeout, then touch only session-b
+      vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS - 10_000);
+      proxyServer['getOrCreateReplaySession']('session-b');
+
+      // Next check interval: session-a is idle, session-b was refreshed
+      vi.advanceTimersByTime(30_000);
+      expect(sessions.size).toBe(1);
+      expect(sessions.has('session-b')).toBe(true);
+      expect(sessions.has('session-a')).toBe(false);
+    });
+
+    it('should stop the eviction timer when all sessions are evicted', () => {
+      proxyServer['getOrCreateReplaySession']('session-1');
+
+      expect(proxyServer['sessionEvictionTimer']).not.toBeNull();
+
+      vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS + 30_000);
+
+      expect(proxyServer['sessionEvictionTimer']).toBeNull();
+    });
+
+    it('should stop the eviction timer when session is explicitly cleaned up', async () => {
+      proxyServer['getOrCreateReplaySession']('session-1');
+      expect(proxyServer['sessionEvictionTimer']).not.toBeNull();
+
+      await proxyServer['cleanupSession']('session-1');
+
+      expect(proxyServer['sessionEvictionTimer']).toBeNull();
     });
   });
 });

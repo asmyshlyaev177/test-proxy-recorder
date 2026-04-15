@@ -53,14 +53,17 @@ export class ProxyServer {
   private proxy: httpProxy;
   private currentSession: RecordingSession | null;
   private recordingsDir: string;
+  private timeoutMs: number;
   private recordingIdCounter: number; // Unique ID for each recording entry
   private sequenceCounterByKey: Map<string, number>; // Sequence counter per key (endpoint)
   private replaySessions: Map<string, ReplaySessionState>; // Track multiple concurrent replay sessions by recording ID
+  private sessionEvictionTimer: NodeJS.Timeout | null; // Periodic timer to evict idle replay sessions
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
 
-  constructor(target: string, recordingsDir: string) {
+  constructor(target: string, recordingsDir: string, timeoutMs?: number) {
     this.target = target;
+    this.timeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.mode = Modes.transparent;
     this.recordingId = null;
     this.recordingIdCounter = 0;
@@ -70,6 +73,7 @@ export class ProxyServer {
     this.currentSession = null;
     this.recordingsDir = recordingsDir;
     this.replaySessions = new Map();
+    this.sessionEvictionTimer = null;
     this.recordingPromises = [];
     this.flushPromise = null;
     this.proxy = httpProxy.createProxyServer({
@@ -158,10 +162,6 @@ export class ProxyServer {
     Object.assign(proxyRes.headers, corsHeaders);
   }
 
-  private getTarget(): string {
-    return this.target;
-  }
-
   /**
    * Extract recording ID from custom HTTP header
    * Used for concurrent replay session routing, especially with Next.js
@@ -202,21 +202,7 @@ export class ProxyServer {
     const fromHeader = this.getRecordingIdFromHeader(req);
     const fromCookie = this.getRecordingIdFromCookie(req);
 
-    if (fromHeader) {
-      // console.debug(
-      //   `[SESSION] Using header for ${req.method} ${req.url} -> ${fromCookie}`,
-      // );
-      return fromHeader;
-    }
-
-    if (fromCookie) {
-      // console.debug(
-      //   `[SESSION] Using cookie for ${req.method} ${req.url} -> ${fromCookie}`,
-      // );
-      return fromCookie;
-    }
-
-    return null;
+    return fromHeader ?? fromCookie ?? null;
   }
 
   /**
@@ -238,6 +224,7 @@ export class ProxyServer {
         sortedRecordingsByKey: new Map(),
       };
       this.replaySessions.set(recordingId, session);
+      this.startSessionEvictionTimer();
       console.log(
         `[CONCURRENT REPLAY] Created new session for recording: ${recordingId}`,
       );
@@ -251,9 +238,10 @@ export class ProxyServer {
    * @param sessionId The session ID to clean up
    */
   private async cleanupSession(sessionId: string): Promise<void> {
-    // Remove from replay sessions (this also disposes of loaded session data)
-    if (this.replaySessions.has(sessionId)) {
-      this.replaySessions.delete(sessionId);
+    this.replaySessions.delete(sessionId);
+
+    if (this.replaySessions.size === 0) {
+      this.stopSessionEvictionTimer();
     }
 
     // If this was the active recording session, save it before clearing
@@ -271,37 +259,48 @@ export class ProxyServer {
     console.log(`[CLEANUP] Session ${sessionId} cleaned up successfully`);
   }
 
-  private parseGetParams(req: http.IncomingMessage) {
-    // Parse query parameters from URL
-    const url = new URL(req.url || '', `http://${req.headers.host}`);
-    const mode = url.searchParams.get('mode') as Mode | null;
-    const id = url.searchParams.get('id') || undefined;
-    const timeoutParam = url.searchParams.get('timeout');
-    const timeout = timeoutParam
-      ? Number.parseInt(timeoutParam, 10)
-      : undefined;
-
-    if (!mode) {
-      throw new Error('Mode parameter is required');
+  private startSessionEvictionTimer(): void {
+    if (this.sessionEvictionTimer) {
+      return;
     }
 
-    return { mode, id, timeout };
+    // Check every 30 seconds for idle sessions
+    const CHECK_INTERVAL_MS = 30_000;
+
+    this.sessionEvictionTimer = setInterval(() => {
+      const now = Date.now();
+
+      for (const [id, session] of this.replaySessions) {
+        if (now - session.lastAccessTime >= this.timeoutMs) {
+          console.log(
+            `[EVICTION] Evicting idle replay session: ${id} (idle for ${Math.round((now - session.lastAccessTime) / 1000)}s)`,
+          );
+          this.replaySessions.delete(id);
+        }
+      }
+
+      if (this.replaySessions.size === 0) {
+        this.stopSessionEvictionTimer();
+      }
+    }, CHECK_INTERVAL_MS);
+
+    // Allow the process to exit even if the timer is running
+    this.sessionEvictionTimer.unref();
   }
 
-  private async parseControlRequest(
+  private stopSessionEvictionTimer(): void {
+    if (this.sessionEvictionTimer) {
+      clearInterval(this.sessionEvictionTimer);
+      this.sessionEvictionTimer = null;
+    }
+  }
+
+  private async parseControlBody(
     req: http.IncomingMessage,
   ): Promise<ControlRequest> {
-    if (req.method === 'GET') {
-      return this.parseGetParams(req);
-    }
-
-    if (req.method === 'POST') {
-      const body = await readRequestBody(req);
-      console.log(`MODE CHANGE (${req.method})`, body);
-      return JSON.parse(body);
-    }
-
-    throw new Error('Unsupported control method');
+    const body = await readRequestBody(req);
+    console.log(`MODE CHANGE (${req.method})`, body);
+    return JSON.parse(body);
   }
 
   private async handleControlRequest(
@@ -320,7 +319,7 @@ export class ProxyServer {
 
     // POST request sets mode or performs cleanup
     try {
-      const data = await this.parseControlRequest(req);
+      const data = await this.parseControlBody(req);
       const { mode, id, timeout: requestTimeout, cleanup } = data;
 
       // Handle cleanup request
@@ -341,7 +340,7 @@ export class ProxyServer {
         );
       }
 
-      const timeout = requestTimeout ?? DEFAULT_TIMEOUT_MS;
+      const timeout = requestTimeout ?? this.timeoutMs;
 
       this.clearModeTimeout();
       await this.switchMode(mode, id);
@@ -417,7 +416,7 @@ export class ProxyServer {
     this.recordingId = null;
     this.replayId = null;
     this.currentSession = null;
-    clearTimeout(this.modeTimeout || 0);
+    this.clearModeTimeout();
     console.log('Switched to transparent mode');
   }
 
@@ -461,7 +460,7 @@ export class ProxyServer {
   }
 
   private setupModeTimeout(timeout: number): void {
-    clearTimeout(this.modeTimeout || 0);
+    this.clearModeTimeout();
     this.modeTimeout = setTimeout(async () => {
       console.log('Timeout reached, switching back to transparent mode');
       await this.saveCurrentSession();
@@ -656,11 +655,10 @@ export class ProxyServer {
 
       // If session failed to load, throw appropriate error
       if (!sessionState.loadedSession) {
-        const error: any = new Error(
-          `Recording session file not found: ${filePath}`,
+        throw Object.assign(
+          new Error(`Recording session file not found: ${filePath}`),
+          { code: 'ENOENT' },
         );
-        error.code = 'ENOENT';
-        throw error;
       }
 
       const servedForThisKey = this.getServedTracker(sessionState, key);
@@ -798,7 +796,7 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
-    const target = this.getTarget();
+    const target = this.target;
     console.log(`[${this.mode}] ${req.method} ${req.url} -> ${target}`);
 
     if (this.mode === Modes.record) {
@@ -970,7 +968,7 @@ export class ProxyServer {
       return;
     }
 
-    const target = this.getTarget();
+    const target = this.target;
     console.log(`[${this.mode}] WebSocket upgrade ${req.url} -> ${target}`);
 
     if (this.mode === Modes.record) {
@@ -1080,105 +1078,103 @@ export class ProxyServer {
     });
   }
 
-  private handleReplayWebSocket(
+  private async handleReplayWebSocket(
     req: http.IncomingMessage,
     socket: Duplex,
-  ): void {
+  ): Promise<void> {
     const url = req.url || '/';
     const key = `WS_${url.replaceAll('/', '_')}`;
     const filePath = getRecordingPath(this.recordingsDir, this.replayId!);
 
-    loadRecordingSession(filePath)
-      .then((session) => {
-        const wsRecording = session.websocketRecordings.find(
-          (r) => r.key === key,
-        );
+    try {
+      const session = await loadRecordingSession(filePath);
+      const wsRecording = session.websocketRecordings.find(
+        (r) => r.key === key,
+      );
 
-        if (!wsRecording) {
-          socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
-          socket.destroy();
-          console.log(`No WebSocket recording found for ${key}`);
-          return;
-        }
-
-        // Create WebSocket server for replay
-        const wss = new WebSocketServer({ noServer: true });
-
-        // Fake upgrade request with proper headers
-        const fakeReq = Object.assign(req, {
-          headers: {
-            ...req.headers,
-            'sec-websocket-key':
-              req.headers['sec-websocket-key'] || 'replay-key',
-            'sec-websocket-version': '13',
-          },
-        });
-
-        wss.handleUpgrade(fakeReq, socket, Buffer.alloc(0), (ws) => {
-          console.log(`Replaying WebSocket: ${url}`);
-
-          // Replay server-to-client messages
-          const serverMessages = wsRecording.messages.filter(
-            (m) => m.direction === 'server-to-client',
-          );
-
-          let messageIndex = 0;
-
-          // Handle client messages and send corresponding server responses
-          ws.on('message', (data) => {
-            const clientMessage = data.toString();
-            console.log(`Replay: Client sent: ${clientMessage}`);
-
-            // Send next server message if available
-            if (messageIndex < serverMessages.length) {
-              setTimeout(() => {
-                if (ws.readyState === WebSocket.OPEN) {
-                  ws.send(serverMessages[messageIndex].data);
-                  console.log(`Replay: Sent server message ${messageIndex}`);
-                  messageIndex++;
-                }
-              }, 10);
-            }
-          });
-
-          // Send initial server messages (those sent before any client message)
-          let initialMessagesSent = 0;
-          for (let i = 0; i < wsRecording.messages.length; i++) {
-            const msg = wsRecording.messages[i];
-            if (msg.direction === 'client-to-server') {
-              break;
-            }
-            if (msg.direction === 'server-to-client') {
-              setTimeout(
-                () => {
-                  if (ws.readyState === WebSocket.OPEN) {
-                    ws.send(msg.data);
-                    console.log(
-                      `Replay: Sent initial server message: ${msg.data}`,
-                    );
-                    messageIndex++;
-                    initialMessagesSent++;
-                  }
-                },
-                10 * (initialMessagesSent + 1),
-              );
-            }
-          }
-
-          ws.on('error', (err) => {
-            console.error('Replay WebSocket error:', err);
-          });
-
-          ws.on('close', () => {
-            console.log('Replay WebSocket closed');
-          });
-        });
-      })
-      .catch((error) => {
-        console.error('Replay error:', error);
+      if (!wsRecording) {
         socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
         socket.destroy();
+        console.log(`No WebSocket recording found for ${key}`);
+        return;
+      }
+
+      // Create WebSocket server for replay
+      const wss = new WebSocketServer({ noServer: true });
+
+      // Fake upgrade request with proper headers
+      const fakeReq = Object.assign(req, {
+        headers: {
+          ...req.headers,
+          'sec-websocket-key': req.headers['sec-websocket-key'] || 'replay-key',
+          'sec-websocket-version': '13',
+        },
       });
+
+      wss.handleUpgrade(fakeReq, socket, Buffer.alloc(0), (ws) => {
+        console.log(`Replaying WebSocket: ${url}`);
+
+        // Replay server-to-client messages
+        const serverMessages = wsRecording.messages.filter(
+          (m) => m.direction === 'server-to-client',
+        );
+
+        let messageIndex = 0;
+
+        // Handle client messages and send corresponding server responses
+        ws.on('message', (data) => {
+          const clientMessage = data.toString();
+          console.log(`Replay: Client sent: ${clientMessage}`);
+
+          // Send next server message if available
+          if (messageIndex < serverMessages.length) {
+            setTimeout(() => {
+              if (ws.readyState === WebSocket.OPEN) {
+                ws.send(serverMessages[messageIndex].data);
+                console.log(`Replay: Sent server message ${messageIndex}`);
+                messageIndex++;
+              }
+            }, 10);
+          }
+        });
+
+        // Send initial server messages (those sent before any client message)
+        let initialMessagesSent = 0;
+        for (let i = 0; i < wsRecording.messages.length; i++) {
+          const msg = wsRecording.messages[i];
+          if (msg.direction === 'client-to-server') {
+            break;
+          }
+          if (msg.direction === 'server-to-client') {
+            setTimeout(
+              () => {
+                if (ws.readyState === WebSocket.OPEN) {
+                  ws.send(msg.data);
+                  console.log(
+                    `Replay: Sent initial server message: ${msg.data}`,
+                  );
+                  messageIndex++;
+                  initialMessagesSent++;
+                }
+              },
+              10 * (initialMessagesSent + 1),
+            );
+          }
+        }
+
+        ws.on('error', (err) => {
+          console.error('Replay WebSocket error:', err);
+        });
+
+        ws.on('close', () => {
+          console.log('Replay WebSocket closed');
+        });
+      });
+    } catch (error) {
+      console.error('Replay error:', error);
+      socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+      socket.destroy();
+    }
   }
 
   private logServerStartup(port: number): void {
