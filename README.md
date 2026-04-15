@@ -3,58 +3,36 @@
 [![npm](https://img.shields.io/npm/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
 [![license](https://img.shields.io/github/license/asmyshlyaev177/test-proxy-recorder.svg?style=flat-square)](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/LICENSE)
 
-HTTP proxy server for recording and replaying network requests in testing. Works seamlessly with Playwright and other testing frameworks.
+Fast, deterministic Playwright tests without maintaining manual mocks.
 
-## BETA VERSION
+An HTTP proxy that records real API responses during test runs and replays them on CI -- no backend required. Instead of hand-writing mock fixtures, just run your tests once against the real API and commit the recordings. Supports Next.js and SSR.
 
-## Features
+```
+                        Record mode                          Replay mode
 
-- **Fast CI/CD Tests**: Record API responses once with real backend, replay them on CI/CD without backend
-- **Fast Workflow**: Record real interactions with API instead of mocking every request manually
-- **Server Side Rendering**: Can record SSR requests from JS frameworks like Next.js
-- **Deterministic Tests**: Same responses every time, no flaky network issues, no need to wire up the whole Backend API for testing
-- **WebSocket Support**: Records and replays WebSocket connections
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
 
-## Table of Contents
+## Why
 
-- [How It Works](#how-it-works)
-- [Complete Setup Guide](#complete-setup-guide)
-- [CLI Usage](#cli-usage)
-- [Playwright Integration](#playwright-integration)
-- [Next.js Integration](#nextjs-integration)
-- [Control Endpoint](#control-endpoint)
-- [Typical Workflow](#typical-workflow)
-- [Recording Format](#recording-format)
-- [Troubleshooting](#troubleshooting)
-- [API Reference](#api-reference)
+- **No backend on CI** -- record once against the real API, replay on every CI run
+- **No manual mocks** -- capture real interactions instead of hand-writing fixtures
+- **SSR support** -- records server-side requests from Next.js and similar frameworks
+- **Deterministic** -- same responses every time, no flaky network
+- **WebSocket support** -- records and replays WebSocket connections
 
-## How It Works
+## Quick Start
 
-The proxy server runs continuously and can switch between three modes per test:
-
-### 1. Transparent Mode (Default)
-
-Passes requests through to the backend without recording or replaying.
-
-### 2. Record Mode
-
-Captures all HTTP requests/responses and WebSocket messages to disk. Each test gets its own recording file based on the test name.
-
-### 3. Replay Mode
-
-Replays previously recorded responses from disk instead of hitting the real API. Perfect for fast, deterministic tests.
-
-## Complete Setup Guide
-
-### Step 1: Install Package
+### 1. Install
 
 ```bash
 npm install --save-dev test-proxy-recorder
 ```
 
-### Step 2: Add NPM Scripts
-
-Add to `package.json`:
+### 2. Add scripts to `package.json`
 
 ```json
 {
@@ -64,641 +42,239 @@ Add to `package.json`:
 }
 ```
 
-**RECOMMENDED**: Use `concurrently` to run proxy and app together:
+> **Tip:** Use `concurrently` to run proxy + app together.
+> `INTERNAL_API_URL` is the env var your app uses for the API base URL -- point it at the proxy instead of the real backend. Use proxy address for dev/test and real backend for production environment.
+> Replace it with whatever env var your app uses (e.g. `API_URL`, `NEXT_PUBLIC_API_URL`).
+>
+> ```json
+> {
+>   "scripts": {
+>     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
+>     "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
+>     "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+>   }
+> }
+> ```
+>
+> **Next.js note:** Prefer `build` + `serve` over `dev` for recording/replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
 
-```bash
-npm install --save-dev concurrently
-```
-
-```json
-{
-  "scripts": {
-    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently -n \"proxy,app\" -c \"blue,green\" \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\""
-  }
-}
-```
-
-### Step 3: Configure Git for Recordings
-
-**CRITICAL**: Recordings must be committed to git for CI/CD replay.
-
-Create or update your `.gitattributes` file:
-
-```gitattributes
-/e2e/recordings/** binary
-```
-
-This marks recording files as binary, which causes long mock files to be collapsed/folded in Pull Request diffs for better readability.
-
-**DO NOT** add `e2e/recordings` to `.gitignore`. Recordings need to be versioned in git for CI/CD to use them.
-
-**Note**: The recordings directory will be created automatically when you first record a test - no need to create it manually.
-
-### Step 4: Create Playwright Global Teardown (Recommended)
-
-Create `e2e/global-teardown.ts`:
-
-```typescript
-import { playwrightProxy } from 'test-proxy-recorder';
-
-async function globalTeardown() {
-  await playwrightProxy.teardown();
-}
-
-export default globalTeardown;
-```
-
-Update `playwright.config.ts`:
-
-```typescript
-import { defineConfig } from '@playwright/test';
-
-export default defineConfig({
-  testDir: './e2e',
-  globalTeardown: './e2e/global-teardown.ts',
-  // ... rest of config
-});
-```
-
-### Step 5: Create Example Test
-
-Create `e2e/example.spec.ts`:
+### 3. Write a test
 
 ```typescript
 import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-test('example test with proxy', async ({ page }, testInfo) => {
-  // Set proxy mode: 'record' to capture, 'replay' to use recordings
-  // This automatically sets up page.on('close') for cleanup
-  await playwrightProxy.before(page, testInfo, 'replay');
+test('homepage loads', async ({ page }, testInfo) => {
+  await playwrightProxy.before(page, testInfo, 'record'); // first run: record
+  // await playwrightProxy.before(page, testInfo, 'replay'); // later: replay
 
   await page.goto('/');
   await expect(page.getByText('Welcome')).toBeVisible();
 });
 ```
 
-### Step 6: Run Tests
+### 4. Run
 
-**First run (record mode)**:
+Start the proxy + app first (e.g. `npm run serve:proxy`), then run tests in a separate terminal:
 
-```typescript
-await playwrightProxy.before(page, testInfo, 'record');
+```bash
+# Terminal 1 -- start proxy and app
+npm run serve:proxy
+
+# Terminal 2 -- run tests
+npx playwright test
 ```
 
-**Subsequent runs (replay mode)**:
+### 5. Commit recordings to git
 
-```typescript
-await playwrightProxy.before(page, testInfo, 'replay');
+```bash
+# .gitattributes -- collapse long mock files in PR diffs
+/e2e/recordings/** binary
 ```
 
-## CLI Usage
+> Do **not** add `e2e/recordings` to `.gitignore`. Recordings must be in git for CI replay.
 
-### Basic Command
+---
+
+## CLI
 
 ```bash
 test-proxy-recorder <target-url> [options]
 ```
 
-### CLI Options
-
-- `<target-url>` - Backend API URL (positional argument, required)
-- `--port, -p <number>` - Port to listen on (default: 8080)
-- `--dir, -d <path>` - Directory to store recordings (default: ./recordings)
-- `--help, -h` - Show help
-
-### Examples
+| Option         | Default        | Description                   |
+| -------------- | -------------- | ----------------------------- |
+| `<target-url>` | *(required)*   | Backend URL to proxy          |
+| `--port, -p`   | `8080`         | Proxy listen port             |
+| `--dir, -d`    | `./recordings` | Directory for recording files |
 
 ```bash
-# Basic usage
+# Examples
 test-proxy-recorder http://localhost:8000
-
-# Custom port and recordings directory
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
-
-# Multiple targets (experimental)
-test-proxy-recorder http://localhost:8000 http://localhost:9000 --port 8100
 ```
 
 ## Playwright Integration
 
-### Session Identification
-
-The proxy uses a **custom HTTP header** (`x-test-rcrd-id`) to identify recording sessions. This header is automatically set by the `playwrightProxy.before()` method and works seamlessly with Next.js and other server-side rendering frameworks.
-
-**Cookie fallback**: For backward compatibility, the proxy also supports cookie-based session identification, but the custom header is preferred.
-
-### Basic Test Structure
-
-Every test using the proxy should follow this pattern:
+### Basic pattern
 
 ```typescript
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-test('test name', async ({ page }, testInfo) => {
-  // Set mode BEFORE test actions
-  // This automatically sets the recording ID header and cleanup handler
+test('my test', async ({ page }, testInfo) => {
   await playwrightProxy.before(page, testInfo, 'replay');
-
-  // Test code
-  await page.goto('/page');
-  // Test assertions...
+  // ... test code
 });
 ```
 
-### Recording vs Replay
+`playwrightProxy.before()` sets the proxy mode, attaches a session header (`x-test-rcrd-id`), and registers cleanup on page close. Recording filenames are derived from test names (`"create a user"` -> `create-a-user.mock.json`).
+
+### Global teardown (recommended)
 
 ```typescript
-import { test } from '@playwright/test';
+// e2e/global-teardown.ts
 import { playwrightProxy } from 'test-proxy-recorder';
 
-// Recording mode - captures API responses
-test('create user', async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, 'record');
-
-  await page.goto('/users/new');
-  await page.fill('[name="username"]', 'testuser');
-  await page.click('button[type="submit"]');
-});
-
-// Replay mode - uses recorded responses
-test('create user', async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, 'replay');
-
-  await page.goto('/users/new');
-  await page.fill('[name="username"]', 'testuser');
-  await page.click('button[type="submit"]');
-});
-```
-
-### Test Naming
-
-Recording files are auto-generated from test names:
-
-- Test: `"create a user"`
-- File: `create-a-user.mock.json`
-
-**Important**: Keep test names stable for replay to work correctly.
-
-### Global Teardown (Recommended)
-
-Create `e2e/global-teardown.ts`:
-
-```typescript
-import { playwrightProxy } from 'test-proxy-recorder';
-
-async function globalTeardown() {
+export default async function globalTeardown() {
   await playwrightProxy.teardown();
 }
-
-export default globalTeardown;
 ```
 
-Update `playwright.config.ts`:
-
 ```typescript
-import { defineConfig } from '@playwright/test';
-
+// playwright.config.ts
 export default defineConfig({
-  testDir: './e2e',
   globalTeardown: './e2e/global-teardown.ts',
-  // ... rest of config
 });
 ```
 
-### Client-Side Recording for 3rd Party APIs
+### Client-side recording (3rd party APIs)
 
-For applications that make client-side requests to 3rd party services (e.g., AWS Cognito, Stream.io, analytics services), you can use client-side recording to capture these requests directly in the browser using Playwright's HAR (HTTP Archive) format.
-
-**Why use client-side recording?**
-- Server-side proxy cannot intercept requests made directly from the browser to external services
-- HAR files are a standard format supported by Playwright and browser dev tools
-- Automatically handles CORS and other browser-specific request behaviors
-
-**Example:**
+For browser-side requests that don't go through the proxy (e.g. AWS Cognito, analytics), use HAR recording:
 
 ```typescript
-import { test } from '@playwright/test';
-import { playwrightProxy } from 'test-proxy-recorder';
-
-test('authentication flow', async ({ page }, testInfo) => {
-  // Record both server-side (via proxy) and client-side (via HAR) requests
-  await playwrightProxy.before(
-    page,
-    testInfo,
-    'replay',
-    {
-      // Client-side URL pattern using Playwright's format
-      url: /cognito-.*amazonaws\.com|\.stream-io-api\.com/,
-      timeout: 60000 // Optional: custom timeout
-    }
-  );
-
-  await page.goto('/login');
-  // Cognito authentication requests are recorded to HAR files
-  await page.fill('[name="email"]', 'user@example.com');
-  await page.click('button[type="submit"]');
+await playwrightProxy.before(page, testInfo, 'replay', {
+  url: /cognito-.*amazonaws\.com|\.stream-io-api\.com/,
 });
 ```
 
-**URL Pattern Options:**
-```typescript
-// RegExp pattern (recommended for multiple domains)
-{ url: /cognito-.*amazonaws\.com|\.stream-io-api\.com/ }
+Recordings are stored alongside server-side files:
 
-// String glob pattern
-{ url: 'https://api.example.com/**' }
-
-// Specific domain
-{ url: /api\.external-service\.com/ }
-```
-
-**Storage:**
-Client-side recordings are stored as HAR files alongside server-side recordings:
 ```
 e2e/recordings/
-├── my-test.mock.json  # Server-side recordings (proxy)
-└── my-test.har        # Client-side recordings (browser)
+  my-test.mock.json   # server-side (proxy)
+  my-test.har         # client-side (HAR)
 ```
-
-**Recording vs Replay:**
-- **Record mode**: Creates/updates HAR file with actual responses from 3rd party services
-- **Replay mode**: Uses recorded HAR file, no network requests made to 3rd party services
-
-**Note:** The recordings directory is automatically retrieved from the proxy server, ensuring both server-side and client-side recordings are stored in the same location.
 
 ## Next.js Integration
 
-When testing Next.js applications with server-side rendering (SSR) or API routes, you need to ensure the recording ID header is forwarded to the proxy. The package provides helpers for this.
+The proxy identifies sessions via a custom header. For SSR requests to carry this header, use one of:
 
-### Option 1: Using Next.js Middleware (Recommended)
-
-Create or update `middleware.ts` in your Next.js project root:
+### Middleware (recommended)
 
 ```typescript
+// middleware.ts
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
 
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
-
-  // Forward the recording ID header during tests
-  // Only runs in non-production or when TEST_PROXY_RECORDER_ENABLED=true
-  setNextProxyHeaders(request, response);
-
+  setNextProxyHeaders(request, response); // no-op in production
   return response;
 }
 ```
 
-**Environment Variables:**
-- Automatically skipped when `NODE_ENV=production`
-- Can be explicitly enabled in production with `TEST_PROXY_RECORDER_ENABLED=true`
-
-### Option 2: Manual Header Forwarding in API Routes
-
-For API routes or server components, manually include the header in fetch requests:
+### Manual header forwarding
 
 ```typescript
-// app/api/data/route.ts
 import { headers } from 'next/headers';
 import { createHeadersWithRecordingId } from 'test-proxy-recorder/nextjs';
 
-export async function GET() {
-  const requestHeaders = await headers();
-
-  const response = await fetch('http://localhost:8100/api/data', {
-    headers: createHeadersWithRecordingId(requestHeaders, {
-      'Content-Type': 'application/json',
-    })
-  });
-
-  return Response.json(await response.json());
-}
-```
-
-### Option 3: Using getRecordingId Helper
-
-For more control, extract the recording ID and use it manually:
-
-```typescript
-import { headers } from 'next/headers';
-import { getRecordingId, RECORDING_ID_HEADER } from 'test-proxy-recorder/nextjs';
-
-export async function GET() {
-  const recordingId = getRecordingId(await headers());
-
-  const response = await fetch('http://localhost:8100/api/data', {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(recordingId && { [RECORDING_ID_HEADER]: recordingId })
-    }
-  });
-
-  return Response.json(await response.json());
-}
+const res = await fetch('http://localhost:8100/api/data', {
+  headers: createHeadersWithRecordingId(await headers(), {
+    'Content-Type': 'application/json',
+  }),
+});
 ```
 
 ## Control Endpoint
 
-The proxy exposes a control endpoint at `/__control` for programmatic mode switching and configuration retrieval.
+The proxy exposes `/__control` for programmatic mode switching.
 
-### GET - Retrieve Proxy Configuration
-
-Get the current proxy configuration including recordings directory, mode, and active session ID.
-
-**Via HTTP:**
 ```bash
+# Get current state
 curl http://localhost:8100/__control
-```
 
-**Response:**
-```json
-{
-  "recordingsDir": "/path/to/e2e/recordings",
-  "mode": "replay",
-  "id": "my-test-1"
-}
-```
-
-**Via JavaScript:**
-```javascript
-const config = await fetch('http://localhost:8100/__control').then(r => r.json());
-console.log(config.recordingsDir); // "/path/to/e2e/recordings"
-console.log(config.mode);          // "replay"
-console.log(config.id);            // "my-test-1"
-```
-
-### POST - Switch Proxy Mode
-
-**Via HTTP:**
-```bash
-# Switch to record mode
+# Switch modes
 curl -X POST http://localhost:8100/__control \
   -H "Content-Type: application/json" \
-  -d '{"mode": "record", "id": "my-test-1", "timeout": 30000}'
-
-# Switch to replay mode
-curl -X POST http://localhost:8100/__control \
-  -H "Content-Type: application/json" \
-  -d '{"mode": "replay", "id": "my-test-1"}'
-
-# Switch to transparent mode
-curl -X POST http://localhost:8100/__control \
-  -H "Content-Type: application/json" \
-  -d '{"mode": "transparent"}'
+  -d '{"mode": "record", "id": "my-test-1"}'
 ```
-
-**Via JavaScript:**
-```javascript
-await fetch('http://localhost:8100/__control', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    mode: 'record',
-    id: 'my-test-1',
-    timeout: 30000 // Optional: auto-reset after 30s
-  })
-});
-```
-
-### Control Request Interface
 
 ```typescript
 interface ControlRequest {
   mode: 'transparent' | 'record' | 'replay';
-  id?: string;      // Recording ID, required for record/replay
-  timeout?: number; // Auto-reset timeout in ms (default: 120000)
-}
-
-interface ControlResponse {
-  recordingsDir: string;
-  mode: string;
-  id?: string;
+  id?: string;       // required for record/replay
+  timeout?: number;  // auto-reset timeout in ms (default: 120000)
 }
 ```
-
-## Typical Workflow
-
-### Initial Recording
-
-1. Start backend API: `npm run api`
-2. Start proxy and app: `npm run dev:proxy`
-3. Set test to `'record'` mode
-4. Run test: Recordings saved to `./e2e/recordings/` (directory created automatically)
-5. Commit `.mock.json` files to git
-6. Change mode to `'replay'`
-
-### Running with Replay
-
-1. Start proxy and app: `npm run dev:proxy` (no backend needed!)
-2. Set test to `'replay'` mode
-3. Run test: Uses recorded responses
-4. Tests run fast without backend
-
-### Updating Recordings
-
-1. Start backend API
-2. Set test to `'record'` mode
-3. Run test: Overwrites existing recording
-4. Commit updated `.mock.json` file
-
-## Recording Format
-
-Recordings are stored in two formats depending on the recording type:
-
-**Server-side recordings** (via proxy): JSON files with `.mock.json` extension
-**Client-side recordings** (via HAR): HTTP Archive files with `.har` extension
-
-```text
-e2e/recordings/
-├── create-a-user.mock.json       # Server-side API calls
-├── create-a-user.har             # Client-side 3rd party requests
-├── fetch-users-list.mock.json
-└── delete-user.mock.json
-```
-
-Both file types use the same naming convention based on the test name, making it easy to identify which recordings belong to which test.
-
-## Troubleshooting
-
-### Proxy not responding
-
-**Check if proxy is running**:
-
-```bash
-curl http://localhost:8100/__control
-```
-
-**Check port availability**:
-
-```bash
-lsof -i :8100
-```
-
-### No recordings saved
-
-- Verify proxy mode is `'record'`
-- Check app is using proxy URL (`http://localhost:8100`)
-- Verify write permissions on recordings directory
-- Check proxy server logs for errors
-
-### Test fails in replay mode
-
-- Ensure recording exists for this test
-- Check test name hasn't changed
-- Verify recording file matches expected format
-- Re-record if API responses changed
-
-### Recordings not matching requests
-
-- Request URLs must match exactly
-- Headers may affect matching (configurable)
-- Query parameters must be in same order
-- Re-record to capture current API behavior
-
 
 ## API Reference
 
-### ProxyServer Class
+### `playwrightProxy`
 
 ```typescript
-class ProxyServer {
-  constructor(targets: string[], recordingsDir: string);
-  async init(): Promise<void>;
-  listen(port: number): http.Server;
-}
-```
-
-### Playwright Integration
-
-```typescript
-import { playwrightProxy, setProxyMode, RECORDING_ID_HEADER } from 'test-proxy-recorder';
-import type { Page } from '@playwright/test';
-
-// Client-side recording options
-interface ClientSideRecordingOptions {
-  /**
-   * URL pattern for client-side requests to record/replay
-   * Uses Playwright's native format (string or RegExp)
-   * Example: /cognito-.*amazonaws\.com|\.stream-io-api\.com/
-   * Example: 'https://api.example.com/**'
-   */
-  url?: string | RegExp;
-}
-
-// Main helper for Playwright tests
-const playwrightProxy = {
-  // Set proxy mode before test and configure page with recording ID header
-  // Supports optional client-side recording for 3rd party APIs
-  async before(
+const playwrightProxy: {
+  before(
     page: Page,
     testInfo: TestInfo,
     mode: 'record' | 'replay' | 'transparent',
-    options?: number | (ClientSideRecordingOptions & { timeout?: number })
+    options?: number | { url?: string | RegExp; timeout?: number }
   ): Promise<void>;
 
-  // Global teardown - switches proxy to transparent mode
-  // Use in Playwright's globalTeardown configuration
-  async teardown(): Promise<void>;
+  teardown(): Promise<void>;
 };
+```
 
-// Direct mode control
-async function setProxyMode(
+### `setProxyMode`
+
+```typescript
+function setProxyMode(
   mode: 'record' | 'replay' | 'transparent',
   id?: string,
   timeout?: number
 ): Promise<void>;
-
-// Recording ID header constant
-const RECORDING_ID_HEADER: string; // 'x-test-rcrd-id'
 ```
 
-**Options Parameter:**
-- `number` - Legacy format: timeout in milliseconds
-- `ClientSideRecordingOptions & { timeout?: number }` - Object with optional client-side recording and timeout:
-  - `url?: string | RegExp` - URL pattern for client-side recording (uses Playwright's HAR format)
-  - `timeout?: number` - Auto-reset timeout in milliseconds
-
-### Next.js Integration
-
-**IMPORTANT**: Use the `/nextjs` import path to avoid webpack bundling issues in Next.js:
+### Next.js helpers (`test-proxy-recorder/nextjs`)
 
 ```typescript
-import {
-  setNextProxyHeaders,
-  getRecordingId,
-  createHeadersWithRecordingId,
-  RECORDING_ID_HEADER
-} from 'test-proxy-recorder/nextjs';
-import type { NextRequest, NextResponse } from 'next/server';
-
-// Forward recording ID header in Next.js middleware
-// Automatically skipped in production unless TEST_PROXY_RECORDER_ENABLED=true
-function setNextProxyHeaders(
-  request: NextRequest,
-  response: NextResponse
-): void;
-
-// Get recording ID from request headers
-function getRecordingId(
-  requestHeaders: NextRequest | Headers
-): string | null;
-
-// Create headers object with recording ID for fetch requests
+function setNextProxyHeaders(request: NextRequest, response: NextResponse): void;
+function getRecordingId(headers: NextRequest | Headers): string | null;
 function createHeadersWithRecordingId(
-  requestHeaders: NextRequest | Headers,
-  additionalHeaders?: Record<string, string>
+  headers: NextRequest | Headers,
+  additional?: Record<string, string>
 ): Record<string, string>;
 ```
 
-### Control Endpoint
+## Typical Workflow
 
-The control endpoint supports both GET and POST methods.
-
-**GET `/__control`** - Retrieve proxy configuration:
-
-```typescript
-// Response
-{
-  recordingsDir: string;  // Path to recordings directory
-  mode: string;           // Current mode: 'transparent' | 'record' | 'replay'
-  id?: string;            // Active recording/replay session ID
-}
 ```
-
-**POST `/__control`** - Switch proxy mode:
-
-```typescript
-// Request Body
-{
-  mode: 'transparent' | 'record' | 'replay';
-  id?: string;      // Recording ID (required for record/replay)
-  timeout?: number; // Auto-reset timeout in ms (default: 120000)
-}
-
-// Response
-{
-  success: boolean;
-  mode: string;
-  id: string | null;
-  timeout: number;
-  recordingsDir: string;
-}
+1. Record       start proxy + app + backend, run tests with 'record' mode
+2. Commit       git add e2e/recordings/
+3. Replay       start proxy + app (no backend), run tests with 'replay' mode
+4. Update       re-record when API changes, commit new recordings
 ```
-
-**Note**: Switching to replay mode automatically resets session counters (clears served recordings tracker), allowing replay from the beginning.
 
 ## Requirements
 
 - Node.js >= 22.0.0
-- @playwright/test >= 1.0.0 (for Playwright integration)
+- @playwright/test >= 1.0.0 (peer dependency)
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+Contributions welcome! Please submit a Pull Request.
 
 ## License
 
