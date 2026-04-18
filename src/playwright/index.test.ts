@@ -71,7 +71,7 @@ describe('Playwright Integration', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
+        'http://localhost:8100/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -112,7 +112,7 @@ describe('Playwright Integration', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
+        'http://localhost:8100/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -153,7 +153,7 @@ describe('Playwright Integration', () => {
       );
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
+        'http://localhost:8100/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -186,7 +186,7 @@ describe('Playwright Integration', () => {
       );
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:9999/__control',
+        'http://localhost:9999/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -265,7 +265,7 @@ describe('Playwright Integration', () => {
 
       // Verify cleanup was called for the specific session
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
+        'http://localhost:8100/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -289,7 +289,7 @@ describe('Playwright Integration', () => {
 
       expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:8100/__control',
+        'http://localhost:8100/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -310,7 +310,7 @@ describe('Playwright Integration', () => {
       await playwrightProxy.teardown();
 
       expect(mockFetch).toHaveBeenCalledWith(
-        'http://127.0.0.1:7777/__control',
+        'http://localhost:7777/__control',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

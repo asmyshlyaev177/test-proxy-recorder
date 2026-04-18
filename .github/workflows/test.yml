@@ -75,17 +75,15 @@ jobs:
       - name: Build library
         run: pnpm run build
 
-      - name: Start example services
-        run: pnpm --filter example-nextjs16 start:all &
-
-      - name: Wait for services
-        run: pnpm --filter example-nextjs16 exec wait-on http://localhost:3000 --timeout 120000
-
-      - name: Record e2e tests
-        run: pnpm --filter example-nextjs16 test:e2e:record
-
-      - name: Replay e2e tests
-        run: pnpm --filter example-nextjs16 test:e2e
+      - name: Run e2e record and replay
+        run: |
+          pnpm --filter example-nextjs16 start:all &
+          pnpm --filter example-nextjs16 exec wait-on \
+            http://localhost:3000 \
+            http://localhost:8100/__control \
+            --timeout 120000
+          pnpm --filter example-nextjs16 test:e2e:record
+          pnpm --filter example-nextjs16 test:e2e
 
       - name: Upload test artifacts on failure
         if: failure()

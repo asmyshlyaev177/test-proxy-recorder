@@ -52,7 +52,7 @@ export async function setProxyMode(
       ...(timeout && { timeout }),
     };
 
-    const response = await fetch(`http://127.0.0.1:${proxyPort}/__control`, {
+    const response = await fetch(`http://localhost:${proxyPort}/__control`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -84,7 +84,7 @@ export async function cleanupSession(sessionId: string): Promise<void> {
       id: sessionId,
     };
 
-    const response = await fetch(`http://127.0.0.1:${proxyPort}/__control`, {
+    const response = await fetch(`http://localhost:${proxyPort}/__control`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -202,7 +202,7 @@ async function getRecordingsDir(): Promise<string> {
   const proxyPort = getProxyPort();
 
   try {
-    const response = await fetch(`http://127.0.0.1:${proxyPort}/__control`);
+    const response = await fetch(`http://localhost:${proxyPort}/__control`);
     if (response.ok) {
       const data = (await response.json()) as { recordingsDir?: string };
       if (data.recordingsDir) {
