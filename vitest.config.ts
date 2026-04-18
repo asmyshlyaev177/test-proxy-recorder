@@ -4,6 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
+    include: ['src/**/*.test.ts', 'src/**/*.integration.test.ts'],
     testTimeout: 10000,
     hookTimeout: 10000,
     coverage: {

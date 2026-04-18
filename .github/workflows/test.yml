@@ -79,7 +79,7 @@ jobs:
         run: pnpm --filter example-nextjs16 start:all &
 
       - name: Wait for services
-        run: pnpm --filter example-nextjs16 exec wait-on http://localhost:3002/todos http://127.0.0.1:8100/__control http://localhost:3000 --timeout 120000
+        run: pnpm --filter example-nextjs16 exec wait-on http://localhost:3000 --timeout 120000
 
       - name: Record e2e tests
         run: pnpm --filter example-nextjs16 test:e2e:record

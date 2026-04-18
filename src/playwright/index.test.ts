@@ -17,7 +17,6 @@ const createMockPage = () => {
     on: vi.fn((event: string, handler: Function) => {
       contextEventHandlers.set(event, handler);
     }),
-    _guid: 'test-context-guid',
     _triggerEvent: (event: string) => {
       const handler = contextEventHandlers.get(event);
       if (handler) handler();
@@ -45,12 +44,6 @@ describe('Playwright Integration', () => {
     mockFetch.mockReset();
     // Set default port via environment variable
     process.env.TEST_PROXY_RECORDER_PORT = '8100';
-    // Clear global handler registrations
-    for (const key of Object.keys(globalThis)) {
-      if (key.startsWith('cleanup_')) {
-        delete (globalThis as any)[key];
-      }
-    }
   });
 
   afterEach(() => {

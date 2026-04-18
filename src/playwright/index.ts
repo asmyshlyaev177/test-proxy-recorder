@@ -1,6 +1,9 @@
 import path from 'node:path';
 
-import type { Page, TestInfo } from '@playwright/test';
+import type { BrowserContext, Page, TestInfo } from '@playwright/test';
+
+// Tracks which contexts already have a cleanup handler registered to avoid duplicates.
+const registeredContexts = new WeakSet<BrowserContext>();
 
 import { RECORDING_ID_HEADER } from '../constants.js';
 import { type Mode, Modes } from '../types';
@@ -348,12 +351,8 @@ export const playwrightProxy = {
     // This ensures cleanup happens in UI mode while not interfering with normal test runs
     const context = page.context();
 
-    // Check if we've already registered a handler for this context to avoid duplicates
-    const contextId = (context as any)._guid || 'default';
-    const handlerKey = `cleanup_${contextId}`;
-
-    if (!(globalThis as any)[handlerKey]) {
-      (globalThis as any)[handlerKey] = true;
+    if (!registeredContexts.has(context)) {
+      registeredContexts.add(context);
 
       context.on('close', async () => {
         try {
@@ -365,8 +364,7 @@ export const playwrightProxy = {
             error,
           );
         } finally {
-          // Clear the handler registration
-          delete (globalThis as any)[handlerKey];
+          registeredContexts.delete(context);
         }
       });
     }
