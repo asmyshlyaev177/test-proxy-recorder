@@ -307,6 +307,11 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
+    if (req.method === 'HEAD') {
+      res.writeHead(HTTP_STATUS_OK);
+      res.end();
+      return;
+    }
     if (req.method === 'GET') {
       sendJsonResponse(res, HTTP_STATUS_OK, {
         recordingsDir: this.recordingsDir,
