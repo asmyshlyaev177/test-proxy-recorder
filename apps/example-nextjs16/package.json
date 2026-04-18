@@ -1,0 +1,31 @@
+{
+  "name": "example-nextjs16",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "mock": "MOCK_BACKEND_PORT=3002 node mock-backend/server.mjs",
+    "proxy": "node ../../dist/proxy.js http://localhost:3002 -p 8100 -d ./e2e/recordings",
+    "dev": "next dev --port 3000",
+    "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm run start\"",
+    "build": "next build --webpack",
+    "start": "pnpm run build && next start --port 3000",
+    "test:e2e": "APP_PORT=3000 playwright test --retries 1",
+    "test:e2e:ui": "APP_PORT=3000 playwright test --ui --retries 1",
+    "test:e2e:record": "APP_PORT=3000 RECORD_MODE=1 playwright test --workers 1"
+  },
+  "dependencies": {
+    "next": "^16.2.4",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "concurrently": "^9.0.0",
+    "wait-on": "^8.0.0",
+    "test-proxy-recorder": "workspace:*",
+    "typescript": "^5.6.0"
+  }
+}

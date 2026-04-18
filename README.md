@@ -267,6 +267,86 @@ function createHeadersWithRecordingId(
 4. Update       re-record when API changes, commit new recordings
 ```
 
+## Next.js 16
+
+Next.js 16 uses `proxy.ts` as the middleware entry point (replaces `middleware.ts`). Place it at the project root alongside `next.config.ts`:
+
+```typescript
+// proxy.ts  (Next.js 16 middleware convention)
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
+
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  setNextProxyHeaders(request, response);
+  return response;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+**package.json scripts** — start services from scripts, not from `playwright.config.ts`:
+
+```json
+{
+  "scripts": {
+    "mock": "node mock-backend/server.mjs",
+    "proxy": "test-proxy-recorder http://localhost:3002 -p 8100 -d ./e2e/recordings",
+    "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm build && next start --port 3000\""
+  }
+}
+```
+
+## Example App
+
+[`apps/example-nextjs16`](apps/example-nextjs16) is a full working example: a Next.js 16 todo app wired up with a mock backend, proxy, and Playwright e2e tests in record/replay mode.
+
+```text
+apps/example-nextjs16/
+  app/                  Next.js pages and components
+  mock-backend/         Standalone Node.js HTTP server (port 3002)
+  e2e/                  Playwright tests + recordings
+  proxy.ts              Next.js 16 middleware — forwards session headers to SSR fetches
+```
+
+**Three-service architecture:**
+
+```text
+Browser  ──> Proxy (8100) ──> Mock Backend (3002)
+Next.js SSR ──> Proxy (8100) ──> Mock Backend (3002)
+```
+
+Start everything and run the record/replay cycle:
+
+```bash
+# Start all services (mock backend + proxy + Next.js)
+pnpm --filter example-nextjs16 start:all
+
+# Record tests (run against live services, save to e2e/recordings/)
+pnpm --filter example-nextjs16 test:e2e:record
+
+# Replay tests (no backend needed — served from recordings)
+pnpm --filter example-nextjs16 test:e2e
+```
+
+## Parallel Replay: Do Not Call `teardown()` Per-Test
+
+`playwrightProxy.teardown()` sets the **global** proxy mode to `transparent`. With `fullyParallel: true`, each Playwright worker runs its own `test.afterAll`. If a fast test completes and calls `teardown()` while a slower test (e.g., one with more interaction steps) is still running, the proxy switches to transparent mid-test. The remaining requests are forwarded to the real backend instead of being replayed, causing failures.
+
+**Wrong:**
+
+```typescript
+// ❌ breaks parallel replay — teardown() affects all sessions globally
+test.afterAll(async () => {
+  await playwrightProxy.teardown();
+});
+```
+
+**Correct:** omit `test.afterAll`. Session cleanup is automatic via `context.on('close')` → `cleanupSession()`. Use a [global teardown](https://playwright.dev/docs/test-global-setup-teardown) if you need to reset the proxy after a full test run.
+
 ## Requirements
 
 - Node.js >= 22.0.0

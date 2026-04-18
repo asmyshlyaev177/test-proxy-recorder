@@ -84,9 +84,9 @@ function processRecordings(recordings: Recording[]): Recording[] {
     keyRecordings.sort((a, b) => a.recordingId - b.recordingId);
 
     // Assign sequence numbers based on sorted order
-    keyRecordings.forEach((recording, index) => {
+    for (const [index, recording] of keyRecordings.entries()) {
       processedRecordings.push({ ...recording, sequence: index });
-    });
+    }
   }
 
   // Sort by recordingId to maintain overall order in the file

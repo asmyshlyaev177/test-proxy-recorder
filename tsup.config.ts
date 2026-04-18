@@ -47,7 +47,7 @@ export default defineConfig([
   // CLI binary - ESM only (has top-level await)
   {
     entry: {
-      proxy: 'src/proxy.ts',
+      proxy: 'src/proxy-cli.ts',
     },
     format: ['esm'],
     dts: true,

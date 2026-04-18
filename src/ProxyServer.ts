@@ -307,7 +307,11 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> {
-    // GET request returns server configuration
+    if (req.method === 'HEAD') {
+      res.writeHead(HTTP_STATUS_OK);
+      res.end();
+      return;
+    }
     if (req.method === 'GET') {
       sendJsonResponse(res, HTTP_STATUS_OK, {
         recordingsDir: this.recordingsDir,
@@ -316,13 +320,17 @@ export class ProxyServer {
       });
       return;
     }
+    await this.handleControlPost(req, res);
+  }
 
-    // POST request sets mode or performs cleanup
+  private async handleControlPost(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): Promise<void> {
     try {
       const data = await this.parseControlBody(req);
       const { mode, id, timeout: requestTimeout, cleanup } = data;
 
-      // Handle cleanup request
       if (cleanup && id) {
         await this.cleanupSession(id);
         sendJsonResponse(res, HTTP_STATUS_OK, {
@@ -333,40 +341,47 @@ export class ProxyServer {
         return;
       }
 
-      // Handle mode switch
-      if (!mode) {
-        throw new Error(
-          'Mode parameter is required when cleanup is not specified',
-        );
-      }
-
-      const timeout = requestTimeout ?? this.timeoutMs;
-
-      this.clearModeTimeout();
-      await this.switchMode(mode, id);
-      this.setupModeTimeout(timeout);
-
-      if (mode === Modes.replay && id) {
-        res.setHeader(
-          'Set-Cookie',
-          `proxy-recording-id=${encodeURIComponent(id)}; HttpOnly; Path=/; SameSite=Lax`,
-        );
-        console.log(`[CONCURRENT REPLAY] Set cookie for recording: ${id}`);
-      }
-
-      sendJsonResponse(res, HTTP_STATUS_OK, {
-        success: true,
-        mode: this.mode,
-        id: this.recordingId || this.replayId,
-        timeout,
-        recordingsDir: this.recordingsDir,
-      });
+      await this.applyModeChange(res, mode, id, requestTimeout);
     } catch (error) {
       console.error('Control request error:', error);
       sendJsonResponse(res, HTTP_STATUS_BAD_REQUEST, {
         error: error instanceof Error ? error.message : 'Unknown error',
       });
     }
+  }
+
+  private async applyModeChange(
+    res: http.ServerResponse,
+    mode: Mode | undefined,
+    id: string | undefined,
+    requestTimeout: number | undefined,
+  ): Promise<void> {
+    if (!mode) {
+      throw new Error(
+        'Mode parameter is required when cleanup is not specified',
+      );
+    }
+
+    const timeout = requestTimeout ?? this.timeoutMs;
+    this.clearModeTimeout();
+    await this.switchMode(mode, id);
+    this.setupModeTimeout(timeout);
+
+    if (mode === Modes.replay && id) {
+      res.setHeader(
+        'Set-Cookie',
+        `proxy-recording-id=${encodeURIComponent(id)}; HttpOnly; Path=/; SameSite=Lax`,
+      );
+      console.log(`[CONCURRENT REPLAY] Set cookie for recording: ${id}`);
+    }
+
+    sendJsonResponse(res, HTTP_STATUS_OK, {
+      success: true,
+      mode: this.mode,
+      id: this.recordingId || this.replayId,
+      timeout,
+      recordingsDir: this.recordingsDir,
+    });
   }
 
   private clearModeTimeout(): void {

@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ProxyServer } from './ProxyServer.js';
 import { getRecordingPath, loadRecordingSession } from './utils/fileUtils.js';
 
+type Post = { id: string; title: string };
+
 describe('ProxyServer - Record and Replay Cycle', () => {
   let tempDir: string;
   let proxyServer: ProxyServer;
@@ -98,7 +100,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     // Step 3: Make requests in sequence (simulating a real test)
     // First: GET requests before POST (should return old data)
     const getRes1 = await fetch(`http://localhost:${proxyPort}/api/v1/posts`);
-    const getData1 = await getRes1.json();
+    const getData1 = (await getRes1.json()) as Post[];
     expect(getData1).toHaveLength(2);
     expect(getData1[0].id).toBe('old-post-1');
     expect(getData1[0].title).toBe('Old Post 1');
@@ -106,7 +108,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     expect(getData1[1].title).toBe('Old Post 2');
 
     const getRes2 = await fetch(`http://localhost:${proxyPort}/api/v1/posts`);
-    const getData2 = await getRes2.json();
+    const getData2 = (await getRes2.json()) as Post[];
     expect(getData2).toHaveLength(2);
     expect(getData2[0].id).toBe('old-post-1');
     expect(getData2[0].title).toBe('Old Post 1');
@@ -119,13 +121,13 @@ describe('ProxyServer - Record and Replay Cycle', () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: 'New Post' }),
     });
-    const postData = await postRes.json();
+    const postData = (await postRes.json()) as Post;
     expect(postData.id).toBe('new-post-1');
     expect(postData.title).toBe('New Post');
 
     // Third: GET request after POST (should return new data at the top)
     const getRes3 = await fetch(`http://localhost:${proxyPort}/api/v1/posts`);
-    const getData3 = await getRes3.json();
+    const getData3 = (await getRes3.json()) as Post[];
     expect(getData3).toHaveLength(3);
     expect(getData3[0].id).toBe('new-post-1');
     expect(getData3[0].title).toBe('New Post');
@@ -136,7 +138,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
 
     // Fourth: One more GET to ensure we can replay multiple requests
     const getRes4 = await fetch(`http://localhost:${proxyPort}/api/v1/posts`);
-    const getData4 = await getRes4.json();
+    const getData4 = (await getRes4.json()) as Post[];
     expect(getData4).toHaveLength(3);
     expect(getData4[0].id).toBe('new-post-1');
     expect(getData4[0].title).toBe('New Post');
@@ -171,7 +173,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     const sequences = getRecordings
       .map((r) => r.sequence)
       .filter((s) => s !== undefined)
-      .sort((a, b) => a - b);
+      .toSorted((a, b) => a - b);
     expect(sequences).toEqual([0, 1, 2, 3]);
 
     // First two GET requests should have old data
@@ -225,7 +227,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     const replayRes1 = await fetch(
       `http://localhost:${proxyPort}/api/v1/posts`,
     );
-    const replayData1 = await replayRes1.json();
+    const replayData1 = (await replayRes1.json()) as Post[];
     expect(replayData1).toHaveLength(2);
     expect(replayData1[0].id).toBe('old-post-1');
     expect(replayData1[0].title).toBe('Old Post 1');
@@ -236,7 +238,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     const replayRes2 = await fetch(
       `http://localhost:${proxyPort}/api/v1/posts`,
     );
-    const replayData2 = await replayRes2.json();
+    const replayData2 = (await replayRes2.json()) as Post[];
     expect(replayData2).toHaveLength(2);
     expect(replayData2[0].id).toBe('old-post-1');
     expect(replayData2[0].title).toBe('Old Post 1');
@@ -252,7 +254,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
         body: JSON.stringify({ title: 'New Post' }),
       },
     );
-    const replayPostData = await replayPostRes.json();
+    const replayPostData = (await replayPostRes.json()) as Post;
     expect(replayPostData.id).toBe('new-post-1');
     expect(replayPostData.title).toBe('New Post');
 
@@ -260,7 +262,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     const replayRes3 = await fetch(
       `http://localhost:${proxyPort}/api/v1/posts`,
     );
-    const replayData3 = await replayRes3.json();
+    const replayData3 = (await replayRes3.json()) as Post[];
     expect(replayData3).toHaveLength(3);
     expect(replayData3[0].id).toBe('new-post-1');
     expect(replayData3[0].title).toBe('New Post');
@@ -273,7 +275,7 @@ describe('ProxyServer - Record and Replay Cycle', () => {
     const replayRes4 = await fetch(
       `http://localhost:${proxyPort}/api/v1/posts`,
     );
-    const replayData4 = await replayRes4.json();
+    const replayData4 = (await replayRes4.json()) as Post[];
     expect(replayData4).toHaveLength(3);
     expect(replayData4[0].id).toBe('new-post-1');
     expect(replayData4[0].title).toBe('New Post');

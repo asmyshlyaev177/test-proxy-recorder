@@ -38,13 +38,18 @@
     "LICENSE"
   ],
   "pnpm": {
-    "onlyBuiltDependencies": ["esbuild"]
+    "onlyBuiltDependencies": ["esbuild", "sharp"]
   },
   "packageManager": "pnpm@10.20.0+sha512.cf9998222162dd85864d0a8102e7892e7ba4ceadebbf5a31f9c2fce48dfce317a9c53b9f6464d1ef9042cba2e02ae02a9f7c143a2b438cd93c91840f0192b9dd",
   "scripts": {
     "start": "node dist/proxy.js",
     "dev": "tsx src/proxy.ts",
     "build": "tsup",
+    "example:dev": "pnpm --filter example-nextjs16 dev",
+    "example:build": "pnpm --filter example-nextjs16 build",
+    "example:services": "pnpm build && pnpm --filter example-nextjs16 start:all",
+    "example:test:e2e": "pnpm --filter example-nextjs16 test:e2e",
+    "example:test:e2e:record": "pnpm --filter example-nextjs16 test:e2e:record",
     "prepublish": "pnpm run build && pnpm run test:run && pnpm run lint",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -95,6 +100,7 @@
     "@playwright/test": ">=1.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/http-proxy": "^1.17.15",
     "@types/node": "^22.0.0",
     "@types/ws": "^8.18.1",
