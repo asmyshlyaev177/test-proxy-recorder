@@ -50,3 +50,46 @@ jobs:
 
       - name: Build project
         run: pnpm run build
+
+  e2e:
+    runs-on: ubuntu-latest
+    container:
+      image: mcr.microsoft.com/playwright:v1.59.1-noble
+      options: --user root
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.3.0
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4.2.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4.1.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build library
+        run: pnpm run build
+
+      - name: Start example services
+        run: pnpm --filter example-nextjs16 start:all &
+
+      - name: Wait for services
+        run: pnpm --filter example-nextjs16 exec wait-on http://localhost:3002/todos http://127.0.0.1:8100/__control http://localhost:3000 --timeout 120000
+
+      - name: Record e2e tests
+        run: pnpm --filter example-nextjs16 test:e2e:record
+
+      - name: Replay e2e tests
+        run: pnpm --filter example-nextjs16 test:e2e
+
+      - name: Upload test artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
+        with:
+          name: playwright-results
+          path: apps/example-nextjs16/test-results/

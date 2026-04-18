@@ -87,7 +87,8 @@ export default [
     rules: {
       'sonarjs/no-nested-functions': 'off', // Tests often have nested functions
       'sonarjs/assertions-in-tests': 'off', // Some tests check for errors/side effects
-      'unicorn/consistent-function-scoping': 'off'
+      'unicorn/consistent-function-scoping': 'off',
+      'unicorn/no-useless-undefined': 'off'
     },
   },
   // ProxyServer has complex event handling with necessary nesting

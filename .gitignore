@@ -7,3 +7,9 @@ test-recordings-integration
 test-recordings-websocket
 coverage/
 coverage-reports
+.next/
+apps/example-nextjs16/data/*
+apps/example-nextjs16/e2e/recordings/
+tsconfig.tsbuildinfo
+trace.zip
+test-results

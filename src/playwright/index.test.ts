@@ -46,11 +46,11 @@ describe('Playwright Integration', () => {
     // Set default port via environment variable
     process.env.TEST_PROXY_RECORDER_PORT = '8100';
     // Clear global handler registrations
-    Object.keys(global).forEach((key) => {
+    for (const key of Object.keys(globalThis)) {
       if (key.startsWith('cleanup_')) {
-        delete (global as any)[key];
+        delete (globalThis as any)[key];
       }
-    });
+    }
   });
 
   afterEach(() => {
@@ -93,7 +93,10 @@ describe('Playwright Integration', () => {
       });
       expect(mockPage.route).toHaveBeenCalled();
       expect(mockPage.context).toHaveBeenCalled();
-      expect(mockPage._mockContext.on).toHaveBeenCalledWith('close', expect.any(Function));
+      expect(mockPage._mockContext.on).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function),
+      );
     });
 
     it('should call setProxyMode with replay mode', async () => {
@@ -131,7 +134,10 @@ describe('Playwright Integration', () => {
       });
       expect(mockPage.route).toHaveBeenCalled();
       expect(mockPage.context).toHaveBeenCalled();
-      expect(mockPage._mockContext.on).toHaveBeenCalledWith('close', expect.any(Function));
+      expect(mockPage._mockContext.on).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function),
+      );
     });
 
     it('should include timeout if provided', async () => {
@@ -246,7 +252,10 @@ describe('Playwright Integration', () => {
       );
 
       // Verify context handler was registered
-      expect(mockPage._mockContext.on).toHaveBeenCalledWith('close', expect.any(Function));
+      expect(mockPage._mockContext.on).toHaveBeenCalledWith(
+        'close',
+        expect.any(Function),
+      );
 
       // Reset fetch mock to track cleanup call
       mockFetch.mockReset();

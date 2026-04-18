@@ -45,6 +45,11 @@
     "start": "node dist/proxy.js",
     "dev": "tsx src/proxy.ts",
     "build": "tsup",
+    "example:dev": "pnpm --filter example-nextjs16 dev",
+    "example:build": "pnpm --filter example-nextjs16 build",
+    "example:services": "pnpm build && pnpm --filter example-nextjs16 start:all",
+    "example:test:e2e": "pnpm --filter example-nextjs16 test:e2e",
+    "example:test:e2e:record": "pnpm --filter example-nextjs16 test:e2e:record",
     "prepublish": "pnpm run build && pnpm run test:run && pnpm run lint",
     "lint": "eslint src --ext .ts",
     "lint:fix": "eslint src --ext .ts --fix",
@@ -95,6 +100,7 @@
     "@playwright/test": ">=1.0.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.59.1",
     "@types/http-proxy": "^1.17.15",
     "@types/node": "^22.0.0",
     "@types/ws": "^8.18.1",
