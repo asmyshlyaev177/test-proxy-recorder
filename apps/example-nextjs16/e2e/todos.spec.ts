@@ -25,6 +25,8 @@ test('creates a new todo', async ({ page }) => {
   await page.getByTestId('add-btn').click();
 
   await expect(page.getByTestId('todo-text').first()).toHaveText('Buy groceries');
+
+  await page.waitForTimeout(1000);
 });
 
 test('filters todos by text', async ({ page }) => {
@@ -40,6 +42,8 @@ test('filters todos by text', async ({ page }) => {
   const items = page.getByTestId('todo-item');
   await expect(items).toHaveCount(1);
   await expect(items.first().getByTestId('todo-text')).toHaveText('Buy groceries');
+
+  await page.waitForTimeout(1000);
 });
 
 test('toggles a todo as completed', async ({ page }) => {
@@ -51,6 +55,8 @@ test('toggles a todo as completed', async ({ page }) => {
   await page.getByTestId('todo-checkbox').first().click();
 
   await expect(page.getByTestId('todo-text').first()).toHaveClass(/completed/);
+
+  await page.waitForTimeout(1000);
 });
 
 test('edits a todo', async ({ page }) => {
@@ -64,6 +70,8 @@ test('edits a todo', async ({ page }) => {
   await page.getByTestId('save-btn').click();
 
   await expect(page.getByTestId('todo-text').first()).toHaveText('New text');
+
+  await page.waitForTimeout(1000);
 });
 
 test('deletes a todo', async ({ page }) => {
@@ -76,4 +84,6 @@ test('deletes a todo', async ({ page }) => {
   await page.getByTestId('delete-btn').first().click();
 
   await expect(page.getByTestId('todo-item')).toHaveCount(0);
+
+  await page.waitForTimeout(1000);
 });

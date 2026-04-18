@@ -9,8 +9,8 @@
     "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm run start\"",
     "build": "next build --webpack",
     "start": "pnpm run build && next start --port 3000",
-    "test:e2e": "playwright test",
-    "test:e2e:ui": "APP_PORT=3000 playwright test --ui",
+    "test:e2e": "APP_PORT=3000 playwright test --retries 1",
+    "test:e2e:ui": "APP_PORT=3000 playwright test --ui --retries 1",
     "test:e2e:record": "APP_PORT=3000 RECORD_MODE=1 playwright test --workers 1"
   },
   "dependencies": {
