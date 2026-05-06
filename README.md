@@ -7,7 +7,7 @@ Fast, deterministic Playwright tests without maintaining manual mocks.
 
 An HTTP proxy that records real API responses during test runs and replays them on CI -- no backend required. Instead of hand-writing mock fixtures, just run your tests once against the real API and commit the recordings. Supports Next.js and SSR.
 
-```
+```text
                         Record mode                          Replay mode
 
   Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
@@ -60,39 +60,49 @@ npm install --save-dev test-proxy-recorder
 
 ### 3. Write a test
 
+Pass `'record'` the first time you run a test. Recordings are written to `e2e/recordings/` automatically — there is nothing to create by hand. Once the files exist, switch to `'replay'`.
+
 ```typescript
 import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
 test('homepage loads', async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, 'record'); // first run: record
-  // await playwrightProxy.before(page, testInfo, 'replay'); // later: replay
+  await playwrightProxy.before(page, testInfo, 'record'); // first run: writes recordings
+  // await playwrightProxy.before(page, testInfo, 'replay'); // afterwards: reads recordings
 
   await page.goto('/');
   await expect(page.getByText('Welcome')).toBeVisible();
 });
 ```
 
-### 4. Run
+### 4. Run in record mode — recordings are created automatically
 
-Start the proxy + app first (e.g. `npm run serve:proxy`), then run tests in a separate terminal:
+Start the proxy + backend, then run the tests. The proxy intercepts every request and writes the response to disk.
 
 ```bash
-# Terminal 1 -- start proxy and app
+# Terminal 1 — start proxy and app (backend must be running)
 npm run serve:proxy
 
-# Terminal 2 -- run tests
-npx playwright test
+# Terminal 2 — run tests one by one; .mock.json files are written to e2e/recordings/ automatically
+npx playwright test --ui
 ```
 
-### 5. Commit recordings to git
+### 5. Switch to replay and commit
+
+Change `'record'` to `'replay'` in your test, commit the generated files, and CI runs without a backend.
 
 ```bash
-# .gitattributes -- collapse long mock files in PR diffs
-/e2e/recordings/** binary
+git add e2e/recordings/
+git commit -m "add e2e recordings"
 ```
 
 > Do **not** add `e2e/recordings` to `.gitignore`. Recordings must be in git for CI replay.
+>
+> Add this to `.gitattributes` to collapse large mock files in PR diffs:
+>
+> ```text
+> /e2e/recordings/** binary
+> ```
 
 ---
 
@@ -160,7 +170,7 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 Recordings are stored alongside server-side files:
 
-```
+```text
 e2e/recordings/
   my-test.mock.json   # server-side (proxy)
   my-test.har         # client-side (HAR)
@@ -260,7 +270,7 @@ function createHeadersWithRecordingId(
 
 ## Typical Workflow
 
-```
+```text
 1. Record       start proxy + app + backend, run tests with 'record' mode
 2. Commit       git add e2e/recordings/
 3. Replay       start proxy + app (no backend), run tests with 'replay' mode
