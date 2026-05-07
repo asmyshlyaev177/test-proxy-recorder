@@ -5,7 +5,7 @@
 
 Fast, deterministic Playwright tests without maintaining manual mocks.
 
-An HTTP proxy that records real API responses during test runs and replays them on CI -- no backend required. Instead of hand-writing mock fixtures, just run your tests once against the real API and commit the recordings. Supports Next.js and SSR.
+Records real API responses during test runs and replays them on CI — no backend required. Supports two recording mechanisms depending on where your requests originate:
 
 ```text
                         Record mode                          Replay mode
@@ -16,15 +16,35 @@ An HTTP proxy that records real API responses during test runs and replays them 
                          (.mock.json)                              (.mock.json)
 ```
 
+| Mechanism | What it records | Use case |
+| --------- | --------------- | -------- |
+| **Proxy** (`.mock.json`) | Server-side requests (SSR fetches from Next.js etc.) | Full-stack apps where the server calls the API |
+| **HAR** (`.har`) | Browser-side requests (browser `fetch`, extensions, SPAs) | SPAs, Chrome extensions, 3rd-party APIs |
+
+Both can be used together or independently.
+
+```text
+  Server-side (proxy)                    Browser-side (HAR)
+
+  Next.js SSR ──> Proxy ──> Real API     Browser ──> HAR intercept ──> Real API
+                    │                                      │
+                    └──> .mock.json                        └──> .har
+```
+
 ## Why
 
-- **No backend on CI** -- record once against the real API, replay on every CI run
-- **No manual mocks** -- capture real interactions instead of hand-writing fixtures
-- **SSR support** -- records server-side requests from Next.js and similar frameworks
-- **Deterministic** -- same responses every time, no flaky network
-- **WebSocket support** -- records and replays WebSocket connections
+- **No backend on CI** — record once against the real API, replay on every CI run
+- **No manual mocks** — capture real interactions instead of hand-writing fixtures
+- **SSR support** — records server-side requests from Next.js and similar frameworks
+- **Browser-side support** — records browser `fetch` calls, Chrome extension API calls, analytics, etc.
+- **Deterministic** — same responses every time, no flaky network
+- **WebSocket support** — records and replays WebSocket connections
 
-## Quick Start
+---
+
+## Browser-only / SPA / Extension Quick Start
+
+If your app or extension makes API calls entirely from the browser (no SSR), you only need the HAR mechanism. No proxy backend is required for the actual recording — the proxy process just provides session management.
 
 ### 1. Install
 
@@ -32,77 +52,145 @@ An HTTP proxy that records real API responses during test runs and replays them 
 npm install --save-dev test-proxy-recorder
 ```
 
-### 2. Add scripts to `package.json`
+### 2. Add the proxy to `playwright.config.ts`
+
+```typescript
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  webServer: {
+    command: 'test-proxy-recorder https://api.example.com --port 8100 --dir ./e2e/recordings',
+    url: 'http://localhost:8100/__control',
+    reuseExistingServer: true,
+  },
+});
+```
+
+> The proxy target (`https://api.example.com`) does not matter for browser-only recording — it is only used if server-side (SSR) requests also need to be proxied. The proxy process must run so its `/__control` endpoint is available for session management.
+
+### 3. Write a fixture
+
+```typescript
+// e2e/fixtures.ts
+import { test as base, type Page, type BrowserContext } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+// Match the external API domain your browser makes requests to.
+// In record mode these requests go to the real API and are saved.
+// In replay mode they are served from disk — no network needed.
+const CLIENT_SIDE_URL = /api\.example\.com/;
+
+// Change to 'record' to hit the real API and update recordings.
+const MODE = 'replay' as const;
+
+export const test = base.extend<{ page: Page }>({
+  page: async ({ context }, use, testInfo) => {
+    const page = await context.newPage();
+    await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
+    await use(page);
+  },
+});
+```
+
+### 4. Write a test
+
+```typescript
+// e2e/my.test.ts
+import { test, expect } from './fixtures';
+
+test('homepage loads', async ({ page }) => {
+  await page.goto('https://myapp.com/');
+  await expect(page.getByText('Welcome')).toBeVisible();
+});
+```
+
+### 5. Record — run once against the real API
+
+```bash
+# In fixtures.ts: const MODE = 'record' as const;
+npx playwright test
+# .har files are written to e2e/recordings/ automatically
+```
+
+### 6. Switch to replay and commit
+
+```bash
+# In fixtures.ts: const MODE = 'replay' as const;
+git add e2e/recordings/
+git commit -m "add e2e recordings"
+```
+
+CI now runs without any network access.
+
+> Do **not** add `e2e/recordings` to `.gitignore`. Recordings must be in git for CI replay.
+>
+> Add this to `.gitattributes` to collapse large recording files in PR diffs:
+>
+> ```text
+> /e2e/recordings/** binary
+> ```
+
+---
+
+## Full-stack (SSR + browser) Quick Start
+
+For apps like Next.js where both the server AND the browser make API calls, use both mechanisms together.
+
+### 1. Add scripts to `package.json`
 
 ```json
 {
   "scripts": {
-    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings"
+    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
+    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
   }
 }
 ```
 
-> **Tip:** Use `concurrently` to run proxy + app together.
-> `INTERNAL_API_URL` is the env var your app uses for the API base URL -- point it at the proxy instead of the real backend. Use proxy address for dev/test and real backend for production environment.
-> Replace it with whatever env var your app uses (e.g. `API_URL`, `NEXT_PUBLIC_API_URL`).
->
-> ```json
-> {
->   "scripts": {
->     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
->     "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
->     "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
->   }
-> }
-> ```
+> `INTERNAL_API_URL` is the env var your app uses for the API base URL — point it at the proxy instead of the real backend. Replace it with whatever env var your app uses (e.g. `API_URL`, `NEXT_PUBLIC_API_URL`).
 >
 > **Next.js note:** Prefer `build` + `serve` over `dev` for recording/replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
 
-### 3. Write a test
-
-Pass `'record'` the first time you run a test. Recordings are written to `e2e/recordings/` automatically — there is nothing to create by hand. Once the files exist, switch to `'replay'`.
+### 2. Write a test
 
 ```typescript
 import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-test('homepage loads', async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, 'record'); // first run: writes recordings
-  // await playwrightProxy.before(page, testInfo, 'replay'); // afterwards: reads recordings
+// SSR requests (server → proxy) are recorded to .mock.json.
+// Browser requests to the proxy URL are also covered.
+const CLIENT_SIDE_URL = /localhost:8100/;
 
+// Change to 'record' to update recordings.
+const MODE = 'replay' as const;
+
+test.beforeEach(async ({ page }, testInfo) => {
+  await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
+});
+
+test('homepage loads', async ({ page }) => {
   await page.goto('/');
   await expect(page.getByText('Welcome')).toBeVisible();
 });
 ```
 
-### 4. Run in record mode — recordings are created automatically
-
-Start the proxy + backend, then run the tests. The proxy intercepts every request and writes the response to disk.
+### 3. Record
 
 ```bash
-# Terminal 1 — start proxy and app (backend must be running)
+# Terminal 1
 npm run serve:proxy
 
-# Terminal 2 — run tests one by one; .mock.json files are written to e2e/recordings/ automatically
-npx playwright test --ui
+# Terminal 2 — .mock.json and .har files are written automatically
+npx playwright test
 ```
 
-### 5. Switch to replay and commit
-
-Change `'record'` to `'replay'` in your test, commit the generated files, and CI runs without a backend.
+### 4. Switch to replay and commit
 
 ```bash
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```
-
-> Do **not** add `e2e/recordings` to `.gitignore`. Recordings must be in git for CI replay.
->
-> Add this to `.gitattributes` to collapse large mock files in PR diffs:
->
-> ```text
-> /e2e/recordings/** binary
-> ```
 
 ---
 
@@ -124,21 +212,32 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
+---
+
 ## Playwright Integration
 
-### Basic pattern
+### `playwrightProxy.before(page, testInfo, mode, options?)`
+
+Call this at the start of each test (or in a `beforeEach` / page fixture). It sets the proxy mode for the session and, if `url` is provided, sets up HAR recording for browser-side requests.
 
 ```typescript
-import { test } from '@playwright/test';
-import { playwrightProxy } from 'test-proxy-recorder';
-
-test('my test', async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, 'replay');
-  // ... test code
+await playwrightProxy.before(page, testInfo, 'replay', {
+  // url: pattern for browser-side requests to record/replay via HAR.
+  //
+  // Use the ACTUAL external API domain — not the proxy URL.
+  // Examples:
+  //   /api\.example\.com/           — your own API
+  //   /x\.com/                      — record all x.com browser traffic (Chrome extension tests)
+  //   /cognito-.*amazonaws\.com/    — 3rd-party auth
+  url: /api\.example\.com/,
 });
 ```
 
-`playwrightProxy.before()` sets the proxy mode, attaches a session header (`x-test-rcrd-id`), and registers cleanup on page close. Recording filenames are derived from test names (`"create a user"` -> `create-a-user.mock.json`).
+**`url` pattern:** matches the real external domain that the browser calls. In record mode requests go to the real API and are saved to a `.har` file. In replay mode they are served from that file — no network needed. This pattern does **not** point to the proxy (`localhost:8100`).
+
+**Exception — full-stack apps:** when the browser also calls `localhost:8100` (because the frontend is configured with the proxy URL as its API base), use `/localhost:8100/` as the pattern.
+
+Recording filenames are derived from test names (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
 ### Global teardown (recommended)
 
@@ -158,27 +257,21 @@ export default defineConfig({
 });
 ```
 
-### Client-side recording (3rd party APIs)
-
-For browser-side requests that don't go through the proxy (e.g. AWS Cognito, analytics), use HAR recording:
-
-```typescript
-await playwrightProxy.before(page, testInfo, 'replay', {
-  url: /cognito-.*amazonaws\.com|\.stream-io-api\.com/,
-});
-```
-
-Recordings are stored alongside server-side files:
+### Recording files
 
 ```text
 e2e/recordings/
-  my-test.mock.json   # server-side (proxy)
-  my-test.har         # client-side (HAR)
+  my-test.mock.json   # server-side (proxy) — SSR fetches
+  my-test.har         # client-side (HAR)   — browser fetches
 ```
+
+---
 
 ## Next.js Integration
 
-The proxy identifies sessions via a custom header. For SSR requests to carry this header, use one of:
+SSR frameworks like Next.js make server-side `fetch` calls that go through the proxy without a browser context. The proxy identifies which session those requests belong to via the `x-test-rcrd-id` header — the same header `playwrightProxy.before()` sets on the browser `page`. This header is **only required for SSR** — for browser-only tests the proxy falls back to the globally set session automatically.
+
+For SSR requests to carry this header, use one of:
 
 ### Middleware (recommended)
 
@@ -208,6 +301,8 @@ const res = await fetch('http://localhost:8100/api/data', {
 });
 ```
 
+---
+
 ## Control Endpoint
 
 The proxy exposes `/__control` for programmatic mode switching.
@@ -230,6 +325,8 @@ interface ControlRequest {
 }
 ```
 
+---
+
 ## API Reference
 
 ### `playwrightProxy`
@@ -240,7 +337,7 @@ const playwrightProxy: {
     page: Page,
     testInfo: TestInfo,
     mode: 'record' | 'replay' | 'transparent',
-    options?: number | { url?: string | RegExp; timeout?: number }
+    options?: { url?: string | RegExp; timeout?: number }
   ): Promise<void>;
 
   teardown(): Promise<void>;
@@ -268,14 +365,7 @@ function createHeadersWithRecordingId(
 ): Record<string, string>;
 ```
 
-## Typical Workflow
-
-```text
-1. Record       start proxy + app + backend, run tests with 'record' mode
-2. Commit       git add e2e/recordings/
-3. Replay       start proxy + app (no backend), run tests with 'replay' mode
-4. Update       re-record when API changes, commit new recordings
-```
+---
 
 ## Next.js 16
 
@@ -342,9 +432,11 @@ pnpm --filter example-nextjs16 test:e2e:record
 pnpm --filter example-nextjs16 test:e2e
 ```
 
+---
+
 ## Parallel Replay: Do Not Call `teardown()` Per-Test
 
-`playwrightProxy.teardown()` sets the **global** proxy mode to `transparent`. With `fullyParallel: true`, each Playwright worker runs its own `test.afterAll`. If a fast test completes and calls `teardown()` while a slower test (e.g., one with more interaction steps) is still running, the proxy switches to transparent mid-test. The remaining requests are forwarded to the real backend instead of being replayed, causing failures.
+`playwrightProxy.teardown()` sets the **global** proxy mode to `transparent`. With `fullyParallel: true`, each Playwright worker runs its own `test.afterAll`. If a fast test completes and calls `teardown()` while a slower test is still running, the proxy switches to transparent mid-test and remaining requests are forwarded to the real backend instead of being replayed.
 
 **Wrong:**
 
@@ -356,6 +448,8 @@ test.afterAll(async () => {
 ```
 
 **Correct:** omit `test.afterAll`. Session cleanup is automatic via `context.on('close')` → `cleanupSession()`. Use a [global teardown](https://playwright.dev/docs/test-global-setup-teardown) if you need to reset the proxy after a full test run.
+
+---
 
 ## Requirements
 
