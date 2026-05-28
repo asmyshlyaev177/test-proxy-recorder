@@ -451,6 +451,18 @@ test.afterAll(async () => {
 
 ---
 
+## AI Agent Skills
+
+If you use an AI coding agent (Claude Code, Cursor, Copilot, etc.), install the skills for this library so the agent generates correct setup code:
+
+```bash
+npx @tanstack/intent@latest install
+```
+
+This adds `test-proxy-recorder` skills to your project. The agent will then know the correct proxy/fixture setup, record vs. replay workflow, and Next.js SSR header patterns without needing guidance.
+
+---
+
 ## Requirements
 
 - Node.js >= 22.0.0

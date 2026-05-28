@@ -1,0 +1,62 @@
+# skills/_artifacts/skill_tree.yaml
+library:
+  name: 'test-proxy-recorder'
+  version: '0.3.5'
+  repository: 'https://github.com/asmyshlyaev177/test-proxy-recorder'
+  description: 'Records real API responses through an HTTP proxy and replays them in Playwright tests — no backend required on CI.'
+generated_from:
+  domain_map: '_artifacts/domain_map.yaml'
+  skill_spec: '_artifacts/skill_spec.md'
+generated_at: '2026-05-28'
+
+# Minimal library fast path: 2 skills, flat structure, no router/overview skill.
+# Skills are standalone — no parent registry needed.
+
+skills:
+  - name: 'proxy-setup'
+    slug: 'proxy-setup'
+    type: 'core'
+    domain: 'proxy-setup'
+    path: 'skills/proxy-setup/SKILL.md'
+    package: 'packages/test-proxy-recorder'
+    description: >
+      Set up test-proxy-recorder for any Playwright project: proxy CLI,
+      package.json scripts, three-service architecture (UI → proxy → backend),
+      playwright.config.ts webServer, per-test fixtures with playwrightProxy.before(),
+      HAR browser-side recording, record/replay/transparent modes, parallel execution,
+      and the record-once→commit→replay-on-CI lifecycle.
+    requires: []
+    sources:
+      - 'asmyshlyaev177/test-proxy-recorder:README.md'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwright/index.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/types.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16/package.json'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-extension/e2e/fixtures.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-extension/playwright.config.ts'
+    subsystems:
+      - 'browser-only (HAR only, no SSR)'
+      - 'full-stack (proxy + HAR, SSR apps)'
+    references: []
+
+  - name: 'nextjs-ssr'
+    slug: 'nextjs-ssr'
+    type: 'framework'
+    domain: 'ssr-headers'
+    path: 'skills/nextjs-ssr/SKILL.md'
+    package: 'packages/test-proxy-recorder'
+    description: >
+      Wire x-test-rcrd-id session header through Next.js so server-side fetches
+      are recorded under the correct test session. Covers setNextProxyHeaders,
+      createHeadersWithRecordingId, getRecordingId, middleware.ts (Next.js 13–15),
+      proxy.ts (Next.js 16), React cache() memoization, and the axios SSR
+      interceptor pattern. Required for any Next.js app using SSR fetches.
+    requires:
+      - 'proxy-setup'
+    sources:
+      - 'asmyshlyaev177/test-proxy-recorder:README.md'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/middleware.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16'
+    subsystems:
+      - 'Next.js 13–15 (middleware.ts)'
+      - 'Next.js 16 (proxy.ts)'
+    references: []
