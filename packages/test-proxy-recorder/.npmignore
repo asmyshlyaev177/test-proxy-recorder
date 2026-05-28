@@ -1,0 +1,43 @@
+# Source files
+src/
+*.ts
+!*.d.ts
+
+# Tests - be specific about patterns
+**/**.test.js
+**/**.test.d.ts
+**/**.test.js.map
+**/**.test.d.ts.map
+**/**.integration.test.js
+**/**.integration.test.d.ts
+**/**.integration.test.js.map
+**/**.integration.test.d.ts.map
+dist/**/*.test.*
+dist/**/*.integration.test.*
+
+# Config files
+tsconfig.json
+vitest.config.ts
+eslint.config.js
+.editorconfig
+
+# Development files
+node_modules/
+.vscode/
+.idea/
+*.log
+.DS_Store
+
+# Build artifacts
+*.tsbuildinfo
+*.map
+!dist/**/*.d.ts.map
+
+# Package manager
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Git
+.git/
+.gitignore

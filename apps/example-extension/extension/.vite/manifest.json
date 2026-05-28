@@ -1,0 +1,57 @@
+{
+  "../../../../../../@crx/manifest": {
+    "file": "assets/crx-manifest.js-pMD6BVXz.js",
+    "name": "crx-manifest.js",
+    "src": "../../../../../../@crx/manifest",
+    "isEntry": true
+  },
+  "_analytics-D-cN9lO_.js": {
+    "file": "assets/analytics-D-cN9lO_.js",
+    "name": "analytics"
+  },
+  "_content.tsx-loader-DEVYzAsR.js": {
+    "file": "assets/content.tsx-loader-DEVYzAsR.js",
+    "src": "_content.tsx-loader-DEVYzAsR.js"
+  },
+  "_countries-CPQFDGlg.js": {
+    "file": "assets/countries-CPQFDGlg.js",
+    "name": "countries"
+  },
+  "pages/options.html": {
+    "file": "assets/options.html-WQwCGucH.js",
+    "name": "options.html",
+    "src": "pages/options.html",
+    "isEntry": true,
+    "imports": [
+      "pages/options.html"
+    ],
+    "css": [
+      "assets/options-BVbSfU9V.css"
+    ]
+  },
+  "scripts/content.tsx": {
+    "file": "assets/content.tsx-DWHZEvHZ.js",
+    "name": "content.tsx",
+    "src": "scripts/content.tsx",
+    "isEntry": true,
+    "imports": [
+      "_countries-CPQFDGlg.js"
+    ]
+  },
+  "scripts/page-script.ts": {
+    "file": "assets/page-script.ts-B_Y-SJui.js",
+    "name": "page-script.ts",
+    "src": "scripts/page-script.ts",
+    "isEntry": true
+  },
+  "scripts/service-worker.ts": {
+    "file": "assets/service-worker.ts-Cvb4Pcse.js",
+    "name": "service-worker.ts",
+    "src": "scripts/service-worker.ts",
+    "isEntry": true,
+    "imports": [
+      "_analytics-D-cN9lO_.js",
+      "_countries-CPQFDGlg.js"
+    ]
+  }
+}
