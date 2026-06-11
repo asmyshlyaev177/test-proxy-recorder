@@ -13,12 +13,12 @@
 
 | Skill | Type | Domain | What it covers | Failure modes |
 | --- | --- | --- | --- | --- |
-| proxy-setup | core | wiring up the proxy | CLI, package.json scripts, playwright.config.ts webServer, fixtures, HAR url pattern, record/replay lifecycle, parallel execution | 6 |
-| nextjs-ssr | framework | forwarding session identity through SSR | middleware.ts vs proxy.ts, setNextProxyHeaders, createHeadersWithRecordingId, React cache() pattern, axios interceptor | 5 |
+| proxy-setup | core | wiring up the proxy | CLI, package.json scripts, playwright.config.ts webServer, fixtures, HAR url pattern, record/replay lifecycle, parallel execution | 7 |
+| nextjs-ssr | framework | forwarding session identity through SSR | middleware.ts vs proxy.ts, setNextProxyHeaders, createHeadersWithRecordingId, React cache() pattern, axios interceptor, TEST_PROXY_RECORDER_ENABLED | 6 |
 
 ## Failure Mode Inventory
 
-### proxy-setup (6 failure modes)
+### proxy-setup (7 failure modes)
 
 | # | Mistake | Priority | Source | Cross-skill? |
 | --- | --- | --- | --- | --- |
@@ -30,15 +30,16 @@
 | 6 | Using Next.js dev server for recording instead of build+start | MEDIUM | README, example-nextjs16/package.json | — |
 | 7 | Running recording tests with multiple workers | MEDIUM | example-nextjs16/package.json | — |
 
-### nextjs-ssr (5 failure modes)
+### nextjs-ssr (6 failure modes)
 
 | # | Mistake | Priority | Source | Cross-skill? |
 | --- | --- | --- | --- | --- |
-| 1 | Using middleware.ts in Next.js 16 instead of proxy.ts | HIGH | README — Next.js 16 section | — |
+| 1 | Using middleware.ts (or a middleware export) in Next.js 16 instead of proxy.ts exporting proxy | HIGH | apps/example-nextjs16/proxy.ts, channels/web/proxy.ts | — |
 | 2 | Calling setNextProxyHeaders without injecting into individual fetches | HIGH | README, channels/web/app/api | — |
-| 3 | Not guarding header forwarding in production | MEDIUM | src/nextjs/middleware.ts | — |
-| 4 | Re-reading next/headers on every SSR fetch instead of caching | MEDIUM | channels/web/lib/recording-id.ts | — |
-| 5 | Importing next/headers at module level in axios interceptor | MEDIUM | channels/web/core/api/axios.ts | — |
+| 3 | Recording against a production build without TEST_PROXY_RECORDER_ENABLED | HIGH | src/nextjs/middleware.ts isRecorderEnabled(), channels/web start:proxy script | proxy-setup (record against build+start) |
+| 4 | Not guarding header forwarding in production | MEDIUM | src/nextjs/middleware.ts | — |
+| 5 | Re-reading next/headers on every SSR fetch instead of caching | MEDIUM | channels/web/lib/recording-id.ts | — |
+| 6 | Importing next/headers at module level in axios interceptor | MEDIUM | channels/web/core/api/axios.ts | — |
 
 ## Tensions
 
@@ -47,6 +48,7 @@
 | record simplicity vs. replay determinism | proxy-setup ↔ proxy-setup | Agents default dev server for recording; must use build+start |
 | per-test cleanup vs. parallel safety | proxy-setup ↔ proxy-setup | Agents add teardown() to afterAll/afterEach; correct pattern omits it entirely |
 | middleware simplicity vs. SSR header completeness | proxy-setup ↔ nextjs-ssr | Agents stop at middleware and miss per-fetch header injection |
+| record against build+start vs. production env guards | proxy-setup ↔ nextjs-ssr | Recording requires a production build, but production disables the Next.js helpers — TEST_PROXY_RECORDER_ENABLED=true must be set |
 
 ## Cross-References
 

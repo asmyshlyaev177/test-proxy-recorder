@@ -85,12 +85,17 @@ The app's API base URL must be pointed at the proxy, not the real backend.
 {
   "scripts": {
     "proxy": "test-proxy-recorder http://localhost:3002 --port 8100 --dir ./e2e/recordings",
-    "start:all": "concurrently \"pnpm proxy\" \"pnpm start\"",
+    "start:all": "concurrently \"pnpm proxy\" \"INTERNAL_API_URL=http://localhost:8100 pnpm start\"",
     "test:e2e": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3000 http://127.0.0.1:8100/__control && playwright test --retries 1\"",
     "test:e2e:record": "pnpm build && playwright test --workers 1 --ui"
   }
 }
 ```
+
+`INTERNAL_API_URL` stands in for whatever env var your app reads its API base
+URL from — it must point at the proxy (see Common Mistakes). For Next.js apps
+running a production build, also set `TEST_PROXY_RECORDER_ENABLED=true`
+(see test-proxy-recorder/nextjs-ssr).
 
 ```typescript
 // e2e/my.test.ts

@@ -63,7 +63,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
   setNextProxyHeaders(request, response);
   return response;
@@ -169,7 +169,7 @@ if (recordingId) {
 
 ## Common Mistakes
 
-### HIGH Using middleware.ts in Next.js 16
+### HIGH Using middleware.ts (or a middleware export) in Next.js 16
 
 Wrong:
 ```typescript
@@ -186,7 +186,7 @@ Correct:
 ```typescript
 // proxy.ts — Next.js 16 middleware entry point, at project root
 import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
-export function middleware(request) {
+export function proxy(request) {
   const response = NextResponse.next();
   setNextProxyHeaders(request, response);
   return response;
@@ -197,10 +197,11 @@ export const config = {
 ```
 
 Next.js 16 replaced `middleware.ts` with `proxy.ts` as the middleware entry
-point. Using `middleware.ts` silently does nothing — the session header is never
-forwarded and all SSR recordings are grouped under the wrong session.
+point, and the exported function is named `proxy`, not `middleware`. Keeping
+either old name silently does nothing — the session header is never forwarded
+and all SSR recordings are grouped under the wrong session.
 
-Source: README.md — Next.js 16 section
+Source: apps/example-nextjs16/proxy.ts
 
 ---
 
@@ -242,6 +243,38 @@ fetch calls — each server-side fetch must use `createHeadersWithRecordingId()`
 explicitly.
 
 Source: README.md — Manual header forwarding; channels/web/app/api
+
+---
+
+### HIGH Recording against a production build without TEST_PROXY_RECORDER_ENABLED
+
+Wrong:
+```json
+{
+  "scripts": {
+    "start:proxy": "concurrently \"pnpm proxy\" \"INTERNAL_API_URL=http://localhost:8100 next start\""
+  }
+}
+```
+
+Correct:
+```json
+{
+  "scripts": {
+    "start:proxy": "concurrently \"pnpm proxy\" \"INTERNAL_API_URL=http://localhost:8100 TEST_PROXY_RECORDER_ENABLED=true next start\""
+  }
+}
+```
+
+Recording should run against a production build (`next build && next start` —
+see proxy-setup), but `next build` sets `NODE_ENV=production`, which turns
+`setNextProxyHeaders` and `createHeadersWithRecordingId` into silent no-ops.
+SSR requests still flow through the proxy but lose their session ID, so they
+are recorded under the wrong session — or not at all. Set
+`TEST_PROXY_RECORDER_ENABLED=true` on the app process whenever testing a
+production build.
+
+Source: packages/test-proxy-recorder/src/nextjs/middleware.ts — isRecorderEnabled()
 
 ---
 
