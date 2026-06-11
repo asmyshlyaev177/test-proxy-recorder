@@ -17,3 +17,5 @@ trace.zip
 test-results
 
 **/playwright-report
+
+.claude/settings.json
