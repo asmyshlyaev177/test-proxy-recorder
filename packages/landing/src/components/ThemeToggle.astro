@@ -1,0 +1,76 @@
+<button class="theme-toggle" type="button" aria-label="Switch color theme">
+  <svg
+    class="icon-sun"
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    aria-hidden="true"
+  >
+    <circle cx="12" cy="12" r="4.2"></circle>
+    <path
+      d="M12 2.5v2.4M12 19.1v2.4M2.5 12h2.4M19.1 12h2.4M5.3 5.3l1.7 1.7M17 17l1.7 1.7M18.7 5.3L17 7M7 17l-1.7 1.7"
+    ></path>
+  </svg>
+  <svg
+    class="icon-moon"
+    width="17"
+    height="17"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="2"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M20.6 14.3A8.5 8.5 0 0 1 9.7 3.4a8.5 8.5 0 1 0 10.9 10.9Z"></path>
+  </svg>
+</button>
+
+<script>
+  const btn = document.querySelector<HTMLButtonElement>('.theme-toggle');
+  btn?.addEventListener('click', () => {
+    const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+    document.documentElement.dataset.theme = next;
+    localStorage.setItem('theme', next);
+  });
+</script>
+
+<style>
+  .theme-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2.15rem;
+    height: 2.15rem;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    background: transparent;
+    cursor: pointer;
+    color: var(--muted);
+    transition:
+      border-color 160ms var(--ease-out),
+      color 160ms var(--ease-out);
+  }
+
+  .theme-toggle:hover {
+    border-color: var(--muted);
+    color: var(--ink);
+  }
+
+  .icon-sun {
+    display: none;
+  }
+
+  :global([data-theme='dark']) .icon-sun {
+    display: block;
+  }
+
+  :global([data-theme='dark']) .icon-moon {
+    display: none;
+  }
+</style>

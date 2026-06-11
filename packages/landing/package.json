@@ -1,0 +1,21 @@
+{
+  "name": "landing",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "og:image": "node scripts/generate-og-image.mjs"
+  },
+  "dependencies": {
+    "@astrojs/sitemap": "^3.7.3",
+    "@fontsource-variable/schibsted-grotesk": "^5.2.8",
+    "@fontsource-variable/spline-sans-mono": "^5.2.8",
+    "astro": "^6.4.6"
+  },
+  "devDependencies": {
+    "sharp": "^0.35.0"
+  }
+}

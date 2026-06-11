@@ -16,6 +16,8 @@
     "test": "pnpm --filter test-proxy-recorder test",
     "test:run": "pnpm --filter test-proxy-recorder test:run",
     "test:coverage": "pnpm --filter test-proxy-recorder test:coverage",
+    "landing:dev": "pnpm --filter landing dev",
+    "landing:build": "pnpm --filter landing build",
     "example:test:e2e": "pnpm --filter example-nextjs16 test:e2e",
     "extension:test:e2e": "pnpm --filter example-extension test:e2e"
   },

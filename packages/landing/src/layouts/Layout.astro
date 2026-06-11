@@ -1,0 +1,229 @@
+---
+import schibstedUrl from '@fontsource-variable/schibsted-grotesk/files/schibsted-grotesk-latin-wght-normal.woff2?url';
+import splineItalicUrl from '@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-wght-italic.woff2?url';
+import splineUrl from '@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-wght-normal.woff2?url';
+import '../styles/global.css';
+import ThemeToggle from '../components/ThemeToggle.astro';
+
+const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
+const npmUrl = 'https://www.npmjs.com/package/test-proxy-recorder';
+const authorUrl = 'https://asmyshlyaev177.dev';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+
+const title = 'Playwright API record & replay — test-proxy-recorder';
+const description =
+  'Record real API responses during Playwright runs and replay them on CI. No backend, no hand-written mocks. SSR proxy + browser HAR, WebSockets. Free & MIT.';
+
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const ogImage = new URL('og.png', Astro.site);
+
+// Latin-only @font-face, declared here so the hashed font URLs can be
+// preloaded. font-display: optional + preload = no visible font swap:
+// the font wins the race on normal loads; on very slow cold loads the
+// fallback simply stays for the session instead of swapping mid-read.
+const latinRange =
+  'U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD';
+const fontFaceCss = `
+@font-face{font-family:'Schibsted Grotesk Variable';font-style:normal;font-display:optional;font-weight:400 900;src:url(${schibstedUrl}) format('woff2-variations');unicode-range:${latinRange}}
+@font-face{font-family:'Spline Sans Mono Variable';font-style:normal;font-display:optional;font-weight:300 700;src:url(${splineUrl}) format('woff2-variations');unicode-range:${latinRange}}
+@font-face{font-family:'Spline Sans Mono Variable';font-style:italic;font-display:swap;font-weight:300 700;src:url(${splineItalicUrl}) format('woff2-variations');unicode-range:${latinRange}}
+`;
+
+const jsonLd = {
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'test-proxy-recorder',
+  description,
+  url: canonical.href,
+  applicationCategory: 'DeveloperApplication',
+  applicationSubCategory: 'Testing tool',
+  operatingSystem: 'Node.js >= 22',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  license: `${repo}/blob/master/LICENSE`,
+  downloadUrl: npmUrl,
+  installUrl: npmUrl,
+  sameAs: [repo, npmUrl],
+  keywords:
+    'playwright, e2e testing, api mocking, record replay, HAR, deterministic tests, test proxy, man-in-the-middle proxy, mitm proxy, http recording proxy, mock server, network stubbing, api fixtures, flaky tests',
+  author: {
+    '@type': 'Person',
+    name: 'asmyshlyaev177',
+    url: authorUrl,
+  },
+};
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="preload" as="font" type="font/woff2" href={schibstedUrl} crossorigin />
+    <link rel="preload" as="font" type="font/woff2" href={splineUrl} crossorigin />
+    <style set:html={fontFaceCss}></style>
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="author" content="asmyshlyaev177" />
+    <link rel="canonical" href={canonical.href} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={canonical.href} />
+    <meta property="og:site_name" content="test-proxy-recorder" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:image" content={ogImage.href} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta
+      property="og:image:alt"
+      content="test-proxy-recorder — record once, replay forever. Diagram of record and replay modes."
+    />
+
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={ogImage.href} />
+
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#101011" />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify(jsonLd)} />
+    <script is:inline>
+      const stored = localStorage.getItem('theme');
+      const theme =
+        stored ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.dataset.theme = theme;
+    </script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="container header-row">
+        <a class="wordmark" href={`${base}/`}>
+          <span class="wordmark-dot" aria-hidden="true"></span>
+          test-proxy-recorder
+        </a>
+        <nav aria-label="Site">
+          <a href="#quick-start">Quick start</a>
+          <a href={npmUrl}>npm</a>
+          <a href={repo}>GitHub</a>
+          <ThemeToggle />
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-row">
+        <p>MIT licensed. Built by <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>.</p>
+        <p class="footer-meta">Node ≥ 22 · @playwright/test ≥ 1.0</p>
+      </div>
+    </footer>
+
+    <script>
+      document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          await navigator.clipboard.writeText(btn.dataset.copy ?? '');
+          btn.classList.add('copied');
+          const label = btn.querySelector('.copy-label');
+          if (label) label.textContent = 'Copied';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            if (label) label.textContent = 'Copy';
+          }, 1600);
+        });
+      });
+    </script>
+
+    <style>
+      .site-header {
+        position: sticky;
+        top: 0;
+        z-index: var(--z-sticky);
+        background: color-mix(in oklch, var(--bg) 88%, transparent);
+        backdrop-filter: blur(10px);
+        border-bottom: 1px solid var(--line);
+      }
+
+      .header-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        min-height: 3.75rem;
+      }
+
+      .wordmark {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.55rem;
+        font-family: var(--font-mono);
+        font-weight: 600;
+        font-size: 0.95rem;
+        color: var(--ink);
+        text-decoration: none;
+        letter-spacing: -0.01em;
+      }
+
+      .wordmark-dot {
+        width: 0.55rem;
+        height: 0.55rem;
+        border-radius: 50%;
+        background: var(--rec-bright);
+        box-shadow: 0 0 0 3px var(--rec-soft);
+      }
+
+      nav {
+        display: flex;
+        align-items: center;
+        gap: clamp(0.75rem, 2.5vw, 1.5rem);
+      }
+
+      nav a {
+        font-size: var(--step--1);
+        font-weight: 600;
+        color: var(--ink);
+        text-decoration: none;
+      }
+
+      nav a:hover {
+        color: var(--link);
+      }
+
+      .site-footer {
+        border-top: 1px solid var(--line);
+        padding-block: 2rem;
+      }
+
+      .footer-row {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 0.75rem;
+        font-size: var(--step--1);
+        color: var(--muted);
+      }
+
+      .footer-row a {
+        color: inherit;
+      }
+
+      .footer-meta {
+        font-family: var(--font-mono);
+        font-size: 0.8rem;
+      }
+
+      @media (max-width: 640px) {
+        nav a:not(:last-of-type) {
+          display: none;
+        }
+      }
+    </style>
+  </body>
+</html>
