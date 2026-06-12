@@ -4,6 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
+import { WebSocketServer } from 'ws';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, '..', 'data', 'todos.json');
 const PORT = process.env.MOCK_BACKEND_PORT ?? 3002;
@@ -109,6 +111,62 @@ const server = createServer(async (req, res) => {
     res.writeHead(500);
     res.end(JSON.stringify({ error: String(err) }));
   }
+});
+
+// WebSocket chat endpoint (ws://localhost:3002/ws/chat)
+// Message protocol (JSON):
+//   client -> { type: 'chat', text, sentAt? }  server -> { type: 'reply', text: 'Echo: ...', sentAt, serverId }
+//   client -> { type: 'burst', count }         server -> count x { type: 'burst-item', index, payload } + { type: 'burst-end', count }
+// Negotiates the 'chat-v1' subprotocol — browsers can't set custom headers on
+// WebSocket handshakes, so real-world apps pass tokens/versions via the
+// Sec-WebSocket-Protocol header; this verifies the proxy forwards and records it
+const wss = new WebSocketServer({
+  server,
+  path: '/ws/chat',
+  handleProtocols: (protocols) => (protocols.has('chat-v1') ? 'chat-v1' : false),
+});
+
+wss.on('connection', (socket) => {
+  socket.send(
+    JSON.stringify({
+      type: 'welcome',
+      message: 'Connected to chat',
+      protocol: socket.protocol || null,
+    }),
+  );
+
+  socket.on('message', (data) => {
+    let msg;
+    try {
+      msg = JSON.parse(data.toString());
+    } catch {
+      socket.send(JSON.stringify({ type: 'error', message: 'Invalid JSON' }));
+      return;
+    }
+
+    if (msg.type === 'chat') {
+      socket.send(
+        JSON.stringify({
+          type: 'reply',
+          text: `Echo: ${msg.text}`,
+          sentAt: msg.sentAt ?? null,
+          serverId: randomUUID(),
+        }),
+      );
+      return;
+    }
+
+    if (msg.type === 'burst') {
+      const count = Math.min(msg.count ?? 10, 100);
+      for (let i = 0; i < count; i++) {
+        socket.send(JSON.stringify({ type: 'burst-item', index: i, payload: `item-${i}` }));
+      }
+      socket.send(JSON.stringify({ type: 'burst-end', count }));
+      return;
+    }
+
+    socket.send(JSON.stringify({ type: 'error', message: `Unknown type: ${msg?.type}` }));
+  });
 });
 
 server.listen(PORT, () => {

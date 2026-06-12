@@ -14,6 +14,7 @@ const createMockPage = () => {
   const contextEventHandlers = new Map<string, Function>();
 
   const mockContext = {
+    addCookies: vi.fn().mockResolvedValue(undefined),
     on: vi.fn((event: string, handler: Function) => {
       contextEventHandlers.set(event, handler);
     }),

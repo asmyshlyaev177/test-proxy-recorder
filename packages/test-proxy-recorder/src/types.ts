@@ -48,6 +48,10 @@ export interface WebSocketRecording {
   messages: WebSocketMessage[];
   timestamp: string;
   key: string;
+  /** Client handshake headers (minus WebSocket internals like sec-websocket-key) */
+  headers?: http.IncomingHttpHeaders;
+  /** Subprotocol negotiated with the backend (from Sec-WebSocket-Protocol) */
+  protocol?: string;
 }
 
 export interface RecordingSession {

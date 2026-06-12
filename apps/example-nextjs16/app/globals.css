@@ -125,3 +125,33 @@ button:hover {
 .edit-input {
   flex: 1;
 }
+
+.ws-status {
+  font-weight: 600;
+}
+
+.ws-status-open {
+  color: #2e7d32;
+}
+
+.ws-status-connecting {
+  color: #f9a825;
+}
+
+.ws-status-closed {
+  color: #c62828;
+}
+
+.ws-message {
+  padding: 0.4rem 0;
+  border-bottom: 1px solid #eee;
+  font-size: 0.9rem;
+}
+
+.ws-message:last-child {
+  border-bottom: none;
+}
+
+.ws-message-sent {
+  color: #888;
+}

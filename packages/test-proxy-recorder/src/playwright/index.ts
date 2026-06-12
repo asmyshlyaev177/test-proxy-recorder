@@ -295,6 +295,19 @@ export const playwrightProxy = {
       [RECORDING_ID_HEADER]: sessionId,
     });
 
+    // Also set the fallback cookie on the proxy origin. WebSocket handshakes
+    // initiated by the browser cannot be intercepted by page.route() and may
+    // not receive extra HTTP headers in all browsers, but they do send
+    // cookies — the proxy reads proxy-recording-id as a fallback.
+    const fallbackProxyPort = getProxyPort();
+    await page.context().addCookies([
+      {
+        name: 'proxy-recording-id',
+        value: encodeURIComponent(sessionId),
+        url: `http://localhost:${fallbackProxyPort}`,
+      },
+    ]);
+
     // Set the proxy mode FIRST before setting up any route handlers
     await setProxyMode(mode, sessionId, timeout);
 

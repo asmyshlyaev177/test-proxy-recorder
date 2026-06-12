@@ -13,5 +13,12 @@ export default async function Page() {
   } catch {
     // backend not ready yet — render empty list
   }
-  return <TodoApp initialTodos={todos} />;
+  return (
+    <>
+      <TodoApp initialTodos={todos} />
+      <div className="container">
+        <a href="/websocket">WebSocket demo →</a>
+      </div>
+    </>
+  );
 }

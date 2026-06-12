@@ -13,6 +13,7 @@ import {
 } from 'vitest';
 import { WebSocket, WebSocketServer } from 'ws';
 
+import { RECORDING_ID_HEADER } from './constants.js';
 import { ProxyServer } from './ProxyServer.js';
 
 const TEST_RECORDINGS_DIR = path.join(
@@ -29,6 +30,7 @@ describe('ProxyServer WebSocket Tests', () => {
   let mockServer: http.Server | null = null;
   let wss: WebSocketServer | null = null;
   let receivedMessages: string[] = [];
+  let lastConnectionHeaders: http.IncomingHttpHeaders | null = null;
 
   beforeAll(async () => {
     // Create mock backend server with WebSocket support
@@ -40,8 +42,9 @@ describe('ProxyServer WebSocket Tests', () => {
     // Create WebSocket server
     wss = new WebSocketServer({ server: mockServer });
 
-    wss.on('connection', (ws) => {
+    wss.on('connection', (ws, req) => {
       console.log('Backend WebSocket connection established');
+      lastConnectionHeaders = req.headers;
 
       ws.on('message', (data) => {
         const message = data.toString();
@@ -90,6 +93,7 @@ describe('ProxyServer WebSocket Tests', () => {
 
     // Reset received messages
     receivedMessages = [];
+    lastConnectionHeaders = null;
 
     // Create and start proxy server
     proxyServer = new ProxyServer(MOCK_SERVER_URL, TEST_RECORDINGS_DIR);
@@ -340,6 +344,67 @@ describe('ProxyServer WebSocket Tests', () => {
       expect(clientMessages[0].data).toBe('recording-test');
     });
 
+    it('should forward and record handshake headers and subprotocol', async () => {
+      const ws = new WebSocket(
+        `ws://localhost:${PROXY_PORT}/ws`,
+        ['test-proto'],
+        {
+          headers: {
+            'x-api-key': 'secret-key-123',
+            cookie: 'session=abc',
+          },
+        },
+      );
+
+      const messages: string[] = [];
+
+      await new Promise<void>((resolve, reject) => {
+        ws.on('open', () => {
+          ws.send('header-test');
+        });
+
+        ws.on('message', (data) => {
+          messages.push(data.toString());
+          if (messages.length === 2) {
+            ws.close();
+          }
+        });
+
+        ws.on('close', () => resolve());
+        ws.on('error', (err) => reject(err));
+        setTimeout(() => reject(new Error('Timeout')), 5000);
+      });
+
+      // Subprotocol negotiated end to end (client <-> proxy <-> backend)
+      expect(ws.protocol).toBe('test-proto');
+
+      // Backend received the client's custom headers and subprotocol
+      expect(lastConnectionHeaders?.['x-api-key']).toBe('secret-key-123');
+      expect(lastConnectionHeaders?.cookie).toBe('session=abc');
+      expect(lastConnectionHeaders?.['sec-websocket-protocol']).toBe(
+        'test-proto',
+      );
+
+      // Save and inspect the recording file
+      await setProxyMode('transparent', sessionId);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${sessionId}.mock.json`,
+      );
+      const recording = JSON.parse(await fs.readFile(recordingPath, 'utf8'));
+      const wsRecording = recording.websocketRecordings[0];
+
+      expect(wsRecording.headers['x-api-key']).toBe('secret-key-123');
+      expect(wsRecording.headers.cookie).toBe('session=abc');
+      expect(wsRecording.headers['sec-websocket-protocol']).toBe('test-proto');
+      expect(wsRecording.protocol).toBe('test-proto');
+      // Handshake internals must not be recorded
+      expect(wsRecording.headers['sec-websocket-key']).toBeUndefined();
+      expect(wsRecording.headers.connection).toBeUndefined();
+    });
+
     it('should record multiple WebSocket messages', async () => {
       const ws = new WebSocket(`ws://localhost:${PROXY_PORT}/ws`);
 
@@ -588,7 +653,11 @@ describe('ProxyServer WebSocket Tests', () => {
       await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
       await setProxyMode('replay', multiSessionId);
 
-      const ws = new WebSocket(`ws://localhost:${PROXY_PORT}/ws`);
+      // Two replay sessions are now active (beforeEach + this one), so the
+      // recording ID header is required — same rule as HTTP replay routing
+      const ws = new WebSocket(`ws://localhost:${PROXY_PORT}/ws`, {
+        headers: { [RECORDING_ID_HEADER]: multiSessionId },
+      });
       const messages: string[] = [];
 
       await new Promise<void>((resolve, reject) => {
@@ -656,6 +725,230 @@ describe('ProxyServer WebSocket Tests', () => {
       });
 
       expect(errorReceived).toBe(true);
+    });
+
+    it('should answer with the recorded subprotocol during replay', async () => {
+      const protoSessionId = 'protocol-replay-session';
+      const recording = {
+        id: protoSessionId,
+        recordings: [],
+        websocketRecordings: [
+          {
+            url: '/ws',
+            key: 'WS__ws',
+            timestamp: new Date().toISOString(),
+            protocol: 'test-proto',
+            headers: { 'sec-websocket-protocol': 'test-proto' },
+            messages: [
+              {
+                direction: 'server-to-client',
+                data: 'welcome',
+                timestamp: new Date().toISOString(),
+              },
+            ],
+          },
+        ],
+      };
+
+      await fs.writeFile(
+        path.join(TEST_RECORDINGS_DIR, `${protoSessionId}.mock.json`),
+        JSON.stringify(recording, null, 2),
+      );
+      await setProxyMode('replay', protoSessionId);
+
+      // A client that requests a subprotocol fails the connection if the
+      // server doesn't answer with one — this verifies replay handles it
+      const ws = new WebSocket(
+        `ws://localhost:${PROXY_PORT}/ws`,
+        ['test-proto'],
+        {
+          headers: { [RECORDING_ID_HEADER]: protoSessionId },
+        },
+      );
+
+      const messages: string[] = [];
+
+      await new Promise<void>((resolve, reject) => {
+        ws.on('message', (data) => {
+          messages.push(data.toString());
+          ws.close();
+        });
+
+        ws.on('close', () => resolve());
+        ws.on('error', (err) => reject(err));
+        setTimeout(() => reject(new Error('Timeout')), 5000);
+      });
+
+      expect(ws.protocol).toBe('test-proto');
+      expect(messages).toEqual(['welcome']);
+    });
+
+    it('should replay a high frequency burst of server messages in order', async () => {
+      const burstSessionId = 'burst-replay-session';
+      const burstCount = 20;
+
+      const burstMessages = [
+        {
+          direction: 'server-to-client',
+          data: 'welcome',
+          timestamp: new Date().toISOString(),
+        },
+        {
+          direction: 'client-to-server',
+          data: 'start-burst',
+          timestamp: new Date().toISOString(),
+        },
+        ...Array.from({ length: burstCount }, (_, i) => ({
+          direction: 'server-to-client',
+          data: `item-${i}`,
+          timestamp: new Date().toISOString(),
+        })),
+        {
+          direction: 'server-to-client',
+          data: 'burst-end',
+          timestamp: new Date().toISOString(),
+        },
+      ];
+
+      const recording = {
+        id: burstSessionId,
+        recordings: [],
+        websocketRecordings: [
+          {
+            url: '/ws',
+            key: 'WS__ws',
+            timestamp: new Date().toISOString(),
+            messages: burstMessages,
+          },
+        ],
+      };
+
+      const recordingPath = path.join(
+        TEST_RECORDINGS_DIR,
+        `${burstSessionId}.mock.json`,
+      );
+      await fs.writeFile(recordingPath, JSON.stringify(recording, null, 2));
+      await setProxyMode('replay', burstSessionId);
+
+      // Two replay sessions are now active (beforeEach + this one), so the
+      // recording ID header is required — same rule as HTTP replay routing
+      const ws = new WebSocket(`ws://localhost:${PROXY_PORT}/ws`, {
+        headers: { [RECORDING_ID_HEADER]: burstSessionId },
+      });
+      const messages: string[] = [];
+
+      await new Promise<void>((resolve, reject) => {
+        ws.on('open', () => {
+          // wait for welcome first
+        });
+
+        ws.on('message', (data) => {
+          const message = data.toString();
+          messages.push(message);
+
+          if (message === 'welcome') {
+            ws.send('start-burst');
+            return;
+          }
+
+          if (message === 'burst-end') {
+            ws.close();
+            resolve();
+          }
+        });
+
+        ws.on('error', (err) => {
+          reject(err);
+        });
+
+        setTimeout(() => reject(new Error('Timeout')), 5000);
+      });
+
+      // All messages received in recorded order: welcome, item-0..item-19, burst-end
+      expect(messages).toEqual([
+        'welcome',
+        ...Array.from({ length: burstCount }, (_, i) => `item-${i}`),
+        'burst-end',
+      ]);
+    });
+
+    it('should route concurrent replay sessions by recording ID header', async () => {
+      const makeRecording = (id: string, reply: string) => ({
+        id,
+        recordings: [],
+        websocketRecordings: [
+          {
+            url: '/ws',
+            key: 'WS__ws',
+            timestamp: new Date().toISOString(),
+            messages: [
+              {
+                direction: 'server-to-client',
+                data: `welcome-${id}`,
+                timestamp: new Date().toISOString(),
+              },
+              {
+                direction: 'client-to-server',
+                data: 'ping',
+                timestamp: new Date().toISOString(),
+              },
+              {
+                direction: 'server-to-client',
+                data: reply,
+                timestamp: new Date().toISOString(),
+              },
+            ],
+          },
+        ],
+      });
+
+      await fs.writeFile(
+        path.join(TEST_RECORDINGS_DIR, 'session-a.mock.json'),
+        JSON.stringify(makeRecording('session-a', 'pong-a'), null, 2),
+      );
+      await fs.writeFile(
+        path.join(TEST_RECORDINGS_DIR, 'session-b.mock.json'),
+        JSON.stringify(makeRecording('session-b', 'pong-b'), null, 2),
+      );
+
+      // Activate both sessions; this.replayId now points to session-b, so
+      // session-a connections MUST be routed by the header
+      await setProxyMode('replay', 'session-a');
+      await setProxyMode('replay', 'session-b');
+
+      const runClient = (sessionId: string): Promise<string[]> =>
+        new Promise((resolve, reject) => {
+          const ws = new WebSocket(`ws://localhost:${PROXY_PORT}/ws`, {
+            headers: { [RECORDING_ID_HEADER]: sessionId },
+          });
+          const messages: string[] = [];
+
+          ws.on('message', (data) => {
+            const message = data.toString();
+            messages.push(message);
+
+            if (message.startsWith('welcome')) {
+              ws.send('ping');
+              return;
+            }
+
+            if (message.startsWith('pong')) {
+              ws.close();
+              resolve(messages);
+            }
+          });
+
+          ws.on('error', reject);
+          setTimeout(() => reject(new Error('Timeout')), 5000);
+        });
+
+      const [messagesA, messagesB] = await Promise.all([
+        runClient('session-a'),
+        runClient('session-b'),
+      ]);
+
+      expect(messagesA).toEqual(['welcome-session-a', 'pong-a']);
+      expect(messagesB).toEqual(['welcome-session-b', 'pong-b']);
     });
   });
 
