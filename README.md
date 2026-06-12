@@ -377,7 +377,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
   setNextProxyHeaders(request, response);
   return response;
@@ -451,9 +451,21 @@ test.afterAll(async () => {
 
 ---
 
+## AI Agent Skills
+
+If you use an AI coding agent (Claude Code, Cursor, Copilot, etc.), install the skills for this library so the agent generates correct setup code:
+
+```bash
+npx @tanstack/intent@latest install
+```
+
+This adds `test-proxy-recorder` skills to your project. The agent will then know the correct proxy/fixture setup, record vs. replay workflow, and Next.js SSR header patterns without needing guidance.
+
+---
+
 ## Requirements
 
-- Node.js >= 22.0.0
+- Node.js >= 20.0.0
 - @playwright/test >= 1.0.0 (peer dependency)
 
 ## Contributing

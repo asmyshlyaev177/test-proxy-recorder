@@ -26,16 +26,21 @@ test('creates a new todo', async ({ page }) => {
 
   await expect(page.getByTestId('todo-text').first()).toHaveText('Buy groceries');
 
-  await page.waitForTimeout(1000);
 });
 
 test('filters todos by text', async ({ page }) => {
   await page.goto('/');
 
   await page.getByTestId('new-todo-input').fill('Buy groceries');
+  // Wait for response could be needed for fast sequential requests to the same api
+  const res1 = page.waitForResponse(/\/todos/);
   await page.getByTestId('add-btn').click();
+  await res1;
+
   await page.getByTestId('new-todo-input').fill('Read a book');
+  const res2 = page.waitForResponse(/\/todos/);
   await page.getByTestId('add-btn').click();
+  await res2;
 
   await page.getByTestId('filter-input').fill('buy');
 
@@ -43,7 +48,6 @@ test('filters todos by text', async ({ page }) => {
   await expect(items).toHaveCount(1);
   await expect(items.first().getByTestId('todo-text')).toHaveText('Buy groceries');
 
-  await page.waitForTimeout(1000);
 });
 
 test('toggles a todo as completed', async ({ page }) => {
@@ -56,7 +60,6 @@ test('toggles a todo as completed', async ({ page }) => {
 
   await expect(page.getByTestId('todo-text').first()).toHaveClass(/completed/);
 
-  await page.waitForTimeout(1000);
 });
 
 test('edits a todo', async ({ page }) => {
@@ -71,7 +74,6 @@ test('edits a todo', async ({ page }) => {
 
   await expect(page.getByTestId('todo-text').first()).toHaveText('New text');
 
-  await page.waitForTimeout(1000);
 });
 
 test('deletes a todo', async ({ page }) => {
@@ -85,5 +87,4 @@ test('deletes a todo', async ({ page }) => {
 
   await expect(page.getByTestId('todo-item')).toHaveCount(0);
 
-  await page.waitForTimeout(1000);
 });

@@ -1,0 +1,395 @@
+<figure class="scene" aria-label="Diagram: in record mode requests flow from your app through the proxy to the real API and are saved to disk; in replay mode the proxy serves the saved responses from disk with no network.">
+  <div class="scene-bar" aria-hidden="true">
+    <span class="bar-dot"></span>
+    <span class="bar-dot"></span>
+    <span class="bar-dot"></span>
+    <span class="bar-title">npx playwright test</span>
+  </div>
+
+  <div class="phase">
+    <p class="phase-head rec-head">
+      <span class="lamp" aria-hidden="true"></span>
+      REC <span class="phase-meta">· MODE=record · local run</span>
+    </p>
+    <div class="track" aria-hidden="true">
+      <span class="node">your app</span>
+      <span class="wire">
+        <span class="lane lane-1"><i class="packet packet-app"></i></span>
+        <span class="lane lane-7"><i class="packet packet-play"></i></span>
+      </span>
+      <span class="node node-proxy">proxy</span>
+      <span class="wire">
+        <span class="lane lane-2"><i class="packet packet-rec"></i></span>
+        <span class="lane lane-6"><i class="packet packet-rec"></i></span>
+      </span>
+      <span class="node">real API</span>
+    </div>
+    <p class="result">
+      <span class="glyph-rec" aria-hidden="true">⤓</span>
+      saved&ensp;<span class="result-file">e2e/recordings/todos.GET.mock.json</span>
+    </p>
+  </div>
+
+  <div class="phase-divider" aria-hidden="true"></div>
+
+  <div class="phase">
+    <p class="phase-head play-head">
+      <span class="play-glyph" aria-hidden="true">▶</span>
+      REPLAY <span class="phase-meta">· MODE=replay · CI</span>
+    </p>
+    <div class="track" aria-hidden="true">
+      <span class="node">your app</span>
+      <span class="wire">
+        <span class="lane lane-3"><i class="packet packet-play"></i></span>
+        <span class="lane lane-5"><i class="packet packet-ok"></i></span>
+      </span>
+      <span class="node node-proxy">proxy</span>
+      <span class="wire"><span class="lane lane-4"><i class="packet packet-ok"></i></span></span>
+      <span class="node">disk</span>
+    </div>
+    <p class="result">
+      <span class="glyph-play" aria-hidden="true">✓</span>
+      200 OK · 3 ms · <span class="result-strong">zero network</span>
+    </p>
+  </div>
+</figure>
+
+<style>
+  .scene {
+    background: var(--panel);
+    border: 1px solid var(--panel-edge);
+    border-radius: 14px;
+    box-shadow: var(--shadow-panel);
+    padding: 0 1.4rem 1.45rem;
+    font-family: var(--font-mono);
+    color: var(--panel-ink);
+  }
+
+  .scene-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-block: 0.85rem;
+    border-bottom: 1px solid var(--panel-edge);
+    margin-bottom: 1.3rem;
+  }
+
+  .bar-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 50%;
+    background: var(--panel-edge);
+  }
+
+  .bar-title {
+    margin-left: 0.65rem;
+    font-size: 0.72rem;
+    color: var(--panel-muted);
+    letter-spacing: 0.01em;
+  }
+
+  .phase-head {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+  }
+
+  .rec-head {
+    color: var(--rec-bright);
+  }
+
+  .play-head {
+    color: var(--panel-accent);
+  }
+
+  .phase-meta {
+    font-weight: 400;
+    letter-spacing: 0.01em;
+    color: var(--panel-muted);
+  }
+
+  .lamp {
+    width: 0.62rem;
+    height: 0.62rem;
+    border-radius: 50%;
+    background: var(--rec-bright);
+    box-shadow: 0 0 8px 1px oklch(0.62 0.21 29 / 0.55);
+    animation: lamp-pulse 1.6s var(--ease-out) infinite;
+  }
+
+  .play-glyph {
+    font-size: 0.65rem;
+  }
+
+  .track {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    margin-block: 0.95rem 0.8rem;
+  }
+
+  .node {
+    flex-shrink: 0;
+    font-size: 0.74rem;
+    padding: 0.32rem 0.62rem;
+    border: 1px solid var(--panel-edge);
+    border-radius: 7px;
+    background: oklch(0.262 0.042 262);
+    color: var(--panel-ink);
+    white-space: nowrap;
+  }
+
+  .node-proxy {
+    border-color: var(--panel-accent);
+    color: oklch(0.88 0.06 262);
+  }
+
+  .wire {
+    position: relative;
+    flex: 1;
+    min-width: 1.5rem;
+    height: 2px;
+    background: var(--panel-edge);
+    border-radius: 1px;
+  }
+
+  .lane {
+    position: absolute;
+    inset: 0;
+  }
+
+  .packet {
+    position: absolute;
+    top: 50%;
+    left: 0;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    translate: -50% -50%;
+    opacity: 0;
+  }
+
+  .packet-rec {
+    background: var(--rec-bright);
+    box-shadow: 0 0 7px 1px oklch(0.62 0.21 29 / 0.6);
+  }
+
+  .packet-app {
+    background: oklch(0.95 0.008 262);
+    box-shadow: 0 0 7px 1px oklch(0.9 0.02 262 / 0.55);
+  }
+
+  .packet-play {
+    background: oklch(0.78 0.12 262);
+    box-shadow: 0 0 7px 1px oklch(0.7 0.15 262 / 0.6);
+  }
+
+  .packet-ok {
+    background: oklch(0.8 0.13 150);
+    box-shadow: 0 0 7px 1px oklch(0.75 0.14 150 / 0.6);
+  }
+
+  .lane-1 {
+    animation: travel-a 9s linear infinite;
+  }
+
+  .lane-2 {
+    animation: travel-b 9s linear infinite;
+  }
+
+  .lane-6 {
+    animation: travel-f 9s linear infinite;
+  }
+
+  .lane-7 {
+    animation: travel-g 9s linear infinite;
+  }
+
+  .lane-3 {
+    animation: travel-c 9s linear infinite;
+  }
+
+  .lane-4 {
+    animation: travel-d 9s linear infinite;
+  }
+
+  .lane-5 {
+    animation: travel-e 9s linear infinite;
+  }
+
+  .lane-1 .packet {
+    animation: blink-1 9s linear infinite;
+  }
+
+  .lane-2 .packet {
+    animation: blink-2 9s linear infinite;
+  }
+
+  .lane-6 .packet {
+    animation: blink-6 9s linear infinite;
+  }
+
+  .lane-7 .packet {
+    animation: blink-7 9s linear infinite;
+  }
+
+  .lane-3 .packet {
+    animation: blink-3 9s linear infinite;
+  }
+
+  .lane-4 .packet {
+    animation: blink-4 9s linear infinite;
+  }
+
+  .lane-5 .packet {
+    animation: blink-5 9s linear infinite;
+  }
+
+  .result {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    font-size: 0.74rem;
+    color: var(--panel-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .result-file {
+    color: var(--panel-ink);
+  }
+
+  .result-strong {
+    color: oklch(0.85 0.09 150);
+  }
+
+  .glyph-rec {
+    color: var(--rec-bright);
+  }
+
+  .glyph-play {
+    color: oklch(0.85 0.09 150);
+  }
+
+  .phase-divider {
+    height: 1px;
+    background: var(--panel-edge);
+    margin-block: 1.25rem;
+  }
+
+  /* one 9s cycle. Record half: request app→proxy→real API, response
+     comes back api→proxy where it's saved. Replay half: request
+     app→proxy, response served fast disk→proxy, handed back proxy→app. */
+  @keyframes travel-a {
+    0%, 4% { transform: translateX(0); }
+    14%, 100% { transform: translateX(100%); }
+  }
+
+  @keyframes travel-b {
+    0%, 16% { transform: translateX(0); }
+    26%, 100% { transform: translateX(100%); }
+  }
+
+  @keyframes travel-f {
+    0%, 30% { transform: translateX(100%); }
+    38%, 100% { transform: translateX(0); }
+  }
+
+  @keyframes travel-g {
+    0%, 41% { transform: translateX(100%); }
+    49%, 100% { transform: translateX(0); }
+  }
+
+  /* replay choreography: request app→proxy (travel-c), response served
+     fast disk→proxy (travel-d), then handed back proxy→app (travel-e) */
+  @keyframes travel-c {
+    0%, 54% { transform: translateX(0); }
+    64%, 100% { transform: translateX(100%); }
+  }
+
+  @keyframes travel-d {
+    0%, 70% { transform: translateX(100%); }
+    77%, 100% { transform: translateX(0); }
+  }
+
+  @keyframes travel-e {
+    0%, 82% { transform: translateX(100%); }
+    92%, 100% { transform: translateX(0); }
+  }
+
+  @keyframes blink-1 {
+    0%, 3% { opacity: 0; }
+    5%, 13% { opacity: 1; }
+    15%, 100% { opacity: 0; }
+  }
+
+  @keyframes blink-2 {
+    0%, 15% { opacity: 0; }
+    17%, 25% { opacity: 1; }
+    27%, 100% { opacity: 0; }
+  }
+
+  @keyframes blink-6 {
+    0%, 29.5% { opacity: 0; }
+    31%, 37% { opacity: 1; }
+    38.5%, 100% { opacity: 0; }
+  }
+
+  @keyframes blink-7 {
+    0%, 40.5% { opacity: 0; }
+    42%, 48% { opacity: 1; }
+    49.5%, 100% { opacity: 0; }
+  }
+
+  @keyframes blink-3 {
+    0%, 53% { opacity: 0; }
+    55%, 63% { opacity: 1; }
+    65%, 100% { opacity: 0; }
+  }
+
+  @keyframes blink-4 {
+    0%, 69.5% { opacity: 0; }
+    71%, 76% { opacity: 1; }
+    77.5%, 100% { opacity: 0; }
+  }
+
+  @keyframes blink-5 {
+    0%, 81.5% { opacity: 0; }
+    83%, 91% { opacity: 1; }
+    92.5%, 100% { opacity: 0; }
+  }
+
+  @keyframes lamp-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .packet {
+      opacity: 0;
+    }
+
+    .lamp {
+      animation: none;
+    }
+  }
+
+  @media (max-width: 420px) {
+    .scene {
+      padding-inline: 1rem;
+    }
+
+    .node {
+      font-size: 0.68rem;
+      padding: 0.28rem 0.45rem;
+    }
+
+    .result {
+      font-size: 0.68rem;
+    }
+  }
+</style>

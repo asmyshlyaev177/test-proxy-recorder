@@ -1,0 +1,282 @@
+/* ---------------------------------------------------------------- tokens */
+
+:root {
+  /* light — pure white surface, cobalt carries the brand */
+  --bg: oklch(1 0 0);
+  --surface: oklch(0.967 0.005 262);
+  --surface-2: oklch(0.938 0.009 262);
+  --ink: oklch(0.235 0.03 262);
+  --muted: oklch(0.45 0.025 262);
+  --line: oklch(0.89 0.012 262);
+
+  --primary: oklch(0.45 0.15 262);
+  --primary-strong: oklch(0.385 0.145 262);
+  --primary-soft: oklch(0.945 0.022 262);
+  --on-primary: oklch(1 0 0);
+  --link: oklch(0.45 0.15 262);
+
+  /* recording lamp — the one warm signal on the page */
+  --rec: oklch(0.5 0.19 29);
+  --rec-bright: oklch(0.62 0.21 29);
+  --rec-soft: oklch(0.95 0.018 29);
+
+  /* terminal panels stay cobalt-dark in both themes */
+  --panel: oklch(0.215 0.04 262);
+  --panel-edge: oklch(0.305 0.045 262);
+  --panel-ink: oklch(0.93 0.012 262);
+  --panel-muted: oklch(0.73 0.035 262);
+  --panel-accent: oklch(0.76 0.11 262);
+
+  --shadow-panel:
+    0 1px 2px oklch(0.2 0.04 262 / 0.18),
+    0 12px 32px -12px oklch(0.25 0.08 262 / 0.35);
+
+  --font-sans: 'Schibsted Grotesk Variable', system-ui, sans-serif;
+  --font-mono: 'Spline Sans Mono Variable', ui-monospace, monospace;
+
+  /* modular scale, ratio ~1.25 */
+  --step--1: 0.875rem;
+  --step-0: 1.0625rem;
+  --step-1: 1.3125rem;
+  --step-2: 1.625rem;
+  --step-3: 2.0625rem;
+  --step-hero: clamp(2.5rem, 1.45rem + 4.4vw, 4rem);
+
+  --container: 70rem;
+  --gutter: clamp(1.25rem, 4vw, 2.5rem);
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --z-sticky: 10;
+  --z-skip: 20;
+
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  /* near-black, chroma 0 — cobalt reads as luminous instrumentation */
+  --bg: oklch(0.135 0 0);
+  --surface: oklch(0.178 0.007 262);
+  --surface-2: oklch(0.212 0.01 262);
+  --ink: oklch(0.928 0.008 262);
+  --muted: oklch(0.71 0.02 262);
+  --line: oklch(0.268 0.014 262);
+
+  --primary: oklch(0.52 0.165 262);
+  --primary-strong: oklch(0.58 0.165 262);
+  --primary-soft: oklch(0.235 0.05 262);
+  --on-primary: oklch(1 0 0);
+  --link: oklch(0.74 0.115 262);
+
+  --rec: oklch(0.68 0.185 29);
+  --rec-bright: oklch(0.68 0.185 29);
+  --rec-soft: oklch(0.235 0.045 29);
+
+  --panel: oklch(0.192 0.035 262);
+  --panel-edge: oklch(0.3 0.045 262);
+
+  --shadow-panel:
+    0 1px 2px oklch(0 0 0 / 0.5),
+    0 16px 40px -12px oklch(0.3 0.1 262 / 0.45);
+
+  color-scheme: dark;
+}
+
+/* ----------------------------------------------------------------- reset */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--step-0);
+  line-height: 1.6;
+  color: var(--ink);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+}
+
+/* ------------------------------------------------------------------ type */
+
+h1,
+h2,
+h3 {
+  line-height: 1.12;
+  letter-spacing: -0.022em;
+  text-wrap: balance;
+  font-weight: 700;
+}
+
+h1 {
+  font-size: var(--step-hero);
+  font-weight: 760;
+}
+
+h2 {
+  font-size: var(--step-3);
+}
+
+h3 {
+  font-size: var(--step-1);
+}
+
+p {
+  text-wrap: pretty;
+  max-width: 62ch;
+}
+
+a {
+  color: var(--link);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+a:hover {
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+code,
+kbd {
+  font-family: var(--font-mono);
+  font-size: 0.92em;
+}
+
+p > code,
+li > code,
+td > code,
+dd > code {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  padding: 0.08em 0.35em;
+}
+
+/* ---------------------------------------------------------------- layout */
+
+.container {
+  max-width: var(--container);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.skip-link {
+  position: fixed;
+  top: 0.75rem;
+  left: 0.75rem;
+  z-index: var(--z-skip);
+  background: var(--primary);
+  color: var(--on-primary);
+  padding: 0.55rem 1rem;
+  border-radius: 8px;
+  font-weight: 600;
+  text-decoration: none;
+  translate: 0 calc(-100% - 1.5rem);
+}
+
+.skip-link:focus-visible {
+  translate: 0 0;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.62rem 1.25rem;
+  border-radius: 9px;
+  border: 1px solid transparent;
+  font-weight: 600;
+  font-size: var(--step--1);
+  line-height: 1.4;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 160ms var(--ease-out),
+    border-color 160ms var(--ease-out),
+    translate 160ms var(--ease-out);
+}
+
+.btn:active {
+  translate: 0 1px;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-primary:hover {
+  background: var(--primary-strong);
+}
+
+.btn-ghost {
+  border-color: var(--line);
+  color: var(--ink);
+  background: transparent;
+}
+
+.btn-ghost:hover {
+  border-color: var(--muted);
+  background: var(--surface);
+}
+
+/* ------------------------------------------------------------ code panels */
+
+.astro-code {
+  background: var(--panel) !important;
+  border: 1px solid var(--panel-edge);
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  font-size: 0.86rem;
+  line-height: 1.65;
+  overflow-x: auto;
+  box-shadow: var(--shadow-panel);
+}
+
+/* ---------------------------------------------------------------- motion */
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

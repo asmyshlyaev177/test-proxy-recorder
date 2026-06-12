@@ -1,0 +1,116 @@
+{
+  "name": "test-proxy-recorder",
+  "version": "0.3.5",
+  "description": "HTTP proxy server for recording and replaying network requests in testing. Works seamlessly with Playwright testing framework.",
+  "type": "module",
+  "main": "dist/index.mjs",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": "./dist/index.cjs",
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.mjs"
+    },
+    "./playwright": {
+      "require": "./dist/playwright/index.cjs",
+      "types": "./dist/playwright/index.d.ts",
+      "default": "./dist/playwright/index.mjs"
+    },
+    "./nextjs": {
+      "require": "./dist/nextjs/index.cjs",
+      "types": "./dist/nextjs/index.d.ts",
+      "default": "./dist/nextjs/index.mjs"
+    }
+  },
+  "bin": {
+    "test-proxy-recorder": "./dist/proxy.js"
+  },
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.mjs",
+    "dist/**/*.cjs",
+    "dist/**/*.d.ts",
+    "dist/**/*.d.cts",
+    "dist/**/*.d.ts.map",
+    "!dist/**/*.test.*",
+    "!dist/**/*.integration.test.*",
+    "README.md",
+    "LICENSE",
+    "skills"
+  ],
+  "scripts": {
+    "dev": "tsx src/proxy.ts",
+    "build": "tsup",
+    "lint": "eslint src --ext .ts",
+    "lint:fix": "eslint src --ext .ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "prepare": "tsup"
+  },
+  "keywords": [
+    "playwright",
+    "testing",
+    "proxy",
+    "mock",
+    "record",
+    "replay",
+    "har",
+    "http",
+    "websocket",
+    "intercept",
+    "fixture",
+    "vcr",
+    "stub",
+    "e2e",
+    "integration-testing",
+    "test-automation",
+    "api-mocking",
+    "network-recording",
+    "tanstack-intent"
+  ],
+  "author": "asmyshlyaev177",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/asmyshlyaev177/test-proxy-recorder.git"
+  },
+  "bugs": {
+    "url": "https://github.com/asmyshlyaev177/test-proxy-recorder/issues"
+  },
+  "homepage": "https://github.com/asmyshlyaev177/test-proxy-recorder#readme",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "commander": "^12.0.0",
+    "filenamify": "^7.0.1",
+    "http-proxy": "^1.18.1"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@tanstack/intent": "^0.0.41",
+    "@types/http-proxy": "^1.17.15",
+    "@types/node": "^20.0.0",
+    "@types/ws": "^8.18.1",
+    "@typescript-eslint/eslint-plugin": "^8.0.0",
+    "@typescript-eslint/parser": "^8.0.0",
+    "@vitest/coverage-v8": "^4.0.8",
+    "eslint": "^9.0.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "eslint-plugin-simple-import-sort": "^12.1.1",
+    "eslint-plugin-sonarjs": "^3.0.5",
+    "eslint-plugin-unicorn": "^62.0.0",
+    "prettier": "^3.6.2",
+    "tsup": "^8.5.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^4.0.8",
+    "ws": "^8.18.3"
+  }
+}

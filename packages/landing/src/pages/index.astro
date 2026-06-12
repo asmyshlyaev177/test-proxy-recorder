@@ -1,0 +1,551 @@
+---
+import { Code } from 'astro:components';
+import Layout from '../layouts/Layout.astro';
+import RecorderScene from '../components/RecorderScene.astro';
+
+const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
+
+const installCmd = 'npm i -D test-proxy-recorder';
+
+const configCode = `import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  webServer: {
+    command: 'test-proxy-recorder https://api.example.com --port 8100 --dir ./e2e/recordings',
+    url: 'http://localhost:8100/__control',
+    reuseExistingServer: true,
+  },
+});`;
+
+const fixtureCode = `// e2e/my.test.ts
+import { test, expect } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+// The external API(s) your browser talks to.
+const CLIENT_SIDE_URL = /api\\.example\\.com/;
+
+// 'record' hits the real API and saves responses.
+// 'replay' serves them from disk — no network needed.
+const MODE = 'replay' as const;
+
+test.beforeEach(async ({ page }, testInfo) => {
+  await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
+});
+
+test('homepage loads', async ({ page }) => {
+  await page.goto('https://myapp.com/');
+  await expect(page.getByText('Welcome')).toBeVisible();
+});`;
+
+const recordCode = `# 1. Set MODE = 'record' in your test file, run against the real API
+npx playwright test        # recordings written to e2e/recordings/
+
+# 2. Flip MODE back to 'replay' and commit the recordings
+git add e2e/recordings/
+git commit -m "add e2e recordings"`;
+---
+
+<Layout>
+  <!-- ============================================================ hero -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <h1>Record once.<br />Replay forever.</h1>
+        <p class="hero-sub">
+          test-proxy-recorder captures real API responses while your Playwright suite runs
+          locally, then replays them byte-for-byte on CI. No backend, no network, no
+          hand-written mocks to maintain.
+        </p>
+        <div class="hero-actions">
+          <span class="cmd">
+            <code>{installCmd}</code>
+            <button class="copy-btn" type="button" data-copy={installCmd}>
+              <span class="copy-label">Copy</span>
+            </button>
+          </span>
+          <a class="btn btn-ghost" href={repo}>GitHub</a>
+        </div>
+        <p class="hero-fine">
+          MIT · TypeScript · works with Next.js SSR, SPAs &amp; Chrome extensions ·
+          WebSocket support
+        </p>
+      </div>
+      <RecorderScene />
+    </div>
+  </section>
+
+  <!-- ============================================================= why -->
+  <section class="why">
+    <div class="container why-grid">
+      <div class="why-copy">
+        <h2>CI shouldn't depend on a live backend</h2>
+        <p>
+          Every flaky e2e run has the same root cause: the network. Hand-written mocks rot
+          the moment the API changes, and spinning up a real backend on CI is slow,
+          stateful, and expensive. Recording real traffic once — and replaying it
+          deterministically — removes the whole failure class.
+        </p>
+      </div>
+      <dl class="why-list">
+        <div class="why-item">
+          <dt>No backend on CI</dt>
+          <dd>Record once against the real API, replay on every run after that.</dd>
+        </div>
+        <div class="why-item">
+          <dt>No manual mocks</dt>
+          <dd>Capture real interactions instead of hand-writing fixtures that drift.</dd>
+        </div>
+        <div class="why-item">
+          <dt>SSR and browser-side</dt>
+          <dd>Records server-side fetches (Next.js&nbsp;SSR) and browser requests alike.</dd>
+        </div>
+        <div class="why-item">
+          <dt>Deterministic replays</dt>
+          <dd>Same responses every time — including WebSocket connections.</dd>
+        </div>
+      </dl>
+    </div>
+  </section>
+
+  <!-- ====================================================== mechanisms -->
+  <section class="mechanisms">
+    <div class="container">
+      <h2>Two recorders, one proxy</h2>
+      <p class="section-sub">
+        Requests originate in two places, so there are two recording mechanisms. Use either
+        one — or both together.
+      </p>
+      <div class="mech-grid">
+        <article class="mech">
+          <header class="mech-head">
+            <h3>Proxy</h3>
+            <code class="mech-ext">.mock.json</code>
+          </header>
+          <p class="mech-flow">Next.js SSR → proxy → real API</p>
+          <p>
+            Sits between your server and the API. Records server-side requests — SSR
+            fetches, route handlers, anything your backend-for-frontend calls.
+          </p>
+          <p class="mech-when">For full-stack apps where the server calls the API.</p>
+        </article>
+        <article class="mech">
+          <header class="mech-head">
+            <h3>HAR</h3>
+            <code class="mech-ext">.har</code>
+          </header>
+          <p class="mech-flow">browser → HAR intercept → real API</p>
+          <p>
+            Intercepts in the browser itself. Records client-side <code>fetch</code> calls,
+            Chrome extension API traffic, analytics, third-party APIs.
+          </p>
+          <p class="mech-when">For SPAs, extensions, and browser-only apps.</p>
+        </article>
+      </div>
+      <p class="mech-aside">
+        Technically, that makes it a <strong>man-in-the-middle</strong>. Don't worry — this
+        one works for you: it intercepts your API traffic, takes meticulous notes, and the
+        only thing it ever steals is the flakiness.
+      </p>
+    </div>
+  </section>
+
+  <!-- ====================================================== quick start -->
+  <section class="quick-start" id="quick-start">
+    <div class="container qs-inner">
+      <h2>Deterministic in four steps</h2>
+      <p class="section-sub">
+        The browser-only setup, exactly as it ships. Full-stack (SSR) setup is in the
+        <a href={`${repo}#full-stack-ssr--browser-quick-start`}>README</a>.
+      </p>
+
+      <ol class="steps">
+        <li class="step">
+          <h3>Install</h3>
+          <Code code={`npm install --save-dev test-proxy-recorder`} lang="bash" theme="one-dark-pro" />
+        </li>
+        <li class="step">
+          <h3>Add the proxy to <code>playwright.config.ts</code></h3>
+          <p class="step-note">
+            The proxy process provides session management via its <code>/__control</code>
+            endpoint; for browser-only recording the target URL is never hit.
+          </p>
+          <Code code={configCode} lang="ts" theme="one-dark-pro" />
+        </li>
+        <li class="step">
+          <h3>Wire it into your tests</h3>
+          <p class="step-note">
+            One <code>beforeEach</code> covers the whole file: match the external API
+            domain, pick <code>record</code> or <code>replay</code>.
+          </p>
+          <Code code={fixtureCode} lang="ts" theme="one-dark-pro" />
+        </li>
+        <li class="step">
+          <h3>Record, commit, replay</h3>
+          <p class="step-note">
+            Recordings live in git — that's what makes CI deterministic. Don't gitignore
+            them.
+          </p>
+          <Code code={recordCode} lang="bash" theme="one-dark-pro" />
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================================================== cta -->
+  <section class="cta">
+    <div class="container cta-inner">
+      <h2>Stop hand-writing mocks</h2>
+      <p class="cta-sub">
+        Your API already gives the right answers. Record them.
+      </p>
+      <div class="cta-actions">
+        <span class="cmd cmd-on-dark">
+          <code>{installCmd}</code>
+          <button class="copy-btn" type="button" data-copy={installCmd}>
+            <span class="copy-label">Copy</span>
+          </button>
+        </span>
+        <a class="btn btn-on-dark" href={repo}>Star on GitHub</a>
+      </div>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  section {
+    padding-block: clamp(3.5rem, 9vw, 6.5rem);
+  }
+
+  .section-sub {
+    color: var(--muted);
+    margin-top: 0.7rem;
+    max-width: 56ch;
+  }
+
+  .section-sub a {
+    color: var(--link);
+  }
+
+  /* ------------------------------------------------------------- hero */
+
+  .hero {
+    padding-block: clamp(3.5rem, 8vw, 6rem) clamp(3rem, 7vw, 5.5rem);
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: center;
+  }
+
+  .hero-sub {
+    margin-top: 1.4rem;
+    font-size: var(--step-1);
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 34ch;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 2.1rem;
+  }
+
+  .hero-fine {
+    margin-top: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: var(--panel);
+    color: var(--panel-ink);
+    border: 1px solid var(--panel-edge);
+    border-radius: 9px;
+    padding: 0.55rem 0.6rem 0.55rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  .cmd code::before {
+    content: '$ ';
+    color: var(--panel-muted);
+  }
+
+  .copy-btn {
+    border: 1px solid var(--panel-edge);
+    background: oklch(0.27 0.045 262);
+    color: var(--panel-ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    transition: background-color 150ms var(--ease-out);
+  }
+
+  .copy-btn:hover {
+    background: oklch(0.32 0.05 262);
+  }
+
+  .copy-btn.copied {
+    background: oklch(0.42 0.1 150);
+    border-color: transparent;
+  }
+
+  /* -------------------------------------------------------------- why */
+
+  .why {
+    background: var(--surface);
+    border-block: 1px solid var(--line);
+  }
+
+  .why-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+    gap: clamp(2rem, 5vw, 5rem);
+    align-items: start;
+  }
+
+  .why-copy p {
+    margin-top: 1.1rem;
+    color: var(--muted);
+  }
+
+  .why-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.9rem 2.25rem;
+    margin-top: 0.45rem;
+  }
+
+  .why-item dt {
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .why-item dt::before {
+    content: '✓';
+    color: var(--primary);
+    font-weight: 700;
+    margin-right: 0.5rem;
+  }
+
+  [data-theme='dark'] .why-item dt::before {
+    color: var(--link);
+  }
+
+  .why-item dd {
+    margin-top: 0.35rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+
+  /* ------------------------------------------------------- mechanisms */
+
+  .mech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .mech {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.7rem 1.8rem 1.8rem;
+  }
+
+  .mech p {
+    margin-top: 0.85rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+
+  .mech-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .mech-ext {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.22em 0.6em;
+    border-radius: 99px;
+  }
+
+  [data-theme='dark'] .mech-ext {
+    color: var(--link);
+  }
+
+  .mech-flow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem !important;
+    color: var(--ink) !important;
+    margin-top: 1rem !important;
+  }
+
+  .mech-when {
+    font-weight: 600;
+    color: var(--ink) !important;
+  }
+
+  .mech-aside {
+    margin-top: 1.6rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+    max-width: 62ch;
+  }
+
+  .mech-aside strong {
+    color: var(--ink);
+  }
+
+  /* ------------------------------------------------------- quick start */
+
+  .qs-inner {
+    max-width: calc(46rem + 2 * var(--gutter));
+  }
+
+  .steps {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin-top: 2.75rem;
+    max-width: 46rem;
+    display: grid;
+    gap: 2.9rem;
+  }
+
+  .step {
+    counter-increment: step;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .step h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.85rem;
+    font-size: var(--step-1);
+  }
+
+  .step h3::before {
+    content: counter(step);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+    border: 1.5px solid currentColor;
+    border-radius: 99px;
+    width: 1.7rem;
+    height: 1.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    translate: 0 -0.15rem;
+  }
+
+  [data-theme='dark'] .step h3::before {
+    color: var(--link);
+  }
+
+  .step-note {
+    color: var(--muted);
+    font-size: var(--step--1);
+    max-width: 58ch;
+  }
+
+  /* -------------------------------------------------------------- cta */
+
+  .cta {
+    background: var(--primary);
+    padding-block: clamp(4rem, 10vw, 6.5rem);
+  }
+
+  [data-theme='dark'] .cta {
+    background: oklch(0.45 0.15 262);
+  }
+
+  .cta-inner {
+    text-align: center;
+    display: grid;
+    justify-items: center;
+  }
+
+  .cta h2 {
+    color: oklch(1 0 0);
+  }
+
+  .cta-sub {
+    margin-top: 0.8rem;
+    color: oklch(0.88 0.045 262);
+    font-size: var(--step-1);
+  }
+
+  .cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 2.2rem;
+  }
+
+  .cmd-on-dark {
+    background: oklch(0.32 0.11 262);
+    border-color: oklch(0.52 0.12 262);
+  }
+
+  .btn-on-dark {
+    border: 1px solid oklch(0.68 0.1 262);
+    color: oklch(1 0 0);
+  }
+
+  .btn-on-dark:hover {
+    background: oklch(0.52 0.14 262);
+    border-color: oklch(0.75 0.09 262);
+  }
+
+  /* ------------------------------------------------------- responsive */
+
+  @media (max-width: 880px) {
+    .hero-grid,
+    .why-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-sub {
+      max-width: 52ch;
+    }
+
+    .why-list {
+      gap: 1.5rem 1.75rem;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .why-list {
+      grid-template-columns: 1fr;
+    }
+
+    .step :global(.astro-code) {
+      font-size: 0.78rem;
+    }
+  }
+</style>
