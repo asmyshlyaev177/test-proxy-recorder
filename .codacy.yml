@@ -39,6 +39,8 @@ exclude_paths:
   - "*.env.ts"
   - "**.md"
   - "*.md"
+  - ".claude"
+  - "_artifacts"
 include_paths:
   - "src/"
   - "src/*"
