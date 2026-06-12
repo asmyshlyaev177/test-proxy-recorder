@@ -45,6 +45,7 @@ Both can be used together or independently.
 - [Next.js 16](#nextjs-16)
 - [FAQ](#faq)
 - [AI Agent Skills](#ai-agent-skills)
+- [Roadmap](#roadmap)
 - [Requirements](#requirements)
 - [Contributing](#contributing)
 - [License](#license)
@@ -522,6 +523,18 @@ npx @tanstack/intent@latest install
 ```
 
 This adds `test-proxy-recorder` skills to your project. The agent will then know the correct proxy/fixture setup, record vs. replay workflow, and Next.js SSR header patterns without needing guidance.
+
+---
+
+## Roadmap
+
+First-class integrations on the way:
+
+- **TanStack Start**
+- **Remix**
+- **Vite + SSR**
+
+Need one sooner, or a different framework? [Open an issue](https://github.com/asmyshlyaev177/test-proxy-recorder/issues).
 
 ---
 
