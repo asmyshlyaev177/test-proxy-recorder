@@ -47,7 +47,10 @@
     "test": "vitest",
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "prepare": "tsup"
+    "prepare": "tsup",
+    "sync-readme": "cp ../../README.md README.md",
+    "prepack": "pnpm sync-readme",
+    "postpack": "rm -f README.md"
   },
   "keywords": [
     "playwright",

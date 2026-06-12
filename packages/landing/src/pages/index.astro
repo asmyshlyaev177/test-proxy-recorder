@@ -127,6 +127,9 @@ git commit -m "add e2e recordings"`;
             fetches, route handlers, anything your backend-for-frontend calls.
           </p>
           <p class="mech-when">For full-stack apps where the server calls the API.</p>
+          <a class="mech-example" href={`${repo}/tree/master/apps/example-nextjs16`}>
+            View Next.js example →
+          </a>
         </article>
         <article class="mech">
           <header class="mech-head">
@@ -139,6 +142,9 @@ git commit -m "add e2e recordings"`;
             Chrome extension API traffic, analytics, third-party APIs.
           </p>
           <p class="mech-when">For SPAs, extensions, and browser-only apps.</p>
+          <a class="mech-example" href={`${repo}/tree/master/apps/example-extension`}>
+            View Chrome extension example →
+          </a>
         </article>
       </div>
       <p class="mech-aside">
@@ -402,6 +408,22 @@ git commit -m "add e2e recordings"`;
   .mech-when {
     font-weight: 600;
     color: var(--ink) !important;
+  }
+
+  .mech-example {
+    display: inline-block;
+    margin-top: 1.1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .mech-example:hover {
+    text-decoration: underline;
+  }
+
+  [data-theme='dark'] .mech-example {
+    color: var(--link);
   }
 
   .mech-aside {

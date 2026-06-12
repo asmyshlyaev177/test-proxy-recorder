@@ -400,37 +400,17 @@ export const config = {
 }
 ```
 
-## Example App
+## Example Apps
 
-[`apps/example-nextjs16`](apps/example-nextjs16) is a full working example: a Next.js 16 todo app wired up with a mock backend, proxy, and Playwright e2e tests in record/replay mode.
+Two full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one for each recording mechanism. Each has its own README with the full setup and record/replay workflow.
 
-```text
-apps/example-nextjs16/
-  app/                  Next.js pages and components
-  mock-backend/         Standalone Node.js HTTP server (port 3002)
-  e2e/                  Playwright tests + recordings
-  proxy.ts              Next.js 16 middleware — forwards session headers to SSR fetches
-```
+### Next.js 16 — server-side (proxy / `.mock.json`)
 
-**Three-service architecture:**
+[`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — a Next.js 16 todo app with a mock backend, proxy, and Playwright e2e tests. Records both SSR fetches (`.mock.json`) and browser fetches (`.har`). See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
 
-```text
-Browser  ──> Proxy (8100) ──> Mock Backend (3002)
-Next.js SSR ──> Proxy (8100) ──> Mock Backend (3002)
-```
+### Chrome extension — browser-side (HAR / `.har`)
 
-Start everything and run the record/replay cycle:
-
-```bash
-# Start all services (mock backend + proxy + Next.js)
-pnpm --filter example-nextjs16 start:all
-
-# Record tests (run against live services, save to e2e/recordings/)
-pnpm --filter example-nextjs16 test:e2e:record
-
-# Replay tests (no backend needed — served from recordings)
-pnpm --filter example-nextjs16 test:e2e
-```
+[`apps/example-extension`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — a real Chrome extension that calls X/Twitter's API from a content script; browser requests are recorded to `.har` and replayed offline, with no live API or account needed on CI. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-extension/README.md).
 
 ---
 

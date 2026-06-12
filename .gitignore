@@ -19,3 +19,6 @@ test-results
 **/playwright-report
 
 .claude/settings.json
+
+# Generated at publish from the root README (prepack), removed after (postpack).
+packages/test-proxy-recorder/README.md
