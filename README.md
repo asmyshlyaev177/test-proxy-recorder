@@ -31,6 +31,26 @@ Both can be used together or independently.
                     └──> .mock.json                        └──> .har
 ```
 
+## Contents
+
+- [Why](#why)
+- [Full-stack (SSR + browser) Quick Start](#full-stack-ssr--browser-quick-start)
+- [Browser-only / SPA / Extension Quick Start](#browser-only--spa--extension-quick-start)
+- [CLI](#cli)
+- [Example Apps](#example-apps)
+- [Playwright Integration](#playwright-integration)
+- [Next.js Integration](#nextjs-integration)
+- [Control Endpoint](#control-endpoint)
+- [API Reference](#api-reference)
+- [Next.js 16](#nextjs-16)
+- [FAQ](#faq)
+- [AI Agent Skills](#ai-agent-skills)
+- [Requirements](#requirements)
+- [Contributing](#contributing)
+- [License](#license)
+
+---
+
 ## Why
 
 - **No backend on CI** — record once against the real API, replay on every CI run
@@ -39,6 +59,68 @@ Both can be used together or independently.
 - **Browser-side support** — records browser `fetch` calls, Chrome extension API calls, analytics, etc.
 - **Deterministic** — same responses every time, no flaky network
 - **WebSocket support** — records and replays WebSocket connections
+
+---
+
+## Full-stack (SSR + browser) Quick Start
+
+For apps like Next.js where both the server AND the browser make API calls, use both mechanisms together.
+
+### 1. Add scripts to `package.json`
+
+```json
+{
+  "scripts": {
+    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
+    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+  }
+}
+```
+
+> `INTERNAL_API_URL` is the env var your app uses for the API base URL — point it at the proxy instead of the real backend. Replace it with whatever env var your app uses (e.g. `API_URL`, `NEXT_PUBLIC_API_URL`).
+>
+> **Next.js note:** Prefer `build` + `serve` over `dev` for recording/replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
+
+### 2. Write a test
+
+```typescript
+import { test, expect } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+// SSR requests (server → proxy) are recorded to .mock.json.
+// Browser requests to the proxy URL are also covered.
+const CLIENT_SIDE_URL = /localhost:8100/;
+
+// Change to 'record' to update recordings.
+const MODE = 'replay' as const;
+
+test.beforeEach(async ({ page }, testInfo) => {
+  await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
+});
+
+test('homepage loads', async ({ page }) => {
+  await page.goto('/');
+  await expect(page.getByText('Welcome')).toBeVisible();
+});
+```
+
+### 3. Record
+
+```bash
+# Terminal 1
+npm run serve:proxy
+
+# Terminal 2 — .mock.json and .har files are written automatically
+npx playwright test
+```
+
+### 4. Switch to replay and commit
+
+```bash
+git add e2e/recordings/
+git commit -m "add e2e recordings"
+```
 
 ---
 
@@ -132,68 +214,6 @@ CI now runs without any network access.
 
 ---
 
-## Full-stack (SSR + browser) Quick Start
-
-For apps like Next.js where both the server AND the browser make API calls, use both mechanisms together.
-
-### 1. Add scripts to `package.json`
-
-```json
-{
-  "scripts": {
-    "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
-    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
-  }
-}
-```
-
-> `INTERNAL_API_URL` is the env var your app uses for the API base URL — point it at the proxy instead of the real backend. Replace it with whatever env var your app uses (e.g. `API_URL`, `NEXT_PUBLIC_API_URL`).
->
-> **Next.js note:** Prefer `build` + `serve` over `dev` for recording/replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
-
-### 2. Write a test
-
-```typescript
-import { test, expect } from '@playwright/test';
-import { playwrightProxy } from 'test-proxy-recorder';
-
-// SSR requests (server → proxy) are recorded to .mock.json.
-// Browser requests to the proxy URL are also covered.
-const CLIENT_SIDE_URL = /localhost:8100/;
-
-// Change to 'record' to update recordings.
-const MODE = 'replay' as const;
-
-test.beforeEach(async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
-});
-
-test('homepage loads', async ({ page }) => {
-  await page.goto('/');
-  await expect(page.getByText('Welcome')).toBeVisible();
-});
-```
-
-### 3. Record
-
-```bash
-# Terminal 1
-npm run serve:proxy
-
-# Terminal 2 — .mock.json and .har files are written automatically
-npx playwright test
-```
-
-### 4. Switch to replay and commit
-
-```bash
-git add e2e/recordings/
-git commit -m "add e2e recordings"
-```
-
----
-
 ## CLI
 
 ```bash
@@ -214,7 +234,24 @@ test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 
 ---
 
+## Example Apps
+
+Two full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one for each recording mechanism. Each has its own README with the full setup and record/replay workflow.
+
+### Next.js 16 — server-side (proxy / `.mock.json`)
+
+[`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — a Next.js 16 todo app with a mock backend, proxy, and Playwright e2e tests. Records both SSR fetches (`.mock.json`) and browser fetches (`.har`). See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+
+### Chrome extension — browser-side (HAR / `.har`)
+
+[`apps/example-extension`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — a real Chrome extension that calls X/Twitter's API from a content script; browser requests are recorded to `.har` and replayed offline, with no live API or account needed on CI. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-extension/README.md).
+
+---
+
 ## Playwright Integration
+
+<details>
+<summary>Show details</summary>
 
 ### `playwrightProxy.before(page, testInfo, mode, options?)`
 
@@ -265,9 +302,14 @@ e2e/recordings/
   my-test.har         # client-side (HAR)   — browser fetches
 ```
 
+</details>
+
 ---
 
 ## Next.js Integration
+
+<details>
+<summary>Show details</summary>
 
 SSR frameworks like Next.js make server-side `fetch` calls that go through the proxy without a browser context. The proxy identifies which session those requests belong to via the `x-test-rcrd-id` header — the same header `playwrightProxy.before()` sets on the browser `page`. This header is **only required for SSR** — for browser-only tests the proxy falls back to the globally set session automatically.
 
@@ -301,9 +343,14 @@ const res = await fetch('http://localhost:8100/api/data', {
 });
 ```
 
+</details>
+
 ---
 
 ## Control Endpoint
+
+<details>
+<summary>Show details</summary>
 
 The proxy exposes `/__control` for programmatic mode switching.
 
@@ -325,9 +372,14 @@ interface ControlRequest {
 }
 ```
 
+</details>
+
 ---
 
 ## API Reference
+
+<details>
+<summary>Show details</summary>
 
 ### `playwrightProxy`
 
@@ -365,9 +417,14 @@ function createHeadersWithRecordingId(
 ): Record<string, string>;
 ```
 
+</details>
+
 ---
 
 ## Next.js 16
+
+<details>
+<summary>Show details</summary>
 
 Next.js 16 uses `proxy.ts` as the middleware entry point (replaces `middleware.ts`). Place it at the project root alongside `next.config.ts`:
 
@@ -400,25 +457,16 @@ export const config = {
 }
 ```
 
-## Example Apps
-
-Two full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one for each recording mechanism. Each has its own README with the full setup and record/replay workflow.
-
-### Next.js 16 — server-side (proxy / `.mock.json`)
-
-[`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — a Next.js 16 todo app with a mock backend, proxy, and Playwright e2e tests. Records both SSR fetches (`.mock.json`) and browser fetches (`.har`). See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
-
-### Chrome extension — browser-side (HAR / `.har`)
-
-[`apps/example-extension`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — a real Chrome extension that calls X/Twitter's API from a content script; browser requests are recorded to `.har` and replayed offline, with no live API or account needed on CI. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-extension/README.md).
+</details>
 
 ---
 
-## Parallel Replay: Do Not Call `teardown()` Per-Test
+## FAQ
 
-`playwrightProxy.teardown()` sets the **global** proxy mode to `transparent`. With `fullyParallel: true`, each Playwright worker runs its own `test.afterAll`. If a fast test completes and calls `teardown()` while a slower test is still running, the proxy switches to transparent mid-test and remaining requests are forwarded to the real backend instead of being replayed.
+<details>
+<summary><strong>My parallel replay tests sometimes hit the real backend — why?</strong></summary>
 
-**Wrong:**
+You're likely calling `playwrightProxy.teardown()` in a per-test hook. It sets the **global** proxy mode to `transparent`, and with `fullyParallel: true` each Playwright worker runs its own `test.afterAll`. If a fast test finishes and calls `teardown()` while a slower test is still running, the proxy flips to transparent mid-test and the remaining requests are forwarded to the real backend instead of being replayed.
 
 ```typescript
 // ❌ breaks parallel replay — teardown() affects all sessions globally
@@ -427,7 +475,41 @@ test.afterAll(async () => {
 });
 ```
 
-**Correct:** omit `test.afterAll`. Session cleanup is automatic via `context.on('close')` → `cleanupSession()`. Use a [global teardown](https://playwright.dev/docs/test-global-setup-teardown) if you need to reset the proxy after a full test run.
+**Fix:** omit `test.afterAll`. Session cleanup is automatic via `context.on('close')` → `cleanupSession()`. Use a [global teardown](https://playwright.dev/docs/test-global-setup-teardown) only if you need to reset the proxy after the entire run.
+
+</details>
+
+<details>
+<summary><strong>Should I commit recordings to git?</strong></summary>
+
+Yes. Recordings must be in git so CI can replay them with no network — do **not** add `e2e/recordings` to `.gitignore`. To keep large recording files from bloating PR diffs, mark them binary in `.gitattributes`:
+
+```text
+/e2e/recordings/** binary
+```
+
+</details>
+
+<details>
+<summary><strong>Does the proxy <code>&lt;target-url&gt;</code> matter for browser-only (HAR) recording?</strong></summary>
+
+No. For browser-only recording the target is irrelevant — the proxy process just needs to run so its `/__control` endpoint is available for session management. The target only matters when server-side (SSR) requests are also routed through the proxy.
+
+</details>
+
+<details>
+<summary><strong>Can I record against the Next.js dev server?</strong></summary>
+
+Prefer `next build` + `next start` over `next dev` for recording and replaying. The dev server is slow and can cause timeouts or flaky recordings.
+
+</details>
+
+<details>
+<summary><strong>How do I update a recording?</strong></summary>
+
+Re-run in record mode (set `MODE = 'record'` in your fixture, or `RECORD_MODE=1`) against the real API, then switch back to replay and commit the updated files in `e2e/recordings/`.
+
+</details>
 
 ---
 
@@ -448,9 +530,13 @@ This adds `test-proxy-recorder` skills to your project. The agent will then know
 - Node.js >= 20.0.0
 - @playwright/test >= 1.0.0 (peer dependency)
 
+---
+
 ## Contributing
 
 Contributions welcome! Please submit a Pull Request.
+
+---
 
 ## License
 
