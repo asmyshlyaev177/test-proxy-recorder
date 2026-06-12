@@ -41,6 +41,7 @@ exclude_paths:
   - "*.md"
   - ".claude"
   - "_artifacts"
+  - "apps/example-extension/extension"
 include_paths:
   - "src/"
   - "src/*"

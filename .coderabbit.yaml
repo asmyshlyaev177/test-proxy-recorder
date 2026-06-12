@@ -1,8 +1,25 @@
-# .coderabbit.yaml
-path_filters:
-  - "!dist/**"
-  - "!node_modules/**"
-  - "!build/**"
-  - "!tests/fixtures/**"
-  - "!.claude/**"
-  - "!_artifacts/**"
+# CodeRabbit configuration
+# Reference: https://docs.coderabbit.ai/reference/configuration
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+reviews:
+  # Files matching a "!" pattern are excluded from review; everything else is
+  # reviewed by default. Patterns are globs and must be quoted because a leading
+  # "!" is a YAML tag indicator otherwise.
+  path_filters:
+    # AI assistant config and local scratch artifacts — not part of the product.
+    - "!.claude/**"
+    - "!_artifacts/**"
+    # Build output and generated files (monorepo-wide).
+    - "!**/dist/**"
+    - "!**/build/**"
+    - "!**/node_modules/**"
+    - "!**/.next/**"
+    - "!**/coverage/**"
+    - "!coverage-reports/**"
+    - "!**/playwright-report/**"
+    - "!**/test-results/**"
+    # Recorded fixtures — generated test data, not hand-written code.
+    - "!**/e2e/recordings/**"
+    - "!tests/fixtures/**"
+    - "!apps/example-extension/extension/**"
