@@ -453,7 +453,7 @@ test.afterAll(async () => {
 
 ## Requirements
 
-- Node.js >= 22.0.0
+- Node.js >= 20.0.0
 - @playwright/test >= 1.0.0 (peer dependency)
 
 ## Contributing

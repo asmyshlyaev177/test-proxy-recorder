@@ -22,7 +22,7 @@
     "extension:test:e2e": "pnpm --filter example-extension test:e2e"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=20.0.0"
   },
   "devDependencies": {
     "@tanstack/intent": "^0.0.41"

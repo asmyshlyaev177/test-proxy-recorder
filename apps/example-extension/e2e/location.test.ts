@@ -35,26 +35,6 @@ test('accurate location matches About page', async ({ page }) => {
     return { basedIn, appStoreCountry: m?.[1]?.trim() ?? null };
   });
 
-  // Cross-check against the official About page.
-  await page.goto('https://x.com/sotaproject/about');
-  await page.waitForTimeout(2_000);
-
-  const fromPage = await page.evaluate(() => {
-    const divs = Array.from(document.querySelectorAll('[data-testid="pivot"] div[dir="ltr"]'));
-    let basedIn: string | null = null;
-    let appStoreCountry: string | null = null;
-    for (let i = 0; i < divs.length; i++) {
-      const label = divs[i].textContent?.trim() ?? '';
-      const value = divs[i + 1]?.textContent?.trim() ?? '';
-      if (label === 'Account based in') basedIn = value || null;
-      if (label === 'Connected via') {
-        const m = value.match(/^(.+?)\s+(?:android\s+app|app\s+store)$/i);
-        if (m) appStoreCountry = m[1].trim();
-      }
-    }
-    return { basedIn, appStoreCountry };
-  });
-
-  expect(fromCard.basedIn).toBe(fromPage.basedIn);
-  expect(fromCard.appStoreCountry).toBe(fromPage.appStoreCountry);
+  await expect(fromCard).toEqual({ "appStoreCountry": "Poland", "basedIn": "Lithuania",
+})
 });

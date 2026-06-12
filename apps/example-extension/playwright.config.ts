@@ -11,6 +11,12 @@ export default defineConfig({
     headless: false,
     trace: 'on-first-retry',
   },
+  webServer: {
+    command: 'test-proxy-recorder https://x.com --port 8100 --dir ./e2e/recordings',
+    url: 'http://127.0.0.1:8100/__control',
+    reuseExistingServer: true,
+    timeout: 15_000,
+  },
   projects: [
     {
       name: 'setup',
@@ -22,13 +28,4 @@ export default defineConfig({
       dependencies: ['setup'],
     },
   ],
-  webServer: {
-    // Proxy records/replays browser-side requests to x.com.
-    // In record mode: forwards to the real API and saves .har files.
-    // In replay mode: serves saved .har responses — no network needed.
-    command: 'npx test-proxy-recorder https://x.com --port 8100 --dir ./e2e/recordings',
-    url: 'http://localhost:8100/__control',
-    reuseExistingServer: true,
-    timeout: 10_000,
-  },
 });

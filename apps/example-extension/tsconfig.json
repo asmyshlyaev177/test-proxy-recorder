@@ -10,6 +10,7 @@
     "moduleResolution": "bundler",
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "types": ["node"],
     "target": "ES2022"
   },
   "include": ["**/*.ts"],
