@@ -1,0 +1,8 @@
+# .coderabbit.yaml
+path_filters:
+  - "!dist/**"
+  - "!node_modules/**"
+  - "!build/**"
+  - "!tests/fixtures/**"
+  - "!.claude/**"
+  - "!_artifacts/**"
