@@ -11,6 +11,7 @@
     "og:image": "node scripts/generate-og-image.mjs"
   },
   "dependencies": {
+    "@astrojs/cloudflare": "^13.7.0",
     "@astrojs/sitemap": "^3.7.3",
     "@fontsource-variable/schibsted-grotesk": "^5.2.8",
     "@fontsource-variable/spline-sans-mono": "^5.2.8",
