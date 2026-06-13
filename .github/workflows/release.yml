@@ -1,9 +1,16 @@
 name: Release
 
 on:
+  # Normal flow: release-please maintains the release PR; merging it publishes.
   push:
     branches:
       - master
+  # Recovery / manual: publishing also fires when a GitHub Release is published
+  # (e.g. created by hand) or the workflow is dispatched manually.
+  release:
+    types:
+      - published
+  workflow_dispatch:
 
 # Least privilege by default; each job opts into exactly what it needs.
 permissions: {}
@@ -17,6 +24,7 @@ jobs:
   #    conventional commits. Merging that PR creates the git tag + GitHub Release
   #    and sets release_created=true, which gates the publish job below.
   release-please:
+    if: ${{ github.event_name == 'push' }}
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -32,11 +40,16 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  # 2. Publishes to npm with provenance. Runs only when a release was just cut,
-  #    against the tagged release commit (which carries the bumped version).
+  # 2. Publishes to npm with provenance. Fires when release-please just cut a
+  #    release (push flow), or directly on a published Release / manual dispatch.
+  #    always() lets it run even when release-please was skipped on those events.
   publish:
     needs: release-please
-    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    if: >-
+      ${{ always() &&
+      (needs.release-please.outputs.release_created == 'true' ||
+      github.event_name == 'release' ||
+      github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
