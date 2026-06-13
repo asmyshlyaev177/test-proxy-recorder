@@ -26,7 +26,8 @@
     "landing:dev": "pnpm --filter landing dev",
     "landing:build": "pnpm --filter landing build",
     "example:test:e2e": "pnpm --filter example-nextjs16 test:e2e",
-    "extension:test:e2e": "pnpm --filter example-extension test:e2e"
+    "extension:test:e2e": "pnpm --filter example-extension test:e2e",
+    "init:test:e2e": "pnpm --filter example-init test:e2e"
   },
   "engines": {
     "node": ">=20.0.0"

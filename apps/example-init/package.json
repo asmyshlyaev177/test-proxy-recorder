@@ -1,0 +1,14 @@
+{
+  "name": "example-init",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test:e2e": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "test-proxy-recorder": "workspace:*",
+    "vitest": "^4.0.8"
+  }
+}

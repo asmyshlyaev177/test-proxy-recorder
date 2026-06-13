@@ -51,6 +51,12 @@ jobs:
       - name: Build project
         run: pnpm run build
 
+      # Black-box test for `test-proxy-recorder init`: drives the built CLI to
+      # scaffold a config, then runs a record/replay cycle through it. No
+      # browser needed, so it runs here rather than in the Playwright e2e job.
+      - name: Run init scaffold e2e
+        run: pnpm run init:test:e2e
+
   e2e:
     runs-on: ubuntu-latest
     container:
