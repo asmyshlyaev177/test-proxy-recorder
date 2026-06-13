@@ -52,7 +52,8 @@ export class ProxyServer {
   private currentSession: RecordingSession | null;
   private recordingsDir: string;
   private timeoutMs: number;
-  private recordingIdCounter: number; // Unique ID for each recording entry
+  // Unique ID for each recording entry
+  private recordingIdCounter: number;
   private sequenceCounterByKey: Map<string, number>; // Sequence counter per key (endpoint)
   private replaySessions: ReplaySessionManager; // Track multiple concurrent replay sessions by recording ID
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
