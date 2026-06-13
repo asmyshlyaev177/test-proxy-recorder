@@ -53,8 +53,7 @@ interface ProxyResponseContext {
 }
 
 /**
- * Buffer the proxied response, send it to the client, and resolve with the
- * complete Recording.
+ * Buffer the proxied response, send it to the client, and resolve with the complete Recording.
  */
 function handleProxyResponse(
   proxyRes: http.IncomingMessage,
