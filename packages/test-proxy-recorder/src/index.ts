@@ -7,6 +7,12 @@ export type {
   RecordingSession,
   WebSocketRecording,
 } from './types';
+export {
+  DEFAULT_REDACTED_HEADERS,
+  REDACTED_PLACEHOLDER,
+  type RedactionConfig,
+  redactSession,
+} from './utils/redact';
 
 // Playwright integration
 export type { PlaywrightTestInfo } from './playwright';

@@ -37,6 +37,7 @@ Both can be used together or independently.
 - [Full-stack (SSR + browser) Quick Start](#full-stack-ssr--browser-quick-start)
 - [Browser-only / SPA / Extension Quick Start](#browser-only--spa--extension-quick-start)
 - [CLI](#cli)
+- [Secret redaction](#secret-redaction)
 - [Example Apps](#example-apps)
 - [Playwright Integration](#playwright-integration)
 - [Next.js Integration](#nextjs-integration)
@@ -227,11 +228,75 @@ test-proxy-recorder <target-url> [options]
 | `--port, -p`   | `8080`         | Proxy listen port             |
 | `--dir, -d`    | `./recordings` | Directory for recording files |
 
+Secrets are redacted from recordings by default — see [Secret redaction](#secret-redaction) for the `--no-redact`, `--redact-headers`, and `--redact-body` flags.
+
 ```bash
 # Examples
 test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
+
+---
+
+## Secret redaction
+
+<details>
+<summary>Secrets are stripped automatically by default — show details</summary>
+
+Recordings are meant to be committed to git, so secrets are stripped **automatically** before anything is written to disk. By default the proxy replaces the values of these request/response headers with `[REDACTED]`:
+
+- `Authorization`
+- `Cookie`
+- `Set-Cookie`
+
+This is safe: replay matching ignores these headers, so redaction never breaks playback. It applies to both `.mock.json` recordings and WebSocket recordings.
+
+When only *some* cookies are sensitive, allow-list the harmless ones by name (e.g. a `theme` or A/B-test cookie). Allow-listed cookies keep their values inside `Cookie`/`Set-Cookie`; every other cookie is still redacted.
+
+> **Note:** `.har` files (browser-side requests recorded via Playwright's `routeFromHAR`) are written by Playwright, not the proxy, so this redaction does not cover them. Keep tokens out of HAR by recording with short-lived test credentials and reviewing HARs before committing — see the recommended setup-auth pattern below.
+
+### Recommended auth pattern
+
+To keep the login flow and credentials out of recordings entirely, run authentication in a Playwright **setup project** with the proxy in `transparent` mode, persist `storageState` to a **gitignored** `auth-state.json`, and reuse it in your tests. Recorded requests then carry only the (redacted) session headers, never the login.
+
+### Tweaking what gets redacted
+
+The defaults always apply while redaction is enabled; you can add to them or turn it off.
+
+**CLI flags:**
+
+- `--redact-headers <names>` — comma-separated extra header names to redact (merged with the defaults).
+- `--redact-body <patterns>` — comma-separated regex patterns to redact from request/response bodies.
+- `--allow-headers <names>` — comma-separated header names to exempt from redaction (e.g. `set-cookie`).
+- `--allow-cookies <names>` — comma-separated cookie names to keep unredacted inside `Cookie`/`Set-Cookie`.
+- `--no-redact` — disable redaction and commit raw secrets (not recommended).
+
+```bash
+# Redact an API-key header and "sk_live_..." tokens, but keep the theme cookie
+test-proxy-recorder http://localhost:8000 \
+  --redact-headers x-api-key \
+  --redact-body "sk_live_[a-zA-Z0-9]+" \
+  --allow-cookies theme,locale
+```
+
+**Programmatic** (when constructing `ProxyServer` directly):
+
+```typescript
+import { ProxyServer } from 'test-proxy-recorder';
+
+const proxy = new ProxyServer('http://localhost:3000', './recordings', undefined, {
+  enabled: true,                       // default; set false to disable
+  headers: ['x-api-key', 'x-auth'],    // extra headers, merged with the defaults
+  bodyPatterns: [/sk_live_[a-z0-9]+/i], // regexes replaced in request/response bodies
+  allowHeaders: ['set-cookie'],        // never redact these headers
+  allowCookies: ['theme', 'locale'],   // keep these cookies inside Cookie/Set-Cookie
+  placeholder: '[REDACTED]',           // default
+});
+```
+
+`redactSession(session, config)` is also exported if you want to redact existing recordings yourself.
+
+</details>
 
 ---
 

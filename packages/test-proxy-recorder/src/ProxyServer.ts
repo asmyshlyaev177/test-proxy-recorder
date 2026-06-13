@@ -36,6 +36,7 @@ import {
 import { getReqID } from './utils/getReqID';
 import { readRequestBody, sendJsonResponse } from './utils/httpHelpers.js';
 import { getRecordingIdFromRequest } from './utils/recordingId.js';
+import type { RedactionConfig } from './utils/redact.js';
 import {
   getWsRecordingKey,
   recordWebSocket,
@@ -59,10 +60,17 @@ export class ProxyServer {
   private replaySessions: ReplaySessionManager; // Track multiple concurrent replay sessions by recording ID
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
+  private redaction?: RedactionConfig; // Secret-redaction config applied before saving
 
-  constructor(target: string, recordingsDir: string, timeoutMs?: number) {
+  constructor(
+    target: string,
+    recordingsDir: string,
+    timeoutMs?: number,
+    redaction?: RedactionConfig,
+  ) {
     this.target = target;
     this.timeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    this.redaction = redaction;
     this.mode = Modes.transparent;
     this.recordingId = null;
     this.recordingIdCounter = 0;
@@ -394,7 +402,11 @@ export class ProxyServer {
     console.log(
       `Saving session with ${this.currentSession.recordings.length} HTTP and ${this.currentSession.websocketRecordings.length} WebSocket recordings`,
     );
-    await saveRecordingSession(this.recordingsDir, this.currentSession);
+    await saveRecordingSession(
+      this.recordingsDir,
+      this.currentSession,
+      this.redaction,
+    );
   }
 
   private getRecordingIdOrError(

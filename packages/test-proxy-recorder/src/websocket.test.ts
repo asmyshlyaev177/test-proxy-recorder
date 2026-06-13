@@ -397,7 +397,9 @@ describe('ProxyServer WebSocket Tests', () => {
       const wsRecording = recording.websocketRecordings[0];
 
       expect(wsRecording.headers['x-api-key']).toBe('secret-key-123');
-      expect(wsRecording.headers.cookie).toBe('session=abc');
+      // Sensitive headers are redacted in the saved recording by default,
+      // even though the live handshake forwarded the real value (asserted above).
+      expect(wsRecording.headers.cookie).toBe('[REDACTED]');
       expect(wsRecording.headers['sec-websocket-protocol']).toBe('test-proto');
       expect(wsRecording.protocol).toBe('test-proto');
       // Handshake internals must not be recorded

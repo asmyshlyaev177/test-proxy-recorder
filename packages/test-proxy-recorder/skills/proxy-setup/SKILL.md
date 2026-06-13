@@ -7,9 +7,11 @@ description: >
   webServer block pointing to /__control, per-test fixtures using
   playwrightProxy.before(page, testInfo, mode, { url }), HAR browser-side
   recording via url pattern, .mock.json server-side recording, record/replay/
-  transparent modes, the record-once→commit→CI-replay lifecycle, and parallel
-  test execution with fullyParallel. Load this skill when installing
-  test-proxy-recorder, writing Playwright fixtures, or configuring record/replay.
+  transparent modes, the record-once→commit→CI-replay lifecycle, automatic
+  secret redaction of Authorization/Cookie/Set-Cookie headers (--no-redact,
+  --redact-headers, --redact-body), and parallel test execution with
+  fullyParallel. Load this skill when installing test-proxy-recorder, writing
+  Playwright fixtures, or configuring record/replay.
 type: core
 library: test-proxy-recorder
 library_version: "0.3.5"
@@ -17,6 +19,8 @@ sources:
   - "asmyshlyaev177/test-proxy-recorder:README.md"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwright/index.ts"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/types.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/cli.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/utils/redact.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16/package.json"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/e2e/fixtures.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/playwright.config.ts"
@@ -150,6 +154,40 @@ Recording files must be committed — do not add `e2e/recordings/` to
 # .gitattributes
 /e2e/recordings/** binary
 ```
+
+### Secret redaction
+
+Recordings are committed to git, so secrets are stripped **automatically**
+before anything is written to disk. By default the proxy replaces the values of
+the `Authorization`, `Cookie`, and `Set-Cookie` headers with `[REDACTED]` in
+both `.mock.json` and WebSocket recordings. This is safe — replay matching
+ignores these headers, so redaction never breaks playback. No setup required.
+
+Tweak it via CLI flags on the `test-proxy-recorder` command:
+
+```bash
+# Redact an extra API-key header and any "sk_live_..." token in bodies,
+# but keep the harmless theme cookie unredacted
+test-proxy-recorder http://localhost:3002 --port 8100 --dir ./e2e/recordings \
+  --redact-headers x-api-key,x-auth \
+  --redact-body "sk_live_[a-zA-Z0-9]+" \
+  --allow-cookies theme,locale
+
+# Disable redaction (commit raw secrets — not recommended)
+test-proxy-recorder http://localhost:3002 --no-redact
+```
+
+- `--redact-headers <names>` — comma-separated extra header names, merged with the defaults.
+- `--redact-body <patterns>` — comma-separated regex patterns replaced in request/response bodies.
+- `--allow-headers <names>` — comma-separated header names to exempt from redaction (e.g. `set-cookie`).
+- `--allow-cookies <names>` — comma-separated cookie names kept unredacted inside `Cookie`/`Set-Cookie`; every other cookie in those headers is still redacted. Use when only some cookies are sensitive (session vs. theme/A-B-test).
+- `--no-redact` — turn redaction off.
+
+Caveat: `.har` files are written by Playwright's `routeFromHAR`, not the proxy,
+so this does **not** redact them. Keep tokens out of HAR by recording with
+short-lived test credentials and using the Auth setup pattern below (login runs
+in `transparent` mode against the real provider, with `storageState` saved to a
+gitignored file).
 
 ### Auth setup
 

@@ -5,15 +5,25 @@ import path from 'node:path';
 import { Command } from 'commander';
 
 import { DEFAULT_TIMEOUT_MS } from './constants.js';
+import type { RedactionConfig } from './utils/redact.js';
 
 const DEFAULT_PORT = 8000;
 const DEFAULT_RECORDINGS_DIR = './recordings';
+
+/** Parse a comma-separated CLI option into a trimmed, non-empty list. */
+function splitList(value?: string): string[] {
+  return (value ?? '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
 
 export interface CliOptions {
   target: string;
   port: number;
   recordingsDir: string;
   timeout: number;
+  redaction: RedactionConfig;
 }
 
 export function parseCliArgs(): CliOptions {
@@ -43,6 +53,26 @@ export function parseCliArgs(): CliOptions {
       'Session timeout in milliseconds',
       String(DEFAULT_TIMEOUT_MS),
     )
+    .option(
+      '--no-redact',
+      'Disable secret redaction (commit raw Authorization/Cookie headers — not recommended)',
+    )
+    .option(
+      '--redact-headers <names>',
+      'Comma-separated extra header names to redact (merged with the defaults)',
+    )
+    .option(
+      '--redact-body <patterns>',
+      'Comma-separated regex patterns to redact from request/response bodies',
+    )
+    .option(
+      '--allow-headers <names>',
+      'Comma-separated header names to exempt from redaction',
+    )
+    .option(
+      '--allow-cookies <names>',
+      'Comma-separated cookie names to keep unredacted inside Cookie/Set-Cookie',
+    )
     .action(() => {
       // Action handled after parse
     });
@@ -54,6 +84,11 @@ export function parseCliArgs(): CliOptions {
     port: string;
     dir: string;
     timeout: string;
+    redact: boolean;
+    redactHeaders?: string;
+    redactBody?: string;
+    allowHeaders?: string;
+    allowCookies?: string;
   }>();
 
   const port = Number.parseInt(options.port, 10);
@@ -75,5 +110,14 @@ export function parseCliArgs(): CliOptions {
   // Resolve recordings directory relative to the current working directory (where the command is run)
   const recordingsDir = path.resolve(process.cwd(), options.dir);
 
-  return { target, port, recordingsDir, timeout };
+  // commander maps --no-redact to redact: false; default is true (enabled)
+  const redaction: RedactionConfig = {
+    enabled: options.redact !== false,
+    headers: splitList(options.redactHeaders),
+    bodyPatterns: splitList(options.redactBody),
+    allowHeaders: splitList(options.allowHeaders),
+    allowCookies: splitList(options.allowCookies),
+  };
+
+  return { target, port, recordingsDir, timeout, redaction };
 }

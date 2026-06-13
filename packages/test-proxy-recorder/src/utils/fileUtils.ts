@@ -6,6 +6,7 @@ import path from 'node:path';
 import filenamify from 'filenamify';
 
 import type { Recording, RecordingSession } from '../types.js';
+import { type RedactionConfig, redactSession } from './redact.js';
 
 const JSON_INDENT_SPACES = 2;
 const EXTENSION = '.mock.json';
@@ -98,6 +99,7 @@ function processRecordings(recordings: Recording[]): Recording[] {
 export async function saveRecordingSession(
   recordingsDir: string,
   session: RecordingSession,
+  redaction?: RedactionConfig,
 ): Promise<void> {
   const filePath = getRecordingPath(recordingsDir, session.id);
 
@@ -105,10 +107,14 @@ export async function saveRecordingSession(
 
   // Process recordings: add sequence numbers and deduplicate
   const processedRecordings = processRecordings(session.recordings);
-  const processedSession = {
-    ...session,
-    recordings: processedRecordings,
-  };
+  // Strip secrets before anything touches disk (enabled by default).
+  const processedSession = redactSession(
+    {
+      ...session,
+      recordings: processedRecordings,
+    },
+    redaction,
+  );
 
   await fs.writeFile(
     filePath,
