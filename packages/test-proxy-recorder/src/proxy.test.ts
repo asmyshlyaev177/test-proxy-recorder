@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DEFAULT_TIMEOUT_MS } from './constants.js';
 import { ProxyServer } from './ProxyServer.js';
+import { ReplaySessionManager } from './replaySessions.js';
 import { getRecordingPath } from './utils/fileUtils.js';
 import { getReqID } from './utils/getReqID.js';
 
@@ -498,8 +499,11 @@ describe('ProxyServer', () => {
   });
 
   describe('replay session eviction', () => {
+    let manager: ReplaySessionManager;
+
     beforeEach(async () => {
       vi.useFakeTimers();
+      manager = new ReplaySessionManager(DEFAULT_TIMEOUT_MS);
       proxyServer = new ProxyServer(TEST_TARGET, TEST_RECORDINGS_DIR);
       await proxyServer.init();
     });
@@ -509,71 +513,68 @@ describe('ProxyServer', () => {
     });
 
     it('should evict idle replay sessions after DEFAULT_TIMEOUT_MS', () => {
-      const sessions = proxyServer['replaySessions'] as Map<string, unknown>;
-
       // Simulate creating a replay session
-      proxyServer['getOrCreateReplaySession']('session-1');
-      expect(sessions.size).toBe(1);
+      manager.getOrCreate('session-1');
+      expect(manager.size).toBe(1);
 
       // Advance past DEFAULT_TIMEOUT_MS + one check interval (30s)
       vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS + 30_000);
 
-      expect(sessions.size).toBe(0);
+      expect(manager.size).toBe(0);
     });
 
     it('should not evict sessions that are still being accessed', () => {
-      const sessions = proxyServer['replaySessions'] as Map<string, unknown>;
-
-      proxyServer['getOrCreateReplaySession']('session-1');
+      manager.getOrCreate('session-1');
 
       // Advance partway, then access the session again
       vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS - 10_000);
-      proxyServer['getOrCreateReplaySession']('session-1');
+      manager.getOrCreate('session-1');
 
       // Advance another check interval — session was recently accessed, should survive
       vi.advanceTimersByTime(30_000);
-      expect(sessions.size).toBe(1);
+      expect(manager.size).toBe(1);
 
       // Now let it go fully idle past the timeout
       vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS + 30_000);
-      expect(sessions.size).toBe(0);
+      expect(manager.size).toBe(0);
     });
 
     it('should evict only the idle session when multiple sessions exist', () => {
-      const sessions = proxyServer['replaySessions'] as Map<string, unknown>;
-
-      proxyServer['getOrCreateReplaySession']('session-a');
-      proxyServer['getOrCreateReplaySession']('session-b');
-      expect(sessions.size).toBe(2);
+      manager.getOrCreate('session-a');
+      manager.getOrCreate('session-b');
+      expect(manager.size).toBe(2);
 
       // Advance most of the timeout, then touch only session-b
       vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS - 10_000);
-      proxyServer['getOrCreateReplaySession']('session-b');
+      manager.getOrCreate('session-b');
 
       // Next check interval: session-a is idle, session-b was refreshed
       vi.advanceTimersByTime(30_000);
-      expect(sessions.size).toBe(1);
-      expect(sessions.has('session-b')).toBe(true);
-      expect(sessions.has('session-a')).toBe(false);
+      expect(manager.size).toBe(1);
+      expect([...manager.keys()]).toEqual(['session-b']);
     });
 
     it('should stop the eviction timer when all sessions are evicted', () => {
-      proxyServer['getOrCreateReplaySession']('session-1');
+      manager.getOrCreate('session-1');
 
-      expect(proxyServer['sessionEvictionTimer']).not.toBeNull();
+      expect(manager['evictionTimer']).not.toBeNull();
 
       vi.advanceTimersByTime(DEFAULT_TIMEOUT_MS + 30_000);
 
-      expect(proxyServer['sessionEvictionTimer']).toBeNull();
+      expect(manager['evictionTimer']).toBeNull();
     });
 
     it('should stop the eviction timer when session is explicitly cleaned up', async () => {
-      proxyServer['getOrCreateReplaySession']('session-1');
-      expect(proxyServer['sessionEvictionTimer']).not.toBeNull();
+      // Through the ProxyServer cleanup path, against its own manager instance
+      const serverManager = proxyServer[
+        'replaySessions'
+      ] as ReplaySessionManager;
+      serverManager.getOrCreate('session-1');
+      expect(serverManager['evictionTimer']).not.toBeNull();
 
       await proxyServer['cleanupSession']('session-1');
 
-      expect(proxyServer['sessionEvictionTimer']).toBeNull();
+      expect(serverManager['evictionTimer']).toBeNull();
     });
   });
 });

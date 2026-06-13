@@ -1,10 +1,8 @@
 import fs from 'node:fs/promises';
 import http from 'node:http';
-import https from 'node:https';
 import { Duplex } from 'node:stream';
 
 import httpProxy from 'http-proxy';
-import { WebSocket, WebSocketServer } from 'ws';
 
 import {
   CONTROL_ENDPOINT,
@@ -15,14 +13,21 @@ import {
   HTTP_STATUS_OK,
   RECORDING_ID_HEADER,
 } from './constants.js';
+import { recordAndProxyRequest } from './httpRecorder.js';
+import {
+  getServedTracker,
+  getSortedRecordings,
+  ReplaySessionManager,
+  selectReplayRecord,
+} from './replaySessions.js';
 import {
   type ControlRequest,
   type Mode,
   Modes,
   type Recording,
   type RecordingSession,
-  type WebSocketRecording,
 } from './types.js';
+import { addCorsHeaders, getCorsHeaders } from './utils/cors.js';
 import {
   getRecordingPath,
   loadRecordingSession,
@@ -30,80 +35,12 @@ import {
 } from './utils/fileUtils.js';
 import { getReqID } from './utils/getReqID';
 import { readRequestBody, sendJsonResponse } from './utils/httpHelpers.js';
-
-/**
- * State for a single replay session
- * Allows multiple concurrent test runners to replay different recordings simultaneously
- */
-interface ReplaySessionState {
-  recordingId: string;
-  servedRecordingIdsByKey: Map<string, Set<number>>;
-  loadedSession: RecordingSession | null;
-  lastAccessTime: number;
-  // Cache of sorted recordings per key to avoid re-filtering and re-sorting
-  sortedRecordingsByKey: Map<string, Recording[]>;
-}
-
-// WebSocket handshake internals that must not be recorded or forwarded —
-// the ws client generates its own key/version, and connection/upgrade/host
-// are hop-by-hop
-const WS_INTERNAL_HEADERS = new Set([
-  'host',
-  'connection',
-  'upgrade',
-  'sec-websocket-key',
-  'sec-websocket-version',
-  'sec-websocket-extensions',
-]);
-
-/**
- * Headers worth persisting in a WebSocket recording: everything the client
- * sent except handshake internals. Keeps Sec-WebSocket-Protocol so the
- * recording shows which subprotocols were requested.
- */
-function getRecordableWsHeaders(
-  req: http.IncomingMessage,
-): http.IncomingHttpHeaders {
-  const headers: http.IncomingHttpHeaders = {};
-  for (const [name, value] of Object.entries(req.headers)) {
-    if (!WS_INTERNAL_HEADERS.has(name) && value !== undefined) {
-      headers[name] = value;
-    }
-  }
-  return headers;
-}
-
-/**
- * Headers to forward on the backend WebSocket connection in record mode.
- * Sec-WebSocket-Protocol is excluded because it is passed to the ws client
- * via the protocols argument instead.
- */
-function getForwardableWsHeaders(
-  req: http.IncomingMessage,
-): Record<string, string> {
-  const headers: Record<string, string> = {};
-  for (const [name, value] of Object.entries(getRecordableWsHeaders(req))) {
-    if (name !== 'sec-websocket-protocol' && value !== undefined) {
-      headers[name] = Array.isArray(value) ? value.join(', ') : value;
-    }
-  }
-  return headers;
-}
-
-/**
- * Subprotocols the client requested via Sec-WebSocket-Protocol, in order.
- */
-function getClientSubprotocols(req: http.IncomingMessage): string[] {
-  const header = req.headers['sec-websocket-protocol'];
-  if (!header) {
-    return [];
-  }
-  const raw = Array.isArray(header) ? header.join(',') : header;
-  return raw
-    .split(',')
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
+import { getRecordingIdFromRequest } from './utils/recordingId.js';
+import {
+  getWsRecordingKey,
+  recordWebSocket,
+  replayWebSocket,
+} from './websocketHandlers.js';
 
 export class ProxyServer {
   private target: string;
@@ -117,8 +54,7 @@ export class ProxyServer {
   private timeoutMs: number;
   private recordingIdCounter: number; // Unique ID for each recording entry
   private sequenceCounterByKey: Map<string, number>; // Sequence counter per key (endpoint)
-  private replaySessions: Map<string, ReplaySessionState>; // Track multiple concurrent replay sessions by recording ID
-  private sessionEvictionTimer: NodeJS.Timeout | null; // Periodic timer to evict idle replay sessions
+  private replaySessions: ReplaySessionManager; // Track multiple concurrent replay sessions by recording ID
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
 
@@ -133,8 +69,7 @@ export class ProxyServer {
     this.modeTimeout = null;
     this.currentSession = null;
     this.recordingsDir = recordingsDir;
-    this.replaySessions = new Map();
-    this.sessionEvictionTimer = null;
+    this.replaySessions = new ReplaySessionManager(this.timeoutMs);
     this.recordingPromises = [];
     this.flushPromise = null;
     this.proxy = httpProxy.createProxyServer({
@@ -171,7 +106,7 @@ export class ProxyServer {
 
   private setupProxyEventHandlers(): void {
     this.proxy.on('error', this.handleProxyError.bind(this));
-    this.proxy.on('proxyRes', this.addCorsHeaders.bind(this));
+    this.proxy.on('proxyRes', addCorsHeaders);
   }
 
   private handleProxyError(
@@ -186,7 +121,7 @@ export class ProxyServer {
     }
 
     if (!res.headersSent) {
-      const corsHeaders = this.getCorsHeaders(req);
+      const corsHeaders = getCorsHeaders(req);
       res.writeHead(HTTP_STATUS_BAD_GATEWAY, {
         'Content-Type': 'application/json',
         ...corsHeaders,
@@ -197,113 +132,11 @@ export class ProxyServer {
   }
 
   /**
-   * Get CORS headers for a given request
-   * @param req The incoming HTTP request
-   * @returns An object containing CORS headers
-   */
-  private getCorsHeaders(req: http.IncomingMessage): Record<string, string> {
-    const origin = req.headers.origin;
-
-    return {
-      'access-control-allow-origin': origin || '*',
-      'access-control-allow-credentials': 'true',
-      'access-control-allow-headers':
-        req.headers['access-control-request-headers'] ||
-        `Origin, X-Requested-With, Content-Type, Accept, Authorization, ${RECORDING_ID_HEADER}`,
-      'access-control-allow-methods': 'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-      'access-control-expose-headers': '*',
-    };
-  }
-
-  private addCorsHeaders(
-    proxyRes: http.IncomingMessage,
-    req: http.IncomingMessage,
-  ): void {
-    const corsHeaders = this.getCorsHeaders(req);
-    Object.assign(proxyRes.headers, corsHeaders);
-  }
-
-  /**
-   * Extract recording ID from custom HTTP header
-   * Used for concurrent replay session routing, especially with Next.js
-   * @param req The incoming HTTP request
-   * @returns The recording ID from header, or null if not found
-   */
-  private getRecordingIdFromHeader(req: http.IncomingMessage): string | null {
-    const headerValue = req.headers[RECORDING_ID_HEADER];
-    if (!headerValue) {
-      return null;
-    }
-    return Array.isArray(headerValue) ? headerValue[0] : headerValue;
-  }
-
-  /**
-   * Extract recording ID from request cookie
-   * Used for concurrent replay session routing (fallback method)
-   * @param req The incoming HTTP request
-   * @returns The recording ID from cookie, or null if not found
-   */
-  private getRecordingIdFromCookie(req: http.IncomingMessage): string | null {
-    const cookies = req.headers.cookie;
-    if (!cookies) {
-      return null;
-    }
-
-    const match = cookies.match(/proxy-recording-id=([^;]+)/);
-    return match ? decodeURIComponent(match[1]) : null;
-  }
-
-  /**
-   * Extract recording ID from request using custom header (preferred) or cookie (fallback)
-   * @param req The incoming HTTP request
-   * @returns The recording ID, or null if not found
-   */
-  private getRecordingIdFromRequest(req: http.IncomingMessage): string | null {
-    // Prefer custom header over cookie for Next.js compatibility
-    const fromHeader = this.getRecordingIdFromHeader(req);
-    const fromCookie = this.getRecordingIdFromCookie(req);
-
-    return fromHeader ?? fromCookie ?? null;
-  }
-
-  /**
-   * Get or create a replay session state for a given recording ID
-   * @param recordingId The recording ID to get/create session for
-   * @returns The replay session state
-   */
-  private getOrCreateReplaySession(recordingId: string): ReplaySessionState {
-    let session = this.replaySessions.get(recordingId);
-
-    if (session) {
-      session.lastAccessTime = Date.now();
-    } else {
-      session = {
-        recordingId,
-        servedRecordingIdsByKey: new Map(),
-        loadedSession: null,
-        lastAccessTime: Date.now(),
-        sortedRecordingsByKey: new Map(),
-      };
-      this.replaySessions.set(recordingId, session);
-      this.startSessionEvictionTimer();
-      console.log(
-        `[CONCURRENT REPLAY] Created new session for recording: ${recordingId}`,
-      );
-    }
-
-    return session;
-  }
-
-  /**
    * Clean up a session - removes it from memory and resets counters
    * @param sessionId The session ID to clean up
    */
   private async cleanupSession(sessionId: string): Promise<void> {
     this.replaySessions.delete(sessionId);
-
-    if (this.replaySessions.size === 0) {
-      this.stopSessionEvictionTimer();
-    }
 
     // If this was the active recording session, save it before clearing
     if (this.recordingId === sessionId) {
@@ -318,42 +151,6 @@ export class ProxyServer {
     }
 
     console.log(`[CLEANUP] Session ${sessionId} cleaned up successfully`);
-  }
-
-  private startSessionEvictionTimer(): void {
-    if (this.sessionEvictionTimer) {
-      return;
-    }
-
-    // Check every 30 seconds for idle sessions
-    const CHECK_INTERVAL_MS = 30_000;
-
-    this.sessionEvictionTimer = setInterval(() => {
-      const now = Date.now();
-
-      for (const [id, session] of this.replaySessions) {
-        if (now - session.lastAccessTime >= this.timeoutMs) {
-          console.log(
-            `[EVICTION] Evicting idle replay session: ${id} (idle for ${Math.round((now - session.lastAccessTime) / 1000)}s)`,
-          );
-          this.replaySessions.delete(id);
-        }
-      }
-
-      if (this.replaySessions.size === 0) {
-        this.stopSessionEvictionTimer();
-      }
-    }, CHECK_INTERVAL_MS);
-
-    // Allow the process to exit even if the timer is running
-    this.sessionEvictionTimer.unref();
-  }
-
-  private stopSessionEvictionTimer(): void {
-    if (this.sessionEvictionTimer) {
-      clearInterval(this.sessionEvictionTimer);
-      this.sessionEvictionTimer = null;
-    }
   }
 
   private async parseControlBody(
@@ -513,7 +310,7 @@ export class ProxyServer {
     this.currentSession = null;
 
     // Get or create the replay session
-    const sessionState = this.getOrCreateReplaySession(id);
+    const sessionState = this.replaySessions.getOrCreate(id);
 
     // Reset the replay session to start fresh
     // This ensures served recordings tracker is cleared when re-entering replay mode
@@ -602,7 +399,7 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): string | null {
-    const recordingIdFromRequest = this.getRecordingIdFromRequest(req);
+    const recordingIdFromRequest = getRecordingIdFromRequest(req);
 
     // If we have a recording ID from the request (header or cookie), use it
     if (recordingIdFromRequest) {
@@ -622,7 +419,7 @@ export class ProxyServer {
       );
 
       // Return error - we cannot safely determine which session to use
-      const corsHeaders = this.getCorsHeaders(req);
+      const corsHeaders = getCorsHeaders(req);
       res.writeHead(HTTP_STATUS_BAD_REQUEST, {
         'Content-Type': 'application/json',
         ...corsHeaders,
@@ -641,7 +438,7 @@ export class ProxyServer {
     // Single session or no active sessions - use fallback for backward compatibility
     const recordingId = this.replayId;
     if (!recordingId) {
-      const corsHeaders = this.getCorsHeaders(req);
+      const corsHeaders = getCorsHeaders(req);
       res.writeHead(HTTP_STATUS_BAD_REQUEST, {
         'Content-Type': 'application/json',
         ...corsHeaders,
@@ -656,65 +453,6 @@ export class ProxyServer {
     return recordingId;
   }
 
-  private getServedTracker(
-    sessionState: ReplaySessionState,
-    key: string,
-  ): Set<number> {
-    if (!sessionState.servedRecordingIdsByKey.has(key)) {
-      sessionState.servedRecordingIdsByKey.set(key, new Set());
-    }
-    return sessionState.servedRecordingIdsByKey.get(key)!;
-  }
-
-  private getSortedRecordings(
-    sessionState: ReplaySessionState,
-    key: string,
-  ): Recording[] {
-    // Return cached sorted recordings if available
-    if (sessionState.sortedRecordingsByKey.has(key)) {
-      return sessionState.sortedRecordingsByKey.get(key)!;
-    }
-
-    // Filter and sort recordings for this key
-    const session = sessionState.loadedSession!;
-    const sortedRecords = session.recordings
-      .filter((r) => r.key === key && r.response)
-      .toSorted((a, b) => {
-        const aSeq = a.sequence !== undefined ? a.sequence : a.recordingId;
-        const bSeq = b.sequence !== undefined ? b.sequence : b.recordingId;
-        return aSeq - bSeq;
-      });
-
-    // Cache the sorted recordings
-    sessionState.sortedRecordingsByKey.set(key, sortedRecords);
-    return sortedRecords;
-  }
-
-  private selectReplayRecord(
-    recordsWithKey: Recording[],
-    servedForThisKey: Set<number>,
-    key: string,
-    recordingId: string,
-  ): Recording | null {
-    // Deterministic order: always serve the first unserved recording in the
-    // pre-sorted list (sorted by sequence/recordingId). If all are served, reuse
-    // the last as a fallback. No time-based or heuristic bias.
-    for (const rec of recordsWithKey) {
-      if (!servedForThisKey.has(rec.recordingId)) {
-        return rec;
-      }
-    }
-
-    if (recordsWithKey.length > 0) {
-      console.log(
-        `[REPLAY WARNING] All ${recordsWithKey.length} recordings already served for ${key} (session: ${recordingId}), reusing last one`,
-      );
-      return recordsWithKey[recordsWithKey.length - 1];
-    }
-
-    return null;
-  }
-
   private async handleReplayRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
@@ -727,7 +465,7 @@ export class ProxyServer {
 
     try {
       // Session is already loaded in switchToReplayMode (or load failed)
-      const sessionState = this.getOrCreateReplaySession(recordingId);
+      const sessionState = this.replaySessions.getOrCreate(recordingId);
 
       // If session failed to load, throw appropriate error
       if (!sessionState.loadedSession) {
@@ -737,11 +475,11 @@ export class ProxyServer {
         );
       }
 
-      const servedForThisKey = this.getServedTracker(sessionState, key);
+      const servedForThisKey = getServedTracker(sessionState, key);
       const host = req.headers.host || 'unknown';
 
       // Use cached sorted recordings to avoid re-filtering and re-sorting
-      const recordsWithKey = this.getSortedRecordings(sessionState, key);
+      const recordsWithKey = getSortedRecordings(sessionState, key);
 
       if (recordsWithKey.length === 0) {
         const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}`;
@@ -757,7 +495,7 @@ export class ProxyServer {
           sessionId: recordingId,
         };
 
-        const corsHeaders = this.getCorsHeaders(req);
+        const corsHeaders = getCorsHeaders(req);
         res.writeHead(HTTP_STATUS_NOT_FOUND, {
           'Content-Type': 'application/json',
           ...corsHeaders,
@@ -771,7 +509,7 @@ export class ProxyServer {
         `[replay request #${requestCount}] ${req.method} ${req.url} (key: ${key}, session: ${recordingId}, total: ${recordsWithKey.length}, served: ${servedForThisKey.size})`,
       );
 
-      const record = this.selectReplayRecord(
+      const record = selectReplayRecord(
         recordsWithKey,
         servedForThisKey,
         key,
@@ -794,7 +532,7 @@ export class ProxyServer {
 
       const responseHeaders = {
         ...headers,
-        ...this.getCorsHeaders(req),
+        ...getCorsHeaders(req),
       };
 
       res.writeHead(statusCode, responseHeaders);
@@ -815,7 +553,7 @@ export class ProxyServer {
       err instanceof Error && 'code' in err && err.code === 'ENOENT';
     console.error('Replay error:', err);
 
-    const corsHeaders = this.getCorsHeaders(req);
+    const corsHeaders = getCorsHeaders(req);
     res.writeHead(HTTP_STATUS_NOT_FOUND, {
       'Content-Type': 'application/json',
       ...corsHeaders,
@@ -858,7 +596,7 @@ export class ProxyServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): void {
-    const corsHeaders = this.getCorsHeaders(req);
+    const corsHeaders = getCorsHeaders(req);
 
     res.writeHead(HTTP_STATUS_OK, {
       ...corsHeaders,
@@ -876,18 +614,17 @@ export class ProxyServer {
     console.log(`[${this.mode}] ${req.method} ${req.url} -> ${target}`);
 
     if (this.mode === Modes.record) {
-      await this.recordAndProxyRequest(req, res, target);
+      this.recordAndProxy(req, res, target);
     } else {
       this.proxy.web(req, res, { target });
     }
   }
 
-  // Note: streaming requests are buffered before proxying; streaming passthrough is not yet implemented
-  private async recordAndProxyRequest(
+  private recordAndProxy(
     req: http.IncomingMessage,
     res: http.ServerResponse,
     target: string,
-  ): Promise<void> {
+  ): void {
     if (!this.currentSession) {
       return;
     }
@@ -897,141 +634,18 @@ export class ProxyServer {
     const sequence = this.sequenceCounterByKey.get(key) || 0;
     this.sequenceCounterByKey.set(key, sequence + 1);
 
-    // Create a promise that will resolve to the complete Recording
-    const recordingPromise = new Promise<Recording | null>((resolve) => {
-      (async () => {
-        try {
-          // Buffer the request body
-          const chunks: Buffer[] = [];
-
-          req.on('data', (chunk: Buffer) => {
-            chunks.push(chunk);
-          });
-
-          // Wait for the request body to be fully buffered
-          try {
-            await new Promise<void>((resolveBuffer, rejectBuffer) => {
-              req.on('end', () => resolveBuffer());
-              req.on('error', (err) => rejectBuffer(err));
-              // Add timeout to prevent hanging
-              setTimeout(
-                () => rejectBuffer(new Error('Request buffering timeout')),
-                30_000,
-              );
-            });
-          } catch (error) {
-            console.error('Error buffering request:', error);
-          }
-
-          const requestBody = Buffer.concat(chunks).toString('utf8');
-
-          // Determine if we need http or https
-          const targetUrl = new URL(target);
-          const isHttps = targetUrl.protocol === 'https:';
-          const requestModule = isHttps ? https : http;
-          const defaultPort = isHttps ? 443 : 80;
-
-          // Create a new request to proxy with the buffered body
-          const proxyReq = requestModule.request(
-            {
-              hostname: targetUrl.hostname,
-              port: targetUrl.port || defaultPort,
-              path: req.url,
-              method: req.method,
-              headers: req.headers,
-            },
-            (proxyRes) => {
-              // Add CORS headers
-              this.addCorsHeaders(proxyRes, req);
-
-              // Buffer response data for recording
-              const responseChunks: Buffer[] = [];
-
-              proxyRes.on('data', (chunk: Buffer) => {
-                responseChunks.push(chunk);
-              });
-
-              proxyRes.on('end', async () => {
-                try {
-                  const responseBody = Buffer.concat(responseChunks);
-                  const responseBodyStr = responseBody.toString('utf8');
-
-                  // Create the complete recording
-                  const recording: Recording = {
-                    request: {
-                      method: req.method!,
-                      url: req.url!,
-                      headers: req.headers,
-                      body: requestBody || null,
-                    },
-                    response: {
-                      statusCode: proxyRes.statusCode!,
-                      headers: proxyRes.headers,
-                      body: responseBodyStr || null,
-                    },
-                    timestamp: new Date().toISOString(),
-                    key,
-                    recordingId,
-                    sequence,
-                  };
-
-                  const responseHeaders = {
-                    ...proxyRes.headers,
-                    ...this.getCorsHeaders(req),
-                  };
-
-                  res.writeHead(proxyRes.statusCode || 200, responseHeaders);
-                  res.end(responseBody);
-
-                  console.log(
-                    `Recorded: ${req.method} ${req.url} (recordingId: ${recordingId}, sequence: ${sequence})`,
-                  );
-
-                  // Resolve with the complete recording
-                  resolve(recording);
-                } catch (error) {
-                  console.error('Error completing recording:', error);
-                  resolve(null);
-                }
-              });
-
-              proxyRes.on('error', (err) => {
-                console.error('Proxy response error:', err);
-                if (!res.headersSent) {
-                  this.handleProxyError(err, req, res);
-                }
-                resolve(null);
-              });
-            },
-          );
-
-          proxyReq.on('error', (err) => {
-            // This handles network/connection errors (e.g., ECONNREFUSED, ETIMEDOUT)
-            // NOT HTTP error responses (which are handled above in the response callback)
-            this.handleProxyError(err, req, res);
-            resolve(null);
-          });
-
-          // Write the buffered body to the proxy request
-          if (chunks.length > 0) {
-            proxyReq.write(Buffer.concat(chunks));
-          }
-
-          proxyReq.end();
-        } catch (error) {
-          console.error('Error in recordAndProxyRequest:', error);
-          try {
-            this.handleProxyError(error as Error, req, res);
-          } catch (error_) {
-            console.error('Failed to handle proxy error:', error_);
-          }
-          resolve(null);
-        }
-      })();
-    });
-
     // Add promise to stack immediately - this preserves request order!
-    this.recordingPromises.push(recordingPromise);
+    this.recordingPromises.push(
+      recordAndProxyRequest({
+        req,
+        res,
+        target,
+        key,
+        recordingId,
+        sequence,
+        onProxyError: this.handleProxyError.bind(this),
+      }),
+    );
   }
 
   private handleUpgrade(
@@ -1048,128 +662,11 @@ export class ProxyServer {
     console.log(`[${this.mode}] WebSocket upgrade ${req.url} -> ${target}`);
 
     if (this.mode === Modes.record) {
-      this.handleRecordWebSocket(req, socket, head, target);
+      recordWebSocket(req, socket, head, target, this.currentSession);
     } else {
       // Transparent mode - just proxy through
       this.proxy.ws(req, socket, head, { target });
     }
-  }
-
-  private handleRecordWebSocket(
-    req: http.IncomingMessage,
-    clientSocket: Duplex,
-    head: Buffer,
-    target: string,
-  ): void {
-    const url = req.url || '/';
-    const key = `WS_${url.replaceAll('/', '_')}`;
-
-    const wsRecording: WebSocketRecording = {
-      url,
-      messages: [],
-      timestamp: new Date().toISOString(),
-      key,
-      headers: getRecordableWsHeaders(req),
-    };
-
-    if (this.currentSession) {
-      this.currentSession.websocketRecordings.push(wsRecording);
-    }
-
-    // Create WebSocket connection to backend, forwarding the client's
-    // subprotocols and handshake headers (auth tokens, cookies, custom
-    // headers) so the backend sees the same handshake the client sent
-    const backendWsUrl = `${target.replace('http', 'ws')}${url}`;
-    const backendWs = new WebSocket(backendWsUrl, getClientSubprotocols(req), {
-      headers: getForwardableWsHeaders(req),
-    });
-
-    // Create WebSocket server for client, answering with the subprotocol the
-    // backend negotiated (the callback only runs when the client offered one)
-    const wss = new WebSocketServer({
-      noServer: true,
-      handleProtocols: (protocols) =>
-        backendWs.protocol && protocols.has(backendWs.protocol)
-          ? backendWs.protocol
-          : (protocols.values().next().value ?? false),
-    });
-
-    // Wait for backend connection before accepting client
-    backendWs.on('open', () => {
-      console.log(`WebSocket recording: connected to backend ${backendWsUrl}`);
-
-      // Remember the subprotocol the backend negotiated so replay can answer
-      // with the same one
-      if (backendWs.protocol) {
-        wsRecording.protocol = backendWs.protocol;
-      }
-
-      wss.handleUpgrade(req, clientSocket, head, (clientWs) => {
-        // Forward messages from client to backend
-        clientWs.on('message', (data) => {
-          const message = data.toString();
-
-          // Record client message
-          wsRecording.messages.push({
-            direction: 'client-to-server',
-            data: message,
-            timestamp: new Date().toISOString(),
-          });
-
-          // Forward to backend if connected
-          if (backendWs.readyState === WebSocket.OPEN) {
-            backendWs.send(message);
-          }
-        });
-
-        // Forward messages from backend to client
-        backendWs.on('message', (data) => {
-          const message = data.toString();
-
-          // Record server message
-          wsRecording.messages.push({
-            direction: 'server-to-client',
-            data: message,
-            timestamp: new Date().toISOString(),
-          });
-
-          // Forward to client
-          if (clientWs.readyState === WebSocket.OPEN) {
-            clientWs.send(message);
-          }
-        });
-
-        // Handle errors
-        clientWs.on('error', (err) => {
-          console.error('Client WebSocket error:', err);
-        });
-
-        backendWs.on('error', (err) => {
-          console.error('Backend WebSocket error:', err);
-        });
-
-        // Handle close
-        clientWs.on('close', () => {
-          backendWs.close();
-          console.log('Client WebSocket closed');
-        });
-
-        backendWs.on('close', () => {
-          clientWs.close();
-          console.log('Backend WebSocket closed');
-        });
-      });
-    });
-
-    backendWs.on('error', (err) => {
-      console.error('Backend WebSocket connection error:', err);
-      clientSocket.write('HTTP/1.1 502 Bad Gateway\r\n\r\n');
-      clientSocket.destroy();
-    });
-
-    wss.on('error', (err) => {
-      console.error('WebSocket server error:', err);
-    });
   }
 
   /**
@@ -1180,7 +677,7 @@ export class ProxyServer {
    * Playwright's setExtraHTTPHeaders / cookies still reach the upgrade request.
    */
   private getWsRecordingId(req: http.IncomingMessage): string | null {
-    const fromRequest = this.getRecordingIdFromRequest(req);
+    const fromRequest = getRecordingIdFromRequest(req);
     if (fromRequest) {
       return fromRequest;
     }
@@ -1201,8 +698,7 @@ export class ProxyServer {
     req: http.IncomingMessage,
     socket: Duplex,
   ): Promise<void> {
-    const url = req.url || '/';
-    const key = `WS_${url.replaceAll('/', '_')}`;
+    const key = getWsRecordingKey(req.url || '/');
 
     const recordingId = this.getWsRecordingId(req);
     if (!recordingId) {
@@ -1214,7 +710,7 @@ export class ProxyServer {
     try {
       // Reuse the cached session state instead of re-reading the file on
       // every upgrade
-      const sessionState = this.getOrCreateReplaySession(recordingId);
+      const sessionState = this.replaySessions.getOrCreate(recordingId);
       if (!sessionState.loadedSession) {
         const filePath = getRecordingPath(this.recordingsDir, recordingId);
         sessionState.loadedSession = await loadRecordingSession(filePath);
@@ -1231,75 +727,7 @@ export class ProxyServer {
         return;
       }
 
-      // Create WebSocket server for replay, answering with the recorded
-      // subprotocol when the client offers it (callback only runs when the
-      // client offered protocols)
-      const wss = new WebSocketServer({
-        noServer: true,
-        handleProtocols: (protocols) =>
-          wsRecording.protocol && protocols.has(wsRecording.protocol)
-            ? wsRecording.protocol
-            : (protocols.values().next().value ?? false),
-      });
-
-      // Fake upgrade request with proper headers
-      const fakeReq = Object.assign(req, {
-        headers: {
-          ...req.headers,
-          'sec-websocket-key': req.headers['sec-websocket-key'] || 'replay-key',
-          'sec-websocket-version': '13',
-        },
-      });
-
-      wss.handleUpgrade(fakeReq, socket, Buffer.alloc(0), (ws) => {
-        console.log(`Replaying WebSocket: ${url} (session: ${recordingId})`);
-
-        // Walk the recorded message sequence with a cursor. After each client
-        // message, send every consecutive server message that followed it in
-        // the recording. This preserves recorded order and supports many
-        // server messages per client message (e.g. high-frequency bursts).
-        const messages = wsRecording.messages;
-        let cursor = 0;
-
-        const flushServerMessages = () => {
-          while (
-            cursor < messages.length &&
-            messages[cursor].direction === 'server-to-client'
-          ) {
-            const msg = messages[cursor];
-            cursor++;
-            if (ws.readyState === WebSocket.OPEN) {
-              ws.send(msg.data);
-            }
-          }
-        };
-
-        ws.on('message', (data) => {
-          console.log(`Replay: Client sent: ${data.toString()}`);
-
-          // Advance past the recorded client message, then send the server
-          // messages that followed it
-          if (
-            cursor < messages.length &&
-            messages[cursor].direction === 'client-to-server'
-          ) {
-            cursor++;
-          }
-          flushServerMessages();
-        });
-
-        ws.on('error', (err) => {
-          console.error('Replay WebSocket error:', err);
-        });
-
-        ws.on('close', () => {
-          console.log('Replay WebSocket closed');
-        });
-
-        // Send initial server messages (those recorded before any client
-        // message, e.g. a welcome message)
-        flushServerMessages();
-      });
+      replayWebSocket(req, socket, wsRecording, recordingId);
     } catch (error) {
       console.error('Replay error:', error);
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
