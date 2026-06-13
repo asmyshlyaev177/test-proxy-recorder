@@ -9,9 +9,11 @@ description: >
   recording via url pattern, .mock.json server-side recording, record/replay/
   transparent modes, the record-once→commit→CI-replay lifecycle, automatic
   secret redaction of Authorization/Cookie/Set-Cookie headers (--no-redact,
-  --redact-headers, --redact-body), and parallel test execution with
-  fullyParallel. Load this skill when installing test-proxy-recorder, writing
-  Playwright fixtures, or configuring record/replay.
+  --redact-headers, --redact-body), an optional config file
+  (test-proxy-recorder.config.ts via defineConfig, --config) with CLI-overrides-
+  config precedence, and parallel test execution with fullyParallel. Load this
+  skill when installing test-proxy-recorder, writing Playwright fixtures, or
+  configuring record/replay.
 type: core
 library: test-proxy-recorder
 library_version: "0.3.5"
@@ -20,6 +22,7 @@ sources:
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwright/index.ts"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/types.ts"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/cli.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/config.ts"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/utils/redact.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16/package.json"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/e2e/fixtures.ts"
@@ -154,6 +157,42 @@ Recording files must be committed — do not add `e2e/recordings/` to
 # .gitattributes
 /e2e/recordings/** binary
 ```
+
+### Config file
+
+Anything passed on the CLI can instead live in a config file, auto-discovered as
+`test-proxy-recorder.config.{ts,js,mjs,cjs}` in the proxy process's working
+directory (or `--config <path>`). Prefer it over a long `proxy` script once you
+need body-redaction regexes — they go in as real `RegExp` literals instead of
+shell-escaped strings.
+
+```typescript
+// test-proxy-recorder.config.ts
+import { defineConfig } from 'test-proxy-recorder';
+
+export default defineConfig({
+  target: 'http://localhost:3002',
+  port: 8100,
+  recordingsDir: './e2e/recordings',
+  redaction: {
+    headers: ['x-api-key'],         // merged with the Authorization/Cookie defaults
+    bodyPatterns: [/sk_live_\w+/g],
+    allowCookies: ['theme'],
+  },
+});
+```
+
+```json
+// package.json — with a config file, the proxy script needs no flags
+{ "scripts": { "proxy": "test-proxy-recorder" } }
+```
+
+Precedence is **CLI flag → config file → built-in default**: a flag always
+overrides the file, and `target` may come from either (the CLI argument wins).
+List flags (`--redact-headers`, `--redact-body`, `--allow-headers`,
+`--allow-cookies`) **replace** the corresponding config list rather than merging,
+so pass them only when you intend to override the file. `--no-redact` overrides
+`redaction.enabled` from the config.
 
 ### Secret redaction
 

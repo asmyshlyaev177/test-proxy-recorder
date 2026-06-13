@@ -7,7 +7,10 @@ import { randomUUID } from 'node:crypto';
 import { WebSocketServer } from 'ws';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_FILE = path.join(__dirname, '..', 'data', 'todos.json');
+// MOCK_DATA_FILE lets an isolated instance (e.g. an e2e test) use its own store
+// instead of sharing the default data/todos.json.
+const DATA_FILE =
+  process.env.MOCK_DATA_FILE ?? path.join(__dirname, '..', 'data', 'todos.json');
 const PORT = process.env.MOCK_BACKEND_PORT ?? 3002;
 
 async function readTodos() {

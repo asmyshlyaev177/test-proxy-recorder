@@ -76,6 +76,7 @@ export default defineConfig([
       'commander',
       'http-proxy',
       'ws',
+      'jiti',
       '@playwright/test',
     ],
     outExtension({ format }) {

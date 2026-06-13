@@ -37,6 +37,7 @@ Both can be used together or independently.
 - [Full-stack (SSR + browser) Quick Start](#full-stack-ssr--browser-quick-start)
 - [Browser-only / SPA / Extension Quick Start](#browser-only--spa--extension-quick-start)
 - [CLI](#cli)
+  - [Config file](#config-file)
 - [Secret redaction](#secret-redaction)
 - [Example Apps](#example-apps)
 - [Playwright Integration](#playwright-integration)
@@ -222,11 +223,13 @@ CI now runs without any network access.
 test-proxy-recorder <target-url> [options]
 ```
 
-| Option         | Default        | Description                   |
-| -------------- | -------------- | ----------------------------- |
-| `<target-url>` | *(required)*   | Backend URL to proxy          |
-| `--port, -p`   | `8080`         | Proxy listen port             |
-| `--dir, -d`    | `./recordings` | Directory for recording files |
+| Option           | Default        | Description                         |
+| ---------------- | -------------- | ----------------------------------- |
+| `<target-url>`   | *(required)*   | Backend URL to proxy                |
+| `--port, -p`     | `8000`         | Proxy listen port                   |
+| `--dir, -d`      | `./recordings` | Directory for recording files       |
+| `--timeout, -t`  | `120000`       | Session auto-reset timeout (ms)     |
+| `--config, -c`   | *(auto)*       | Path to a config file (see below)   |
 
 Secrets are redacted from recordings by default — see [Secret redaction](#secret-redaction) for the `--no-redact`, `--redact-headers`, and `--redact-body` flags.
 
@@ -235,6 +238,42 @@ Secrets are redacted from recordings by default — see [Secret redaction](#secr
 test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
+
+### Config file
+
+For anything beyond a couple of flags — especially body-redaction regexes — put the
+options in a config file instead. The proxy auto-discovers
+`test-proxy-recorder.config.{ts,js,mjs,cjs}` in the current directory, or pass
+`--config <path>` to point at one explicitly. `.ts` files work out of the box.
+
+```ts
+// test-proxy-recorder.config.ts
+import { defineConfig } from 'test-proxy-recorder';
+
+export default defineConfig({
+  target: 'http://localhost:3002',
+  port: 8100,
+  recordingsDir: './e2e/recordings',
+  timeout: 120_000,
+  redaction: {
+    headers: ['x-api-key'],         // extra headers, merged with the defaults
+    bodyPatterns: [/sk_live_\w+/g], // real RegExp literals — no CLI escaping
+    allowCookies: ['theme'],        // keep these cookies unredacted
+  },
+});
+```
+
+```bash
+test-proxy-recorder                 # all options from the config file
+test-proxy-recorder --port 9000     # config file, but CLI port wins
+```
+
+**Precedence:** every option resolves as **CLI flag → config file → built-in default**.
+A flag you pass on the command line always overrides the config file; anything you
+omit falls back to the config, then the default. (List flags like `--redact-headers`
+*replace* the config's list rather than merging — pass it only when you want to
+override.) `target` may be given as the CLI argument or as `target` in the config;
+the argument wins when both are present.
 
 ---
 
@@ -470,6 +509,23 @@ function setProxyMode(
   id?: string,
   timeout?: number
 ): Promise<void>;
+```
+
+### `defineConfig`
+
+Type-checked identity helper for a `test-proxy-recorder.config.{ts,js,mjs}` file
+(see [Config file](#config-file)).
+
+```typescript
+function defineConfig(config: Config): Config;
+
+interface Config {
+  target?: string;
+  port?: number;
+  recordingsDir?: string;
+  timeout?: number;
+  redaction?: RedactionConfig;
+}
 ```
 
 ### Next.js helpers (`test-proxy-recorder/nextjs`)

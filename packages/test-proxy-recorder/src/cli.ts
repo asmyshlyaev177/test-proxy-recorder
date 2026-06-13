@@ -4,6 +4,8 @@ import path from 'node:path';
 
 import { Command } from 'commander';
 
+import type { Config } from './config.js';
+import { loadConfig } from './config-loader.js';
 import { DEFAULT_TIMEOUT_MS } from './constants.js';
 import type { RedactionConfig } from './utils/redact.js';
 
@@ -26,33 +28,93 @@ export interface CliOptions {
   redaction: RedactionConfig;
 }
 
-export function parseCliArgs(): CliOptions {
+interface RawOptions {
+  config?: string;
+  port?: string;
+  dir?: string;
+  timeout?: string;
+  redact: boolean;
+  redactHeaders?: string;
+  redactBody?: string;
+  allowHeaders?: string;
+  allowCookies?: string;
+}
+
+/**
+ * Resolve a numeric option from the CLI (string), config file (number), then a
+ * built-in default. Exits the process with `errorMessage` when the resolved
+ * value fails `isValid`.
+ */
+function resolveNumber(
+  cliValue: string | undefined,
+  configValue: number | undefined,
+  defaultValue: number,
+  isValid: (n: number) => boolean,
+  errorMessage: string,
+): number {
+  const value =
+    cliValue !== undefined
+      ? Number.parseInt(cliValue, 10)
+      : (configValue ?? defaultValue);
+  if (Number.isNaN(value) || !isValid(value)) {
+    console.error(errorMessage);
+    process.exit(1);
+  }
+  return value;
+}
+
+/** Merge redaction settings with CLI-flag-over-config-over-default precedence. */
+function resolveRedaction(
+  options: RawOptions,
+  configRedaction: RedactionConfig | undefined,
+): RedactionConfig {
+  // commander sets `redact` to false only when --no-redact is passed; otherwise
+  // it defaults to true, so an explicit CLI override is distinguishable here.
+  return {
+    enabled:
+      options.redact === false ? false : (configRedaction?.enabled ?? true),
+    headers:
+      options.redactHeaders !== undefined
+        ? splitList(options.redactHeaders)
+        : (configRedaction?.headers ?? []),
+    bodyPatterns:
+      options.redactBody !== undefined
+        ? splitList(options.redactBody)
+        : (configRedaction?.bodyPatterns ?? []),
+    allowHeaders:
+      options.allowHeaders !== undefined
+        ? splitList(options.allowHeaders)
+        : (configRedaction?.allowHeaders ?? []),
+    allowCookies:
+      options.allowCookies !== undefined
+        ? splitList(options.allowCookies)
+        : (configRedaction?.allowCookies ?? []),
+    placeholder: configRedaction?.placeholder,
+  };
+}
+
+export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
   const program = new Command();
 
   program
-    .name('dev-proxy')
+    .name('test-proxy-recorder')
     .description(
       'Development proxy server with recording and replay capabilities',
     )
     .argument(
-      '<target>',
-      'Target API service URL (e.g., http://localhost:3000)',
+      '[target]',
+      'Target API service URL (e.g., http://localhost:3000). Overrides `target` from the config file.',
     )
     .option(
-      '-p, --port <number>',
-      'Port number for the proxy server',
-      String(DEFAULT_PORT),
+      '-c, --config <path>',
+      'Path to a config file (default: auto-detect test-proxy-recorder.config.{ts,js,mjs} in the current directory)',
     )
+    .option('-p, --port <number>', 'Port number for the proxy server')
     .option(
       '-d, --dir <path>',
       'Directory to store recordings (relative to CWD)',
-      DEFAULT_RECORDINGS_DIR,
     )
-    .option(
-      '-t, --timeout <ms>',
-      'Session timeout in milliseconds',
-      String(DEFAULT_TIMEOUT_MS),
-    )
+    .option('-t, --timeout <ms>', 'Session timeout in milliseconds')
     .option(
       '--no-redact',
       'Disable secret redaction (commit raw Authorization/Cookie headers — not recommended)',
@@ -72,52 +134,52 @@ export function parseCliArgs(): CliOptions {
     .option(
       '--allow-cookies <names>',
       'Comma-separated cookie names to keep unredacted inside Cookie/Set-Cookie',
-    )
-    .action(() => {
-      // Action handled after parse
-    });
+    );
 
-  program.parse();
+  program.parse(argv);
 
-  const target = program.args[0];
-  const options = program.opts<{
-    port: string;
-    dir: string;
-    timeout: string;
-    redact: boolean;
-    redactHeaders?: string;
-    redactBody?: string;
-    allowHeaders?: string;
-    allowCookies?: string;
-  }>();
+  const options = program.opts<RawOptions>();
 
-  const port = Number.parseInt(options.port, 10);
-  if (Number.isNaN(port) || port < 1025 || port > 65_535) {
-    console.error('Error: Invalid port number. Must be between 1 and 65535');
+  let config: Config | null;
+  try {
+    config = await loadConfig(options.config);
+  } catch (error) {
+    console.error(
+      `Error: ${error instanceof Error ? error.message : String(error)}`,
+    );
     process.exit(1);
   }
 
-  const timeout = Number.parseInt(options.timeout, 10);
-  if (Number.isNaN(timeout) || timeout < 0) {
-    console.error('Error: Invalid timeout. Must be a non-negative number');
-    process.exit(1);
-  }
-
+  // Precedence for every option: CLI flag > config file > built-in default.
+  const target = program.args[0] ?? config?.target;
   if (!target) {
+    console.error(
+      'Error: target is required. Pass it as an argument or set `target` in the config file.',
+    );
     program.help();
   }
 
-  // Resolve recordings directory relative to the current working directory (where the command is run)
-  const recordingsDir = path.resolve(process.cwd(), options.dir);
+  const port = resolveNumber(
+    options.port,
+    config?.port,
+    DEFAULT_PORT,
+    (n) => n >= 1025 && n <= 65_535,
+    'Error: Invalid port number. Must be between 1025 and 65535',
+  );
 
-  // commander maps --no-redact to redact: false; default is true (enabled)
-  const redaction: RedactionConfig = {
-    enabled: options.redact !== false,
-    headers: splitList(options.redactHeaders),
-    bodyPatterns: splitList(options.redactBody),
-    allowHeaders: splitList(options.allowHeaders),
-    allowCookies: splitList(options.allowCookies),
-  };
+  const timeout = resolveNumber(
+    options.timeout,
+    config?.timeout,
+    DEFAULT_TIMEOUT_MS,
+    (n) => n >= 0,
+    'Error: Invalid timeout. Must be a non-negative number',
+  );
+
+  // Resolve recordings directory relative to the current working directory (where the command is run)
+  const dir = options.dir ?? config?.recordingsDir ?? DEFAULT_RECORDINGS_DIR;
+  const recordingsDir = path.resolve(process.cwd(), dir);
+
+  const redaction = resolveRedaction(options, config?.redaction);
 
   return { target, port, recordingsDir, timeout, redaction };
 }

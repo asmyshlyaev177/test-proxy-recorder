@@ -1,3 +1,4 @@
+export { type Config, defineConfig } from './config';
 export { RECORDING_ID_HEADER } from './constants';
 export { ProxyServer } from './ProxyServer';
 export type {

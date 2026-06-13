@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "mock": "MOCK_BACKEND_PORT=3002 node mock-backend/server.mjs",
-    "proxy": "test-proxy-recorder http://localhost:3002 -p 8100 -d ./e2e/recordings",
+    "proxy": "test-proxy-recorder",
     "dev": "next dev --port 3000",
     "build": "next build --webpack",
     "start": "next start --port 3000",
