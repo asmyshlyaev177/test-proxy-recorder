@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.9](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.3.8...v0.3.9) (2026-06-13)
+
+
+### Bug Fixes
+
+* release ([102fedf](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/102fedf456aca60fe1c2e1d580aa557888082ca9))
+
 ## [0.3.8](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.3.7...v0.3.8) (2026-06-13)
 
 
