@@ -88,6 +88,9 @@ importers:
       sharp:
         specifier: ^0.35.0
         version: 0.35.0
+      wrangler:
+        specifier: ^4.100.0
+        version: 4.100.0
 
   packages/test-proxy-recorder:
     dependencies:
@@ -158,9 +161,6 @@ importers:
       vitest:
         specifier: ^4.0.8
         version: 4.0.8(@types/debug@4.1.13)(@types/node@20.19.43)(tsx@4.20.6)(yaml@2.8.3)
-      wrangler:
-        specifier: ^4.100.0
-        version: 4.100.0
       ws:
         specifier: ^8.18.3
         version: 8.18.3
