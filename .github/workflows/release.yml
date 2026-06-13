@@ -30,8 +30,10 @@ jobs:
       contents: write
       pull-requests: write
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      # Manifest mode exposes the PLURAL `releases_created`; the singular
+      # `release_created` is only set in simple (non-manifest) mode.
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      tag_name: ${{ steps.release.outputs['packages/test-proxy-recorder--tag_name'] }}
     steps:
       - name: Run release-please
         id: release
@@ -47,7 +49,7 @@ jobs:
     needs: release-please
     if: >-
       ${{ always() &&
-      (needs.release-please.outputs.release_created == 'true' ||
+      (needs.release-please.outputs.releases_created == 'true' ||
       github.event_name == 'release' ||
       github.event_name == 'workflow_dispatch') }}
     runs-on: ubuntu-latest
