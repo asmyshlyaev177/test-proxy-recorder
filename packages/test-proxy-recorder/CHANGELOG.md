@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.3.9...v0.4.0) (2026-06-14)
+
+
+### Features
+
+* config file ([f461074](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/f4610745da13d6fcce9d5b17fd9fd92996f44af5))
+* init command ([8c1bf5b](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/8c1bf5bea70514e2aa8936c72c0cdd7238ca4db0))
+* redact secrets in headers ([e816741](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/e81674192e00d015377386da622d1b0db85187bd))
+
 ## [0.3.9](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.3.8...v0.3.9) (2026-06-13)
 
 
