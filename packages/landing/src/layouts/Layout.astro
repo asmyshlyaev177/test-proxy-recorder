@@ -58,6 +58,16 @@ const jsonLd = {
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <!-- Google tag (gtag.js) -->
+    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9EV956L4B6"></script>
+    <script is:inline>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      gtag('js', new Date());
+
+      gtag('config', 'G-9EV956L4B6');
+    </script>
     <link rel="preload" as="font" type="font/woff2" href={schibstedUrl} crossorigin />
     <link rel="preload" as="font" type="font/woff2" href={splineUrl} crossorigin />
     <style set:html={fontFaceCss}></style>
