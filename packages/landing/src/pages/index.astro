@@ -50,6 +50,7 @@ git commit -m "add e2e recordings"`;
   <section class="hero">
     <div class="container hero-grid">
       <div class="hero-copy">
+        <p class="hero-eyebrow">VCR for Playwright</p>
         <h1>Record once.<br />Replay forever.</h1>
         <p class="hero-sub">
           test-proxy-recorder captures real API responses while your Playwright suite runs
@@ -243,6 +244,20 @@ git commit -m "add e2e recordings"`;
     grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
     gap: clamp(2rem, 5vw, 4.5rem);
     align-items: center;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.9rem;
+  }
+
+  :global([data-theme='dark']) .hero-eyebrow {
+    color: var(--link);
   }
 
   .hero-sub {

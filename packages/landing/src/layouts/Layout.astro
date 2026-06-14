@@ -10,9 +10,9 @@ const npmUrl = 'https://www.npmjs.com/package/test-proxy-recorder';
 const authorUrl = 'https://asmyshlyaev177.dev';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const title = 'Playwright API record & replay — test-proxy-recorder';
+const title = 'VCR for Playwright — record & replay API responses | test-proxy-recorder';
 const description =
-  'Record real API responses during Playwright runs and replay them on CI. No backend, no hand-written mocks. SSR proxy + browser HAR, WebSockets. Free & MIT.';
+  'VCR-style record & replay for Playwright. Capture real API responses once, replay them deterministically on CI — no backend, no hand-written mocks. SSR proxy + browser HAR, WebSockets. Free & MIT.';
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('og.png', Astro.site);
@@ -37,14 +37,14 @@ const jsonLd = {
   url: canonical.href,
   applicationCategory: 'DeveloperApplication',
   applicationSubCategory: 'Testing tool',
-  operatingSystem: 'Node.js >= 22',
+  operatingSystem: 'Node.js >= 20',
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   license: `${repo}/blob/master/LICENSE`,
   downloadUrl: npmUrl,
   installUrl: npmUrl,
   sameAs: [repo, npmUrl],
   keywords:
-    'playwright, e2e testing, api mocking, record replay, HAR, deterministic tests, test proxy, man-in-the-middle proxy, mitm proxy, http recording proxy, mock server, network stubbing, api fixtures, flaky tests',
+    'vcr for playwright, playwright, e2e testing, api mocking, record replay, HAR, deterministic tests, test proxy, man-in-the-middle proxy, mitm proxy, http recording proxy, mock server, network stubbing, api fixtures, flaky tests, ssr mocking, nextjs, websocket',
   author: {
     '@type': 'Person',
     name: 'asmyshlyaev177',
@@ -59,15 +59,21 @@ const jsonLd = {
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <!-- Google tag (gtag.js) -->
-    <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9EV956L4B6"></script>
-    <script is:inline>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
+    {
+      import.meta.env.PROD && (
+        <Fragment>
+          {/* Google tag (gtag.js) — production builds only */}
+          <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9EV956L4B6" />
+          <script is:inline>
+            {`window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
 
-      gtag('config', 'G-9EV956L4B6');
-    </script>
+            gtag('config', 'G-9EV956L4B6');`}
+          </script>
+        </Fragment>
+      )
+    }
     <link rel="preload" as="font" type="font/woff2" href={schibstedUrl} crossorigin />
     <link rel="preload" as="font" type="font/woff2" href={splineUrl} crossorigin />
     <style set:html={fontFaceCss}></style>
@@ -132,7 +138,7 @@ const jsonLd = {
     <footer class="site-footer">
       <div class="container footer-row">
         <p>MIT licensed. Built by <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>.</p>
-        <p class="footer-meta">Node ≥ 22 · @playwright/test ≥ 1.0</p>
+        <p class="footer-meta">Node ≥ 20 · @playwright/test ≥ 1.0</p>
       </div>
     </footer>
 

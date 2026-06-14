@@ -1,9 +1,20 @@
 # test-proxy-recorder
 
+> **VCR for Playwright** — record real API responses once, replay them deterministically on CI. Covers Next.js SSR, browser, and WebSocket traffic. No backend, no hand-written mocks.
+
 [![npm](https://img.shields.io/npm/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
+<!-- [![npm downloads](https://img.shields.io/npm/dm/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder) -->
+[![CI](https://github.com/asmyshlyaev177/test-proxy-recorder/actions/workflows/test.yml/badge.svg)](https://github.com/asmyshlyaev177/test-proxy-recorder/actions/workflows/test.yml)
+[![node](https://img.shields.io/node/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
 [![license](https://img.shields.io/github/license/asmyshlyaev177/test-proxy-recorder.svg?style=flat-square)](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/LICENSE)
 
 Fast, deterministic Playwright tests without maintaining manual mocks.
+
+<!-- ▶ DEMO: drop a 20–30s GIF/asciinema here (record → replay → delete backend → tests stay green).
+<p align="center">
+  <img src="./assets/demo.gif" alt="Recording real API responses, then replaying them on CI with the backend turned off" width="760">
+</p>
+-->
 
 Records real API responses during test runs and replays them on CI — no backend required. Supports two recording mechanisms depending on where your requests originate:
 
