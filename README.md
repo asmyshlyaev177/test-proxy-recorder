@@ -7,13 +7,11 @@
 [![node](https://img.shields.io/node/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
 [![license](https://img.shields.io/github/license/asmyshlyaev177/test-proxy-recorder.svg?style=flat-square)](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/LICENSE)
 
-Fast, deterministic Playwright tests without maintaining manual mocks.
-
 <p align="center">
   <img src="./assets/demo-sm.gif" alt="Recording real API responses, then replaying them on CI with the backend turned off" width="800">
 </p>
 
-Records real API responses during test runs and replays them on CI — no backend required. Supports two recording mechanisms depending on where your requests originate:
+Fast, deterministic Playwright tests without maintaining manual mocks. The proxy records real API responses during a test run, then replays them on CI — no backend, no flaky network.
 
 ```text
                         Record mode                          Replay mode
@@ -24,38 +22,20 @@ Records real API responses during test runs and replays them on CI — no backen
                          (.mock.json)                              (.mock.json)
 ```
 
-| Mechanism | What it records | Use case |
-| --------- | --------------- | -------- |
-| **Proxy** (`.mock.json`) | Server-side requests (SSR fetches from Next.js etc.) | Full-stack apps where the server calls the API |
-| **HAR** (`.har`) | Browser-side requests (browser `fetch`, extensions, SPAs) | SPAs, Chrome extensions, 3rd-party APIs |
-
-Both can be used together or independently.
-
-```text
-  Server-side (proxy)                    Browser-side (HAR)
-
-  Next.js SSR ──> Proxy ──> Real API     Browser ──> HAR intercept ──> Real API
-                    │                                      │
-                    └──> .mock.json                        └──> .har
-```
-
 ## Contents
 
 - [Why](#why)
-- [Full-stack (SSR + browser) Quick Start](#full-stack-ssr--browser-quick-start)
-- [Browser-only / SPA / Extension Quick Start](#browser-only--spa--extension-quick-start)
+- [Quick Start](#quick-start)
+- [How it works](#how-it-works)
 - [CLI](#cli)
-  - [Reset a stuck proxy](#reset-a-stuck-proxy)
-  - [Config file](#config-file)
+- [Config file](#config-file)
 - [Secret redaction](#secret-redaction)
-- [Example Apps](#example-apps)
-- [Playwright Integration](#playwright-integration)
-- [Next.js Integration](#nextjs-integration)
-- [Control Endpoint](#control-endpoint)
-- [API Reference](#api-reference)
-- [Next.js 16](#nextjs-16)
+- [Example apps](#example-apps)
+- [Integrations](#integrations) — [Playwright](#playwright) · [Next.js](#nextjs)
+- [Control endpoint](#control-endpoint)
+- [API reference](#api-reference)
 - [FAQ](#faq)
-- [AI Agent Skills](#ai-agent-skills)
+- [AI agent skills](#ai-agent-skills)
 - [Roadmap](#roadmap)
 - [Requirements](#requirements)
 - [Contributing](#contributing)
@@ -74,11 +54,64 @@ Both can be used together or independently.
 
 ---
 
-## Full-stack (SSR + browser) Quick Start
+## Quick Start
 
-For apps like Next.js where both the server AND the browser make API calls, use both mechanisms together.
+Install:
 
-### 1. Add scripts to `package.json`
+```bash
+npm install --save-dev test-proxy-recorder
+```
+
+### Fastest: scaffold with `init`
+
+One command wires test-proxy-recorder into a project:
+
+```bash
+npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recordings
+```
+
+All arguments are optional and fall back to sensible defaults (`http://localhost:3000`, port `8100`, `./e2e/recordings`). It generates/edits files **non-destructively** — existing files and scripts are never overwritten unless you pass `--force`.
+
+<details>
+<summary>What <code>init</code> generates / edits</summary>
+
+- `test-proxy-recorder.config.ts` — the proxy config (auto-discovered, so
+  `npx test-proxy-recorder` then needs no flags).
+- `playwright.config.ts` — adds a `webServer` pointing at the proxy's
+  `/__control` endpoint plus a `globalTeardown`. If you already have a Playwright
+  config it's **edited in place**; if you don't have Playwright at all, `init`
+  runs the Playwright CLI to set it up first (pass `--no-install` to skip).
+- `e2e/fixtures.ts` and `e2e/global-teardown.ts` — the per-test proxy fixture and
+  teardown.
+- `package.json` — adds `proxy`, `proxy:reset`, `test:e2e`, and
+  `test:e2e:record` scripts. If
+  you have a `dev` script it's wrapped: the original moves to `dev:app` and `dev`
+  becomes a `concurrently` command that runs the proxy alongside your app (so
+  `npm run dev` records while you develop). `concurrently` is added to
+  `devDependencies`.
+
+A Playwright config that already defines a `webServer` is left untouched (with a note on what to add).
+
+</details>
+
+The **one step `init` can't do for you** is routing your app's backend calls through
+the proxy — which env var holds your API base URL, and how you scope it to dev,
+is app-specific. `init` prints concrete instructions for this when it finishes:
+point that env var at `http://localhost:8100` **in dev/test only, never in
+production** (e.g. prefix the `dev:app` script, using `cross-env` on Windows).
+The proxy then forwards to your real backend while recording and serves
+recordings on replay.
+
+Then write a test, record once against the real API, switch to replay, and commit `e2e/recordings/`. The manual setups below show that loop in full.
+
+### Manual setup
+
+<details>
+<summary><strong>Full-stack (SSR + browser)</strong> — Next.js and similar, where both the server and the browser make API calls</summary>
+
+Use both recording mechanisms together (see [How it works](#how-it-works)).
+
+**1. Add scripts to `package.json`**
 
 ```json
 {
@@ -94,7 +127,7 @@ For apps like Next.js where both the server AND the browser make API calls, use 
 >
 > **Next.js note:** Prefer `build` + `serve` over `dev` for recording/replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
 
-### 2. Write a test
+**2. Write a test**
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -117,7 +150,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 3. Record
+**3. Record**
 
 ```bash
 # Terminal 1
@@ -127,26 +160,27 @@ npm run serve:proxy
 npx playwright test
 ```
 
-### 4. Switch to replay and commit
+**4. Switch to replay and commit**
 
 ```bash
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```
 
----
+</details>
 
-## Browser-only / SPA / Extension Quick Start
+<details>
+<summary><strong>Browser-only / SPA / extension</strong> — all API calls come from the browser (no SSR)</summary>
 
-If your app or extension makes API calls entirely from the browser (no SSR), you only need the HAR mechanism. No proxy backend is required for the actual recording — the proxy process just provides session management.
+You only need the HAR mechanism. No proxy backend is required for the actual recording — the proxy process just provides session management.
 
-### 1. Install
+**1. Install**
 
 ```bash
 npm install --save-dev test-proxy-recorder
 ```
 
-### 2. Add the proxy to `playwright.config.ts`
+**2. Add the proxy to `playwright.config.ts`**
 
 ```typescript
 import { defineConfig } from '@playwright/test';
@@ -162,7 +196,7 @@ export default defineConfig({
 
 > The proxy target (`https://api.example.com`) does not matter for browser-only recording — it is only used if server-side (SSR) requests also need to be proxied. The proxy process must run so its `/__control` endpoint is available for session management.
 
-### 3. Write a fixture
+**3. Write a fixture**
 
 ```typescript
 // e2e/fixtures.ts
@@ -186,7 +220,7 @@ export const test = base.extend<{ page: Page }>({
 });
 ```
 
-### 4. Write a test
+**4. Write a test**
 
 ```typescript
 // e2e/my.test.ts
@@ -198,7 +232,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 5. Record — run once against the real API
+**5. Record — run once against the real API**
 
 ```bash
 # In fixtures.ts: const MODE = 'record' as const;
@@ -206,7 +240,7 @@ npx playwright test
 # .har files are written to e2e/recordings/ automatically
 ```
 
-### 6. Switch to replay and commit
+**6. Switch to replay and commit**
 
 ```bash
 # In fixtures.ts: const MODE = 'replay' as const;
@@ -223,6 +257,27 @@ CI now runs without any network access.
 > ```text
 > /e2e/recordings/** binary
 > ```
+
+</details>
+
+---
+
+## How it works
+
+test-proxy-recorder supports two recording mechanisms depending on where your requests originate. Both can be used together or independently.
+
+| Mechanism | What it records | Use case |
+| --------- | --------------- | -------- |
+| **Proxy** (`.mock.json`) | Server-side requests (SSR fetches from Next.js etc.) | Full-stack apps where the server calls the API |
+| **HAR** (`.har`) | Browser-side requests (browser `fetch`, extensions, SPAs) | SPAs, Chrome extensions, 3rd-party APIs |
+
+```text
+  Server-side (proxy)                    Browser-side (HAR)
+
+  Next.js SSR ──> Proxy ──> Real API     Browser ──> HAR intercept ──> Real API
+                    │                                      │
+                    └──> .mock.json                        └──> .har
+```
 
 ---
 
@@ -270,45 +325,13 @@ anytime: an unreachable proxy is treated as a no-op. The port is resolved as
 targets the port the proxy was started on (pass `--port` / `--config` to
 override). `init` scaffolds this as the `proxy:reset` script.
 
-### Scaffold the setup (`init`)
+### `init` — scaffold the setup
 
-One command wires test-proxy-recorder into a project:
+See [Quick Start](#quick-start) for the recommended one-command setup with `npx test-proxy-recorder init`.
 
-```bash
-npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recordings
-```
+---
 
-It generates / edits, **non-destructively**:
-
-- `test-proxy-recorder.config.ts` — the proxy config (auto-discovered, so
-  `npx test-proxy-recorder` then needs no flags).
-- `playwright.config.ts` — adds a `webServer` pointing at the proxy's
-  `/__control` endpoint plus a `globalTeardown`. If you already have a Playwright
-  config it's **edited in place**; if you don't have Playwright at all, `init`
-  runs the Playwright CLI to set it up first (pass `--no-install` to skip).
-- `e2e/fixtures.ts` and `e2e/global-teardown.ts` — the per-test proxy fixture and
-  teardown.
-- `package.json` — adds `proxy`, `proxy:reset`, `test:e2e`, and
-  `test:e2e:record` scripts. If
-  you have a `dev` script it's wrapped: the original moves to `dev:app` and `dev`
-  becomes a `concurrently` command that runs the proxy alongside your app (so
-  `npm run dev` records while you develop). `concurrently` is added to
-  `devDependencies`.
-
-All arguments are optional and fall back to sensible defaults
-(`http://localhost:3000`, port `8100`, `./e2e/recordings`). Existing files and
-scripts are never overwritten unless you pass `--force`; a Playwright config that
-already defines a `webServer` is left untouched (with a note on what to add).
-
-The **one step it can't do for you** is routing your app's backend calls through
-the proxy — which env var holds your API base URL, and how you scope it to dev,
-is app-specific. `init` prints concrete instructions for this when it finishes:
-point that env var at `http://localhost:8100` **in dev/test only, never in
-production** (e.g. prefix the `dev:app` script, using `cross-env` on Windows).
-The proxy then forwards to your real backend while recording and serves
-recordings on replay.
-
-### Config file
+## Config file
 
 For anything beyond a couple of flags — especially body-redaction regexes — put the
 options in a config file instead. The proxy auto-discovers
@@ -411,7 +434,7 @@ const proxy = new ProxyServer('http://localhost:3000', './recordings', undefined
 
 ---
 
-## Example Apps
+## Example apps
 
 Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one per recording mechanism. Each has its own README with the full setup and record/replay workflow.
 
@@ -429,12 +452,14 @@ Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-p
 
 ---
 
-## Playwright Integration
+## Integrations
+
+### Playwright
 
 <details>
 <summary>Show details</summary>
 
-### `playwrightProxy.before(page, testInfo, mode, options?)`
+#### `playwrightProxy.before(page, testInfo, mode, options?)`
 
 Call this at the start of each test (or in a `beforeEach` / page fixture). It sets the proxy mode for the session and, if `url` is provided, sets up HAR recording for browser-side requests.
 
@@ -457,7 +482,7 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 Recording filenames are derived from test names (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-### Global teardown (recommended)
+#### Global teardown (recommended)
 
 ```typescript
 // e2e/global-teardown.ts
@@ -475,7 +500,7 @@ export default defineConfig({
 });
 ```
 
-### Recording files
+#### Recording files
 
 ```text
 e2e/recordings/
@@ -485,9 +510,7 @@ e2e/recordings/
 
 </details>
 
----
-
-## Next.js Integration
+### Next.js
 
 <details>
 <summary>Show details</summary>
@@ -496,22 +519,43 @@ SSR frameworks like Next.js make server-side `fetch` calls that go through the p
 
 For SSR requests to carry this header, use one of:
 
-### Middleware (recommended)
+#### Middleware (recommended)
+
+Next.js 16 uses `proxy.ts` as the middleware entry point (with the exported function named `proxy`). Place it at the project root alongside `next.config.ts`:
 
 ```typescript
-// middleware.ts
+// proxy.ts  (Next.js 16 middleware convention)
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const response = NextResponse.next();
   setNextProxyHeaders(request, response); // no-op in production
   return response;
 }
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
 ```
 
-### Manual header forwarding
+> **Next.js 15 and earlier:** the entry point is `middleware.ts` with the function named `middleware` — everything else is identical:
+>
+> ```typescript
+> // middleware.ts
+> import { NextResponse } from 'next/server';
+> import type { NextRequest } from 'next/server';
+> import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
+>
+> export function middleware(request: NextRequest) {
+>   const response = NextResponse.next();
+>   setNextProxyHeaders(request, response); // no-op in production
+>   return response;
+> }
+> ```
+
+#### Manual header forwarding
 
 ```typescript
 import { headers } from 'next/headers';
@@ -524,11 +568,25 @@ const res = await fetch('http://localhost:8100/api/data', {
 });
 ```
 
+#### package.json scripts
+
+Start services from scripts, not from `playwright.config.ts`:
+
+```json
+{
+  "scripts": {
+    "mock": "node mock-backend/server.mjs",
+    "proxy": "test-proxy-recorder http://localhost:3002 -p 8100 -d ./e2e/recordings",
+    "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm build && next start --port 3000\""
+  }
+}
+```
+
 </details>
 
 ---
 
-## Control Endpoint
+## Control endpoint
 
 <details>
 <summary>Show details</summary>
@@ -557,7 +615,7 @@ interface ControlRequest {
 
 ---
 
-## API Reference
+## API reference
 
 <details>
 <summary>Show details</summary>
@@ -619,46 +677,6 @@ function createHeadersWithRecordingId(
 
 ---
 
-## Next.js 16
-
-<details>
-<summary>Show details</summary>
-
-Next.js 16 uses `proxy.ts` as the middleware entry point (replaces `middleware.ts`). Place it at the project root alongside `next.config.ts`:
-
-```typescript
-// proxy.ts  (Next.js 16 middleware convention)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
-
-export function proxy(request: NextRequest) {
-  const response = NextResponse.next();
-  setNextProxyHeaders(request, response);
-  return response;
-}
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-};
-```
-
-**package.json scripts** — start services from scripts, not from `playwright.config.ts`:
-
-```json
-{
-  "scripts": {
-    "mock": "node mock-backend/server.mjs",
-    "proxy": "test-proxy-recorder http://localhost:3002 -p 8100 -d ./e2e/recordings",
-    "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm build && next start --port 3000\""
-  }
-}
-```
-
-</details>
-
----
-
 ## FAQ
 
 <details>
@@ -711,7 +729,7 @@ Re-run in record mode (set `MODE = 'record'` in your fixture, or `RECORD_MODE=1`
 
 ---
 
-## AI Agent Skills
+## AI agent skills
 
 If you use an AI coding agent (Claude Code, Cursor, Copilot, etc.), install the skills for this library so the agent generates correct setup code:
 
