@@ -9,10 +9,16 @@ if (process.argv[2] === 'init') {
   process.exit(0);
 }
 
-const { target, port, recordingsDir, timeout, redaction } =
+const { target, port, recordingsDir, timeout, redaction, websocket } =
   await parseCliArgs();
 
-const proxy = new ProxyServer(target, recordingsDir, timeout, redaction);
+const proxy = new ProxyServer(
+  target,
+  recordingsDir,
+  timeout,
+  redaction,
+  websocket,
+);
 await proxy.init();
 proxy.listen(port);
 

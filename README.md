@@ -238,8 +238,11 @@ test-proxy-recorder <target-url> [options]
 | `--dir, -d`      | `./recordings` | Directory for recording files       |
 | `--timeout, -t`  | `120000`       | Session auto-reset timeout (ms)     |
 | `--config, -c`   | *(auto)*       | Path to a config file (see below)   |
+| `--ws-timing`    | `burst`        | WebSocket replay pacing — `burst` or `original` (see below) |
 
 Secrets are redacted from recordings by default — see [Secret redaction](#secret-redaction) for the `--no-redact`, `--redact-headers`, and `--redact-body` flags.
+
+By default, recorded WebSocket server messages are replayed as a **burst** on connect — fastest and fully deterministic, ideal for CI. Pass `--ws-timing original` (or `websocket: { timing: 'original' }` in the config) to instead re-pace them using the recorded timestamps, so messages arrive with their real inter-message gaps; a test then takes roughly the recording's wall-clock span. You can also set this **per test** via `playwrightProxy.before(page, testInfo, mode, { websocket: { timing: 'original' } })`, which overrides the proxy-level default for that session only.
 
 ```bash
 # Examples
@@ -304,6 +307,9 @@ export default defineConfig({
     headers: ['x-api-key'],         // extra headers, merged with the defaults
     bodyPatterns: [/sk_live_\w+/g], // real RegExp literals — no CLI escaping
     allowCookies: ['theme'],        // keep these cookies unredacted
+  },
+  websocket: {
+    timing: 'burst',                // 'burst' (default) or 'original' (re-paced)
   },
 });
 ```
@@ -386,15 +392,19 @@ const proxy = new ProxyServer('http://localhost:3000', './recordings', undefined
 
 ## Example Apps
 
-Two full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one for each recording mechanism. Each has its own README with the full setup and record/replay workflow.
+Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one per recording mechanism. Each has its own README with the full setup and record/replay workflow.
 
 ### Next.js 16 — server-side (proxy / `.mock.json`)
 
-[`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — a Next.js 16 todo app with a mock backend, proxy, and Playwright e2e tests. Records both SSR fetches (`.mock.json`) and browser fetches (`.har`). See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+[`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — a Next.js 16 todo app with a mock backend, proxy, and Playwright e2e tests. Records both SSR fetches (`.mock.json`) and browser fetches (`.har`), and includes a WebSocket chat against the local backend. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
 
 ### Chrome extension — browser-side (HAR / `.har`)
 
 [`apps/example-extension`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — a real Chrome extension that calls X/Twitter's API from a content script; browser requests are recorded to `.har` and replayed offline, with no live API or account needed on CI. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-extension/README.md).
+
+### Crypto ticker — third-party WebSocket (`.mock.json`)
+
+[`apps/example-websocket`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-websocket) — a live BTC-USD price ticker backed by Binance's public WebSocket feed. Records the real feed once through the proxy, then replays deterministic prices on CI with no network or exchange account. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-websocket/README.md).
 
 ---
 

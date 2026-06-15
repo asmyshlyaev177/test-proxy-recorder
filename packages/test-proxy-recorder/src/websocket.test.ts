@@ -15,6 +15,7 @@ import { WebSocket, WebSocketServer } from 'ws';
 
 import { RECORDING_ID_HEADER } from './constants.js';
 import { ProxyServer } from './ProxyServer.js';
+import type { WebSocketReplayConfig } from './types.js';
 
 const TEST_RECORDINGS_DIR = path.join(
   process.cwd(),
@@ -951,6 +952,172 @@ describe('ProxyServer WebSocket Tests', () => {
 
       expect(messagesA).toEqual(['welcome-session-a', 'pong-a']);
       expect(messagesB).toEqual(['welcome-session-b', 'pong-b']);
+    });
+  });
+
+  describe('Replay Timing', () => {
+    const TIMING_PORT = 9884;
+    const TIMING_DIR = path.join(process.cwd(), 'test-recordings-ws-timing');
+    const timingSessionId = 'ws-timing-session';
+    const DELTA_MS = 150;
+    let timingProxy: ProxyServer;
+    let timingHttp: http.Server | null = null;
+
+    const setTimingMode = (
+      mode: string,
+      id: string,
+      websocket?: WebSocketReplayConfig,
+    ): Promise<void> =>
+      new Promise((resolve, reject) => {
+        const postData = JSON.stringify({ mode, id, websocket });
+        const req = http.request(
+          {
+            hostname: 'localhost',
+            port: TIMING_PORT,
+            path: '/__control',
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Content-Length': Buffer.byteLength(postData),
+            },
+          },
+          (res) => {
+            res.on('data', () => {});
+            res.on('end', () =>
+              res.statusCode === 200
+                ? resolve()
+                : reject(new Error('Failed to set mode')),
+            );
+          },
+        );
+        req.on('error', reject);
+        req.write(postData);
+        req.end();
+      });
+
+    // A pure server-push recording: three server messages DELTA_MS apart, no
+    // client message — the shape of a market-data feed.
+    async function writeTimingRecording(): Promise<void> {
+      const base = Date.parse('2030-01-01T00:00:00.000Z');
+      const at = (offset: number) => new Date(base + offset).toISOString();
+      const recording = {
+        id: timingSessionId,
+        recordings: [],
+        websocketRecordings: [
+          {
+            url: '/ws',
+            key: 'WS__ws',
+            timestamp: at(0),
+            messages: [
+              { direction: 'server-to-client', data: 'm0', timestamp: at(0) },
+              {
+                direction: 'server-to-client',
+                data: 'm1',
+                timestamp: at(DELTA_MS),
+              },
+              {
+                direction: 'server-to-client',
+                data: 'm2',
+                timestamp: at(2 * DELTA_MS),
+              },
+            ],
+          },
+        ],
+      };
+      await fs.mkdir(TIMING_DIR, { recursive: true });
+      await fs.writeFile(
+        path.join(TIMING_DIR, `${timingSessionId}.mock.json`),
+        JSON.stringify(recording),
+      );
+    }
+
+    async function startTimingProxy(
+      wsReplay?: WebSocketReplayConfig,
+    ): Promise<void> {
+      timingProxy = new ProxyServer(
+        MOCK_SERVER_URL,
+        TIMING_DIR,
+        undefined,
+        undefined,
+        wsReplay,
+      );
+      await timingProxy.init();
+      timingHttp = timingProxy.listen(TIMING_PORT);
+      await new Promise<void>((resolve) => {
+        timingHttp!.on('listening', () => resolve());
+      });
+    }
+
+    // Connect and record the arrival time (ms since connect) of each of the
+    // three recorded server messages.
+    function collectArrivals(): Promise<number[]> {
+      return new Promise((resolve, reject) => {
+        const arrivals: number[] = [];
+        const start = Date.now();
+        const ws = new WebSocket(`ws://localhost:${TIMING_PORT}/ws`, {
+          headers: { [RECORDING_ID_HEADER]: timingSessionId },
+        });
+        ws.on('message', () => {
+          arrivals.push(Date.now() - start);
+          if (arrivals.length === 3) {
+            ws.close();
+          }
+        });
+        ws.on('close', () => resolve(arrivals));
+        ws.on('error', reject);
+        setTimeout(() => reject(new Error('Timeout')), 5000);
+      });
+    }
+
+    afterEach(async () => {
+      if (timingHttp) {
+        await new Promise<void>((resolve) => {
+          timingHttp!.close(() => resolve());
+        });
+        timingHttp = null;
+      }
+      await fs.rm(TIMING_DIR, { recursive: true, force: true });
+    });
+
+    it('paces server messages by recorded timestamps with timing: original', async () => {
+      await startTimingProxy({ timing: 'original' });
+      await writeTimingRecording();
+      await setTimingMode('replay', timingSessionId);
+
+      const arrivals = await collectArrivals();
+
+      expect(arrivals).toHaveLength(3);
+      // First fires immediately; each later one after the recorded ~150ms gap
+      // (lower bounds leave slack for scheduler jitter).
+      expect(arrivals[0]).toBeLessThan(80);
+      expect(arrivals[1]).toBeGreaterThanOrEqual(120);
+      expect(arrivals[2]).toBeGreaterThanOrEqual(270);
+    });
+
+    it('sends server messages immediately with default (burst) timing', async () => {
+      await startTimingProxy(); // no websocket config -> burst
+      await writeTimingRecording();
+      await setTimingMode('replay', timingSessionId);
+
+      const arrivals = await collectArrivals();
+
+      expect(arrivals).toHaveLength(3);
+      // All three arrive in one burst, well under the recorded 150ms spacing.
+      expect(arrivals[2]).toBeLessThan(100);
+    });
+
+    it('applies per-session timing from the control request (overrides proxy default)', async () => {
+      // Proxy default is burst, but this session requests original timing.
+      await startTimingProxy();
+      await writeTimingRecording();
+      await setTimingMode('replay', timingSessionId, { timing: 'original' });
+
+      const arrivals = await collectArrivals();
+
+      expect(arrivals).toHaveLength(3);
+      expect(arrivals[0]).toBeLessThan(80);
+      expect(arrivals[1]).toBeGreaterThanOrEqual(120);
+      expect(arrivals[2]).toBeGreaterThanOrEqual(270);
     });
   });
 

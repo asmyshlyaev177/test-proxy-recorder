@@ -6,7 +6,7 @@ import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 const registeredContexts = new WeakSet<BrowserContext>();
 
 import { RECORDING_ID_HEADER } from '../constants.js';
-import { type Mode, Modes } from '../types';
+import { type Mode, Modes, type WebSocketReplayConfig } from '../types';
 
 export type PlaywrightTestInfo = Pick<TestInfo, 'title' | 'titlePath'>;
 
@@ -14,6 +14,7 @@ interface ProxyControlRequest {
   mode: Mode;
   id?: string;
   timeout?: number;
+  websocket?: WebSocketReplayConfig;
 }
 
 /**
@@ -42,6 +43,7 @@ export async function setProxyMode(
   mode: Mode,
   sessionId?: string,
   timeout?: number,
+  websocket?: WebSocketReplayConfig,
 ): Promise<void> {
   const proxyPort = getProxyPort();
 
@@ -50,6 +52,7 @@ export async function setProxyMode(
       mode,
       id: sessionId,
       ...(timeout && { timeout }),
+      ...(websocket && { websocket }),
     };
 
     const response = await fetch(`http://localhost:${proxyPort}/__control`, {
@@ -267,6 +270,12 @@ export interface ClientSideRecordingOptions {
    * Example: 'https://api.example.com/**'
    */
   url?: string | RegExp;
+  /**
+   * Per-test WebSocket replay pacing. Overrides the proxy-level setting for this
+   * session only — e.g. `{ timing: 'original' }` to re-pace recorded messages
+   * from their timestamps. Applies in replay mode.
+   */
+  websocket?: WebSocketReplayConfig;
 }
 
 export const playwrightProxy = {
@@ -309,7 +318,7 @@ export const playwrightProxy = {
     ]);
 
     // Set the proxy mode FIRST before setting up any route handlers
-    await setProxyMode(mode, sessionId, timeout);
+    await setProxyMode(mode, sessionId, timeout, clientSideOptions?.websocket);
 
     // Setup optional client-side recording/replay for 3rd party services BEFORE proxy route handler
     // This is important because Playwright processes routes in REVERSE order of registration

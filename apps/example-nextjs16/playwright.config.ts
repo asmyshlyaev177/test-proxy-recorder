@@ -8,6 +8,7 @@ export default defineConfig({
   timeout: 30_000,
   fullyParallel: !isRecord,
   retries: 0,
+  globalTeardown: './e2e/global-teardown.ts',
   use: {
     baseURL: `http://localhost:${APP_PORT}`,
     trace: 'on-first-retry',

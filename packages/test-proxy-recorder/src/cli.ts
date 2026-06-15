@@ -7,6 +7,7 @@ import { Command } from 'commander';
 import type { Config } from './config.js';
 import { loadConfig } from './config-loader.js';
 import { DEFAULT_TIMEOUT_MS } from './constants.js';
+import type { WebSocketReplayConfig } from './types.js';
 import type { RedactionConfig } from './utils/redact.js';
 
 const DEFAULT_PORT = 8000;
@@ -26,6 +27,7 @@ export interface CliOptions {
   recordingsDir: string;
   timeout: number;
   redaction: RedactionConfig;
+  websocket: WebSocketReplayConfig;
 }
 
 interface RawOptions {
@@ -38,6 +40,7 @@ interface RawOptions {
   redactBody?: string;
   allowHeaders?: string;
   allowCookies?: string;
+  wsTiming?: string;
 }
 
 /**
@@ -93,6 +96,20 @@ function resolveRedaction(
   };
 }
 
+/** Merge WebSocket replay settings with CLI-flag-over-config-over-default precedence. */
+function resolveWebSocket(
+  options: RawOptions,
+  configWebSocket: WebSocketReplayConfig | undefined,
+): WebSocketReplayConfig {
+  const timing = options.wsTiming ?? configWebSocket?.timing ?? 'burst';
+  if (timing !== 'burst' && timing !== 'original') {
+    console.error("Error: --ws-timing must be 'burst' or 'original'");
+    process.exit(1);
+  }
+
+  return { timing };
+}
+
 export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
   const program = new Command();
 
@@ -134,6 +151,10 @@ export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
     .option(
       '--allow-cookies <names>',
       'Comma-separated cookie names to keep unredacted inside Cookie/Set-Cookie',
+    )
+    .option(
+      '--ws-timing <mode>',
+      "WebSocket replay pacing: 'burst' (default, immediate) or 'original' (re-paced from recorded timestamps)",
     );
 
   program.parse(argv);
@@ -180,6 +201,7 @@ export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
   const recordingsDir = path.resolve(process.cwd(), dir);
 
   const redaction = resolveRedaction(options, config?.redaction);
+  const websocket = resolveWebSocket(options, config?.websocket);
 
-  return { target, port, recordingsDir, timeout, redaction };
+  return { target, port, recordingsDir, timeout, redaction, websocket };
 }

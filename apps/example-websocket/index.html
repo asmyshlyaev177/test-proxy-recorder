@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BTC-USD live ticker</title>
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <main class="card">
+      <p class="pair">BTC-USD</p>
+      <p class="price" data-testid="price">—</p>
+      <p class="meta">
+        <span class="dot" data-testid="status">connecting</span>
+      </p>
+      <p class="source">live feed: Binance Spot WebSocket</p>
+    </main>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

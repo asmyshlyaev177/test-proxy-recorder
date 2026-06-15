@@ -13,6 +13,8 @@ export interface ControlRequest {
   id?: string;
   timeout?: number;
   cleanup?: boolean; // When true, cleans up the session (unloads recording, resets counters)
+  /** Per-session WebSocket replay pacing; overrides the proxy-level setting for this session. */
+  websocket?: WebSocketReplayConfig;
 }
 
 export interface RecordedRequest {
@@ -41,6 +43,19 @@ export interface WebSocketMessage {
   direction: 'client-to-server' | 'server-to-client';
   data: string;
   timestamp: string;
+}
+
+/** Replay-time pacing for recorded WebSocket messages. */
+export interface WebSocketReplayConfig {
+  /**
+   * How recorded server→client messages are paced on replay.
+   * - `'burst'` (default): sent immediately on connect — fastest, fully
+   *   deterministic, best for CI.
+   * - `'original'`: re-paced using the recorded timestamps, so messages arrive
+   *   with their real inter-message gaps. A test then takes roughly the
+   *   recording's wall-clock span.
+   */
+  timing?: 'burst' | 'original';
 }
 
 export interface WebSocketRecording {

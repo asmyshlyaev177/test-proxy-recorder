@@ -1,4 +1,8 @@
-import type { Recording, RecordingSession } from './types.js';
+import type {
+  Recording,
+  RecordingSession,
+  WebSocketReplayConfig,
+} from './types.js';
 
 /**
  * State for a single replay session
@@ -11,6 +15,8 @@ export interface ReplaySessionState {
   lastAccessTime: number;
   // Cache of sorted recordings per key to avoid re-filtering and re-sorting
   sortedRecordingsByKey: Map<string, Recording[]>;
+  // Per-session WebSocket replay pacing, set from the control request.
+  wsReplay?: WebSocketReplayConfig;
 }
 
 /**

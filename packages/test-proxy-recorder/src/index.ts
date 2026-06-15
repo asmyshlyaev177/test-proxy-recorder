@@ -7,6 +7,7 @@ export type {
   Recording,
   RecordingSession,
   WebSocketRecording,
+  WebSocketReplayConfig,
 } from './types';
 export {
   DEFAULT_REDACTED_HEADERS,

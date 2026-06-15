@@ -3,7 +3,12 @@ import { Duplex } from 'node:stream';
 
 import { WebSocket, WebSocketServer } from 'ws';
 
-import type { RecordingSession, WebSocketRecording } from './types.js';
+import type {
+  RecordingSession,
+  WebSocketMessage,
+  WebSocketRecording,
+  WebSocketReplayConfig,
+} from './types.js';
 
 /**
  * Recording key for a WebSocket URL
@@ -196,6 +201,136 @@ export function recordWebSocket(
 }
 
 /**
+ * Cumulative offset (ms from the first message) at which each message in a run
+ * should be sent, derived from the recorded timestamps. Each inter-message gap
+ * uses the real recorded delay (floored at 0 to ignore out-of-order stamps).
+ */
+function cumulativeDelays(group: WebSocketMessage[]): number[] {
+  const delays: number[] = [];
+  let elapsed = 0;
+  let prevTs: number | null = null;
+  for (const msg of group) {
+    const ts = Date.parse(msg.timestamp);
+    if (prevTs !== null && !Number.isNaN(ts)) {
+      elapsed += Math.max(0, ts - prevTs);
+    }
+    if (!Number.isNaN(ts)) {
+      prevTs = ts;
+    }
+    delays.push(elapsed);
+  }
+  return delays;
+}
+
+/**
+ * Schedule a run of consecutive recorded server messages with their original
+ * timing: the first fires immediately, each later one after the real recorded
+ * gap to its predecessor. Timers are tracked so they can be cancelled on close.
+ */
+function scheduleServerGroup(
+  send: (data: string) => void,
+  group: WebSocketMessage[],
+  timers: Set<ReturnType<typeof setTimeout>>,
+): void {
+  const delays = cumulativeDelays(group);
+  let index = 0;
+  for (const msg of group) {
+    const delay = delays[index];
+    index++;
+    if (delay <= 0) {
+      send(msg.data);
+      continue;
+    }
+    const timer = setTimeout(() => {
+      timers.delete(timer);
+      send(msg.data);
+    }, delay);
+    timers.add(timer);
+  }
+}
+
+/**
+ * Drives a replay socket from a recorded message list. Walks the sequence with
+ * a cursor: after each client message, serves the run of consecutive server
+ * messages that followed it — immediately (`burst`) or re-paced from the
+ * recorded timestamps (`original`).
+ */
+class ReplayPlayer {
+  private cursor = 0;
+  // Pending 'original'-timing timers, cleared on close so nothing is sent
+  // after the socket goes away.
+  private readonly timers = new Set<ReturnType<typeof setTimeout>>();
+
+  constructor(
+    private readonly ws: WebSocket,
+    private readonly messages: WebSocketMessage[],
+    private readonly timing: 'burst' | 'original',
+  ) {}
+
+  /** Register socket handlers and serve any initial server messages. */
+  start(): void {
+    this.ws.on('message', (data) => {
+      console.log(`Replay: Client sent: ${data.toString()}`);
+      this.onClientMessage();
+    });
+    this.ws.on('error', (err) => {
+      console.error('Replay WebSocket error:', err);
+    });
+    this.ws.on('close', () => this.dispose());
+
+    // Initial server messages are those recorded before any client message,
+    // e.g. a welcome message.
+    this.flush();
+  }
+
+  private send(data: string): void {
+    if (this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(data);
+    }
+  }
+
+  private onClientMessage(): void {
+    // Advance past the recorded client message, then serve what followed it.
+    if (
+      this.cursor < this.messages.length &&
+      this.messages[this.cursor].direction === 'client-to-server'
+    ) {
+      this.cursor++;
+    }
+    this.flush();
+  }
+
+  private flush(): void {
+    const group: WebSocketMessage[] = [];
+    while (
+      this.cursor < this.messages.length &&
+      this.messages[this.cursor].direction === 'server-to-client'
+    ) {
+      group.push(this.messages[this.cursor]);
+      this.cursor++;
+    }
+    if (group.length === 0) {
+      return;
+    }
+    if (this.timing === 'burst') {
+      for (const msg of group) {
+        this.send(msg.data);
+      }
+    } else {
+      scheduleServerGroup((data) => this.send(data), group, this.timers);
+    }
+  }
+
+  private dispose(): void {
+    for (const timer of this.timers) {
+      clearTimeout(timer);
+    }
+    this.timers.clear();
+    console.log('Replay WebSocket closed');
+  }
+}
+
+/**
  * Replay-mode WebSocket handler: accepts the client connection (answering
  * with the recorded subprotocol) and serves the recorded message sequence.
  */
@@ -204,8 +339,10 @@ export function replayWebSocket(
   socket: Duplex,
   wsRecording: WebSocketRecording,
   recordingId: string,
+  config?: WebSocketReplayConfig,
 ): void {
   const url = req.url || '/';
+  const timing = config?.timing ?? 'burst';
 
   // Create WebSocket server for replay, answering with the recorded
   // subprotocol when the client offers it (callback only runs when the
@@ -228,52 +365,9 @@ export function replayWebSocket(
   });
 
   wss.handleUpgrade(fakeReq, socket, Buffer.alloc(0), (ws) => {
-    console.log(`Replaying WebSocket: ${url} (session: ${recordingId})`);
-
-    // Walk the recorded message sequence with a cursor. After each client
-    // message, send every consecutive server message that followed it in
-    // the recording. This preserves recorded order and supports many
-    // server messages per client message (e.g. high-frequency bursts).
-    const messages = wsRecording.messages;
-    let cursor = 0;
-
-    const flushServerMessages = () => {
-      while (
-        cursor < messages.length &&
-        messages[cursor].direction === 'server-to-client'
-      ) {
-        const msg = messages[cursor];
-        cursor++;
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(msg.data);
-        }
-      }
-    };
-
-    ws.on('message', (data) => {
-      console.log(`Replay: Client sent: ${data.toString()}`);
-
-      // Advance past the recorded client message, then send the server
-      // messages that followed it
-      if (
-        cursor < messages.length &&
-        messages[cursor].direction === 'client-to-server'
-      ) {
-        cursor++;
-      }
-      flushServerMessages();
-    });
-
-    ws.on('error', (err) => {
-      console.error('Replay WebSocket error:', err);
-    });
-
-    ws.on('close', () => {
-      console.log('Replay WebSocket closed');
-    });
-
-    // Send initial server messages (those recorded before any client
-    // message, e.g. a welcome message)
-    flushServerMessages();
+    console.log(
+      `Replaying WebSocket: ${url} (session: ${recordingId}, timing: ${timing})`,
+    );
+    new ReplayPlayer(ws, wsRecording.messages, timing).start();
   });
 }

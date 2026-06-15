@@ -1,0 +1,64 @@
+:root {
+  color-scheme: dark;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: #0d1117;
+  color: #e6edf3;
+}
+
+.card {
+  text-align: center;
+  padding: 2.5rem 3rem;
+  border: 1px solid #21262d;
+  border-radius: 16px;
+  background: #161b22;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.4);
+}
+
+.pair {
+  margin: 0;
+  font-size: 0.85rem;
+  letter-spacing: 0.18em;
+  color: #8b949e;
+}
+
+.price {
+  margin: 0.4rem 0;
+  font-size: 3.25rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #8b949e;
+}
+
+.dot::before {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.4rem;
+  border-radius: 50%;
+  background: #8b949e;
+  vertical-align: middle;
+}
+
+.dot[data-state='live']::before {
+  background: #3fb950;
+  box-shadow: 0 0 8px #3fb950;
+}
+
+.source {
+  margin: 1.25rem 0 0;
+  font-size: 0.72rem;
+  color: #6e7681;
+}

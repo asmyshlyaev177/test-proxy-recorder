@@ -26,6 +26,7 @@ import {
   Modes,
   type Recording,
   type RecordingSession,
+  type WebSocketReplayConfig,
 } from './types.js';
 import { addCorsHeaders, getCorsHeaders } from './utils/cors.js';
 import {
@@ -61,16 +62,19 @@ export class ProxyServer {
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
   private redaction?: RedactionConfig; // Secret-redaction config applied before saving
+  private wsReplay?: WebSocketReplayConfig; // WebSocket replay pacing
 
   constructor(
     target: string,
     recordingsDir: string,
     timeoutMs?: number,
     redaction?: RedactionConfig,
+    wsReplay?: WebSocketReplayConfig,
   ) {
     this.target = target;
     this.timeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.redaction = redaction;
+    this.wsReplay = wsReplay;
     this.mode = Modes.transparent;
     this.recordingId = null;
     this.recordingIdCounter = 0;
@@ -197,7 +201,7 @@ export class ProxyServer {
   ): Promise<void> {
     try {
       const data = await this.parseControlBody(req);
-      const { mode, id, timeout: requestTimeout, cleanup } = data;
+      const { mode, id, timeout: requestTimeout, cleanup, websocket } = data;
 
       if (cleanup && id) {
         await this.cleanupSession(id);
@@ -209,7 +213,7 @@ export class ProxyServer {
         return;
       }
 
-      await this.applyModeChange(res, mode, id, requestTimeout);
+      await this.applyModeChange(res, mode, id, requestTimeout, websocket);
     } catch (error) {
       console.error('Control request error:', error);
       sendJsonResponse(res, HTTP_STATUS_BAD_REQUEST, {
@@ -223,6 +227,7 @@ export class ProxyServer {
     mode: Mode | undefined,
     id: string | undefined,
     requestTimeout: number | undefined,
+    websocket: WebSocketReplayConfig | undefined,
   ): Promise<void> {
     if (!mode) {
       throw new Error(
@@ -232,7 +237,7 @@ export class ProxyServer {
 
     const timeout = requestTimeout ?? this.timeoutMs;
     this.clearModeTimeout();
-    await this.switchMode(mode, id);
+    await this.switchMode(mode, id, websocket);
     this.setupModeTimeout(timeout);
 
     if (mode === Modes.replay && id) {
@@ -257,7 +262,11 @@ export class ProxyServer {
     this.modeTimeout = null;
   }
 
-  private async switchMode(mode: Mode, id?: string): Promise<void> {
+  private async switchMode(
+    mode: Mode,
+    id?: string,
+    websocket?: WebSocketReplayConfig,
+  ): Promise<void> {
     console.log(`Switching to ${mode.toUpperCase()} mode`);
 
     // Save current session before switching
@@ -284,7 +293,7 @@ export class ProxyServer {
         if (!id) {
           throw new Error('Replay ID is required');
         }
-        await this.switchToReplayMode(id);
+        await this.switchToReplayMode(id, websocket);
 
         break;
       }
@@ -313,7 +322,10 @@ export class ProxyServer {
     console.log(`Switched to record mode with ID: ${id}`);
   }
 
-  private async switchToReplayMode(id: string): Promise<void> {
+  private async switchToReplayMode(
+    id: string,
+    websocket?: WebSocketReplayConfig,
+  ): Promise<void> {
     this.mode = Modes.replay;
     this.replayId = id;
     this.recordingId = null;
@@ -321,6 +333,9 @@ export class ProxyServer {
 
     // Get or create the replay session
     const sessionState = this.replaySessions.getOrCreate(id);
+
+    // Per-session pacing overrides the proxy-level setting for this session.
+    sessionState.wsReplay = websocket;
 
     // Reset the replay session to start fresh
     // This ensures served recordings tracker is cleared when re-entering replay mode
@@ -741,7 +756,13 @@ export class ProxyServer {
         return;
       }
 
-      replayWebSocket(req, socket, wsRecording, recordingId);
+      replayWebSocket(
+        req,
+        socket,
+        wsRecording,
+        recordingId,
+        sessionState.wsReplay ?? this.wsReplay,
+      );
     } catch (error) {
       console.error('Replay error:', error);
       socket.write('HTTP/1.1 404 Not Found\r\n\r\n');

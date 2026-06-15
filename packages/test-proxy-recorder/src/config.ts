@@ -1,3 +1,4 @@
+import type { WebSocketReplayConfig } from './types.js';
 import type { RedactionConfig } from './utils/redact.js';
 
 /**
@@ -15,6 +16,8 @@ export interface Config {
   timeout?: number;
   /** Secret redaction settings. See {@link RedactionConfig}. */
   redaction?: RedactionConfig;
+  /** WebSocket replay pacing. See {@link WebSocketReplayConfig}. */
+  websocket?: WebSocketReplayConfig;
 }
 
 /**

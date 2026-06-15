@@ -1,0 +1,24 @@
+{
+  "name": "example-websocket",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview --port 4173 --strictPort",
+    "proxy": "test-proxy-recorder https://stream.binance.com:9443 --port 8100 --dir ./e2e/recordings",
+    "build:test": "cross-env VITE_WS_URL=ws://localhost:8100/ws/btcusdt@ticker vite build",
+    "test:e2e": "pnpm build:test && playwright test",
+    "test:e2e:ui": "pnpm build:test && playwright test --ui",
+    "test:e2e:record": "pnpm build:test && cross-env RECORD_MODE=1 playwright test --workers 1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^22.19.0",
+    "cross-env": "^7.0.3",
+    "test-proxy-recorder": "workspace:*",
+    "typescript": "^5.6.0",
+    "vite": "^6.0.0"
+  }
+}
