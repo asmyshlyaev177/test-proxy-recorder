@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.4.0...v0.5.0) (2026-06-15)
+
+
+### Features
+
+* reset script ([b862439](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/b8624390b3d707ee04e48ab308153beedb26fd1a))
+
 ## [0.4.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.3.9...v0.4.0) (2026-06-14)
 
 
