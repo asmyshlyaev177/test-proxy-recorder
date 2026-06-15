@@ -12,6 +12,7 @@ coverage-reports
 .next/
 apps/example-nextjs16/data/*
 apps/example-nextjs16/e2e/recordings/
+apps/example-nextjs16/data/todos.json
 tsconfig.tsbuildinfo
 trace.zip
 test-results

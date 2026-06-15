@@ -1,7 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+type Mode = 'replay' | 'record';
+
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
+// const mode = 'record' as Mode;
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
 
 // Matches client-side fetch calls from the browser to the proxy (port 8100)
@@ -9,11 +12,13 @@ const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
 const CLIENT_SIDE_URL = /localhost:8100/;
 
 async function resetData() {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
+  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' }).catch((_err) => false);
 }
 
 test.beforeEach(async ({ page }, testInfo) => {
-  await resetData();
+  if (mode === 'record') {
+    await resetData();
+  }
   await playwrightProxy.before(page, testInfo, mode as 'record' | 'replay', { url: CLIENT_SIDE_URL });
 });
 
