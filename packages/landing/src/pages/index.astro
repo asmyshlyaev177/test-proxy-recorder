@@ -75,6 +75,33 @@ git commit -m "add e2e recordings"`;
     </div>
   </section>
 
+  <!-- ============================================================ demo -->
+  <section class="demo" id="demo">
+    <div class="container demo-inner">
+      <h2>See it record, then replay</h2>
+      <p class="section-sub">
+        One Playwright run records real responses to disk; flip to replay and the same
+        suite passes with the backend off — no network.
+      </p>
+      <figure class="demo-frame">
+        <video
+          class="demo-video"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          controls
+          poster="/demo-poster.jpg"
+          aria-label="Screen recording: recording real API responses with test-proxy-recorder, then replaying them with the backend turned off."
+        >
+          <source src="/demo.webm" type="video/webm" />
+          <source src="/demo.mp4" type="video/mp4" />
+        </video>
+      </figure>
+    </div>
+  </section>
+
   <!-- ============================================================= why -->
   <section class="why">
     <div class="container why-grid">
@@ -321,6 +348,37 @@ git commit -m "add e2e recordings"`;
   .copy-btn.copied {
     background: oklch(0.42 0.1 150);
     border-color: transparent;
+  }
+
+  /* ------------------------------------------------------------- demo */
+
+  .demo {
+    background: var(--surface);
+    border-block: 1px solid var(--line);
+  }
+
+  .demo-inner {
+    text-align: center;
+    display: grid;
+    justify-items: center;
+  }
+
+  .demo-frame {
+    margin: 2.5rem 0 0;
+    width: 100%;
+    max-width: 60rem;
+    border: 1px solid var(--panel-edge);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow-panel);
+    background: var(--panel);
+  }
+
+  .demo-video {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
   }
 
   /* -------------------------------------------------------------- why */

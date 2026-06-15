@@ -9,11 +9,20 @@
 
 Fast, deterministic Playwright tests without maintaining manual mocks.
 
-<!-- ▶ DEMO: drop a 20–30s GIF/asciinema here (record → replay → delete backend → tests stay green).
+<!-- ============================================================ DEMO ===
+     GIF version (renders on npm, which strips <video>). assets/demo2-sm.gif
+     is the GitHub-sized cut (~2.4 MB). Swap for demo2.gif for higher quality. -->
 <p align="center">
-  <img src="./assets/demo.gif" alt="Recording real API responses, then replaying them on CI with the backend turned off" width="760">
+  <img src="./assets/demo2-sm.gif" alt="Recording real API responses, then replaying them on CI with the backend turned off" width="800">
 </p>
+
+<!-- VIDEO version (GitHub renders this inline; npm ignores it). To enable:
+     1. drag assets/demo2.mp4 into any GitHub issue/PR comment,
+     2. copy the resulting user-images.githubusercontent.com URL,
+     3. paste it on its own line below.
+https://user-images.githubusercontent.com/.../demo2.mp4
 -->
+<!-- ==================================================================== -->
 
 Records real API responses during test runs and replays them on CI — no backend required. Supports two recording mechanisms depending on where your requests originate:
 
