@@ -8,6 +8,7 @@
     "build": "vite build",
     "preview": "vite preview --port 4173 --strictPort",
     "proxy": "test-proxy-recorder https://stream.binance.com:9443 --port 8100 --dir ./e2e/recordings",
+    "proxy:reset": "test-proxy-recorder reset --port 8100",
     "build:test": "cross-env VITE_WS_URL=ws://localhost:8100/ws/btcusdt@ticker vite build",
     "test:e2e": "pnpm build:test && playwright test",
     "test:e2e:ui": "pnpm build:test && playwright test --ui",

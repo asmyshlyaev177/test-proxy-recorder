@@ -5,11 +5,13 @@
   "scripts": {
     "mock": "MOCK_BACKEND_PORT=3002 node mock-backend/server.mjs",
     "proxy": "test-proxy-recorder",
+    "proxy:reset": "test-proxy-recorder reset",
     "dev": "next dev --port 3000",
     "build": "next build",
     "start": "next start --port 3000",
     "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm start\"",
     "test:e2e": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3000 http://127.0.0.1:8100/__control && APP_PORT=3000 playwright test --retries 1\"",
+    "test:e2e:ci": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3000 http://127.0.0.1:8100/__control --timeout 120000 && APP_PORT=3000 RECORD_MODE=1 playwright test --workers 1 && APP_PORT=3000 playwright test --retries 1\"",
     "test:e2e:ui": "APP_PORT=3000 playwright test --ui --retries 1",
     "test:e2e:record": "APP_PORT=3000 RECORD_MODE=1 playwright test --workers 1 --ui"
   },

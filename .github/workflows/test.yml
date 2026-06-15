@@ -81,23 +81,14 @@ jobs:
       - name: Build library
         run: pnpm run build
 
-      - name: Build example app
-        run: pnpm --filter example-nextjs16 build
-
       - name: Run e2e record and replay
-        # start:all (mock + proxy + next) is backgrounded and must stay alive for
-        # both the record and replay runs, so everything lives in one step —
-        # background processes do not survive across GitHub Actions steps.
-        # Record and replay run playwright directly (not the test:e2e* scripts,
-        # which use --ui / restart their own services) against this one stack.
-        run: |
-          pnpm --filter example-nextjs16 start:all &
-          pnpm --filter example-nextjs16 exec wait-on \
-            http://localhost:3000 \
-            http://localhost:8100/__control \
-            --timeout 120000
-          APP_PORT=3000 RECORD_MODE=1 pnpm --filter example-nextjs16 exec playwright test --workers 1
-          APP_PORT=3000 pnpm --filter example-nextjs16 exec playwright test --retries 1
+        # The example's test:e2e:ci script owns its whole stack: it builds the
+        # app, starts mock + proxy + next via concurrently, then runs the record
+        # pass (RECORD_MODE=1, single worker) followed by the replay pass against
+        # that one stack, and tears everything down. It must stay in a single
+        # step because the backgrounded services do not survive across GitHub
+        # Actions steps.
+        run: pnpm run example:test:e2e:ci
 
       - name: Upload test artifacts on failure
         if: failure()

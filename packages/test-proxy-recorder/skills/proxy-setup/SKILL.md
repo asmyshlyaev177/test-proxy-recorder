@@ -356,6 +356,29 @@ curl -X POST http://localhost:8100/__control \
 
 Override the default port (8100) with `TEST_PROXY_RECORDER_PORT` env var.
 
+### Resetting a stuck proxy
+
+The proxy auto-reverts to `transparent` after each session times out, and
+`globalTeardown` resets it at the end of a clean run. But an **interrupted**
+run (Ctrl+C), a UI/debug session, or a setup without `globalTeardown` can leave
+the shared proxy stuck in `record`/`replay`, so the app keeps serving recorded
+responses. Reset it on demand:
+
+```bash
+test-proxy-recorder reset          # or: pnpm proxy:reset
+```
+
+This POSTs `{ "mode": "transparent" }` to `/__control` — the supported,
+parallel-safe replacement for resetting by hand with `curl`. It is safe to run
+anytime: an unreachable proxy is a no-op. The port is resolved with
+**`--port` flag → `TEST_PROXY_RECORDER_PORT` env → config file → 8000**, so it
+targets the same port the proxy was started on. `proxy:reset` is scaffolded by
+`test-proxy-recorder init`.
+
+Do **not** wire this into a per-test `afterEach` under `fullyParallel` — like
+`teardown()`, it flips the global mode and would disrupt other workers
+mid-session. It is a manual recovery tool, not a per-test hook.
+
 ## Common Mistakes
 
 ### CRITICAL App env var not redirected through proxy

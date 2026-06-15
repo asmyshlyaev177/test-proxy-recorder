@@ -154,6 +154,7 @@ export default async function globalTeardown() {
 export function scaffoldScripts(): Record<string, string> {
   return {
     proxy: 'test-proxy-recorder',
+    'proxy:reset': 'test-proxy-recorder reset',
     'test:e2e': 'playwright test',
     'test:e2e:record': 'playwright test --workers 1 --ui',
   };
@@ -678,6 +679,9 @@ function printNextSteps(actions: ScaffoldAction[], options: InitOptions): void {
   }
   console.log(step2);
   console.log(step3);
+  console.log(
+    '  • Stuck in record/replay after an interrupted run? Run `test-proxy-recorder reset` (or `proxy:reset`) to return the proxy to transparent mode.',
+  );
   if (devWrapped) {
     console.log(
       '  • `dev` now runs the proxy + your app together (install `concurrently` if needed).',

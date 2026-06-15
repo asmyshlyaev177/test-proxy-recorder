@@ -227,6 +227,7 @@ describe('runInit — package.json scripts', () => {
     expect(pkg.scripts.proxy).toBe('echo mine');
     expect(pkg.scripts.build).toBe('tsc');
     // New keys are added.
+    expect(pkg.scripts['proxy:reset']).toBe('test-proxy-recorder reset');
     expect(pkg.scripts['test:e2e']).toBe('playwright test');
     expect(pkg.scripts['test:e2e:record']).toBe(
       'playwright test --workers 1 --ui',
@@ -256,8 +257,9 @@ describe('runInit — package.json scripts', () => {
       JSON.stringify({
         scripts: {
           proxy: 'a',
-          'test:e2e': 'b',
-          'test:e2e:record': 'c',
+          'proxy:reset': 'b',
+          'test:e2e': 'c',
+          'test:e2e:record': 'd',
         },
       }),
     );

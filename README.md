@@ -45,6 +45,7 @@ Both can be used together or independently.
 - [Full-stack (SSR + browser) Quick Start](#full-stack-ssr--browser-quick-start)
 - [Browser-only / SPA / Extension Quick Start](#browser-only--spa--extension-quick-start)
 - [CLI](#cli)
+  - [Reset a stuck proxy](#reset-a-stuck-proxy)
   - [Config file](#config-file)
 - [Secret redaction](#secret-redaction)
 - [Example Apps](#example-apps)
@@ -250,6 +251,25 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
+### Reset a stuck proxy
+
+The proxy auto-reverts to `transparent` after each session times out, and the
+`globalTeardown` resets it at the end of a clean run. But an **interrupted** run
+(`Ctrl+C`), a UI/debug session, or a config without `globalTeardown` can leave
+the shared proxy stuck in `record`/`replay` — so your app keeps serving recorded
+responses instead of hitting the real backend. Reset it on demand:
+
+```bash
+test-proxy-recorder reset    # or: npm run proxy:reset
+```
+
+This POSTs `{ "mode": "transparent" }` to `/__control` — the supported,
+parallel-safe replacement for resetting by hand with `curl`. It's safe to run
+anytime: an unreachable proxy is treated as a no-op. The port is resolved as
+**`--port` flag → `TEST_PROXY_RECORDER_PORT` env → config file → `8000`**, so it
+targets the port the proxy was started on (pass `--port` / `--config` to
+override). `init` scaffolds this as the `proxy:reset` script.
+
 ### Scaffold the setup (`init`)
 
 One command wires test-proxy-recorder into a project:
@@ -268,7 +288,8 @@ It generates / edits, **non-destructively**:
   runs the Playwright CLI to set it up first (pass `--no-install` to skip).
 - `e2e/fixtures.ts` and `e2e/global-teardown.ts` — the per-test proxy fixture and
   teardown.
-- `package.json` — adds `proxy`, `test:e2e`, and `test:e2e:record` scripts. If
+- `package.json` — adds `proxy`, `proxy:reset`, `test:e2e`, and
+  `test:e2e:record` scripts. If
   you have a `dev` script it's wrapped: the original moves to `dev:app` and `dev`
   becomes a `concurrently` command that runs the proxy alongside your app (so
   `npm run dev` records while you develop). `concurrently` is added to
