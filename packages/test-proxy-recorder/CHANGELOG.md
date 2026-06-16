@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.0.0...v1.0.1) (2026-06-16)
+
+
+### Bug Fixes
+
+* ssr secrets redaction ([b25c258](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/b25c258bd697cab3c4915cc45f8f221fec2579c6))
+
 ## [1.0.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v0.4.0...v1.0.0) (2026-06-15)
 
 
