@@ -96,8 +96,14 @@ describe('ProxyServer WebSocket Tests', () => {
     receivedMessages = [];
     lastConnectionHeaders = null;
 
-    // Create and start proxy server
-    proxyServer = new ProxyServer(MOCK_SERVER_URL, TEST_RECORDINGS_DIR);
+    // Create and start proxy server (redaction is opt-in; an empty object {}
+    // enables it so the redaction assertion below exercises the real path).
+    proxyServer = new ProxyServer(
+      MOCK_SERVER_URL,
+      TEST_RECORDINGS_DIR,
+      undefined,
+      {},
+    );
     await proxyServer.init();
     proxyHttpServer = proxyServer.listen(PROXY_PORT);
 
@@ -398,8 +404,8 @@ describe('ProxyServer WebSocket Tests', () => {
       const wsRecording = recording.websocketRecordings[0];
 
       expect(wsRecording.headers['x-api-key']).toBe('secret-key-123');
-      // Sensitive headers are redacted in the saved recording by default,
-      // even though the live handshake forwarded the real value (asserted above).
+      // With redaction enabled, sensitive headers are stripped from the saved
+      // recording even though the live handshake forwarded the real value (above).
       expect(wsRecording.headers.cookie).toBe('[REDACTED]');
       expect(wsRecording.headers['sec-websocket-protocol']).toBe('test-proto');
       expect(wsRecording.protocol).toBe('test-proto');

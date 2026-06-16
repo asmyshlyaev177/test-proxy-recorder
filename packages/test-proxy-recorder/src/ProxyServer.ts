@@ -37,7 +37,10 @@ import {
 import { getReqID } from './utils/getReqID';
 import { readRequestBody, sendJsonResponse } from './utils/httpHelpers.js';
 import { getRecordingIdFromRequest } from './utils/recordingId.js';
-import type { RedactionConfig } from './utils/redact.js';
+import {
+  type RedactionConfig,
+  serializeRedactionConfig,
+} from './utils/redact.js';
 import {
   getWsRecordingKey,
   recordWebSocket,
@@ -61,14 +64,14 @@ export class ProxyServer {
   private replaySessions: ReplaySessionManager; // Track multiple concurrent replay sessions by recording ID
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
-  private redaction?: RedactionConfig; // Secret-redaction config applied before saving
+  private redaction?: RedactionConfig | false; // Secret-redaction config applied before saving (false/undefined = off)
   private wsReplay?: WebSocketReplayConfig; // WebSocket replay pacing
 
   constructor(
     target: string,
     recordingsDir: string,
     timeoutMs?: number,
-    redaction?: RedactionConfig,
+    redaction?: RedactionConfig | false,
     wsReplay?: WebSocketReplayConfig,
   ) {
     this.target = target;
@@ -189,6 +192,7 @@ export class ProxyServer {
         recordingsDir: this.recordingsDir,
         mode: this.mode,
         id: this.recordingId || this.replayId,
+        redaction: serializeRedactionConfig(this.redaction),
       });
       return;
     }

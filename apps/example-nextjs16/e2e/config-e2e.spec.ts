@@ -100,6 +100,7 @@ test.describe('full app e2e — every config option applied', () => {
     port: ${proxyPort},
     recordingsDir: ${JSON.stringify(recordingsDir)},
     redaction: {
+      // A redaction object (even {}) enables it — redaction is opt-in.
       headers: ['x-api-key'],          // redact this extra header
       allowHeaders: ['authorization'], // ...but exempt a default-redacted one
       allowCookies: ['theme'],         // keep this cookie, redact the rest
@@ -248,13 +249,13 @@ test.describe('full app e2e — every config option applied', () => {
     expect(raw).not.toContain('sk_live_ABC123');
   });
 
-  test('redaction.enabled: false (config reload) commits secrets raw', async () => {
+  test('redaction: false (config reload) commits secrets raw', async () => {
     await stop(proxy);
     await startProxy(`export default {
       target: 'http://localhost:${backendPort}',
       port: ${proxyPort},
       recordingsDir: ${JSON.stringify(recordingsDir)},
-      redaction: { enabled: false },
+      redaction: false,
     };`);
 
     const { json } = await recordThroughProxy('config-e2e__redaction-off', {

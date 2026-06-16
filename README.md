@@ -296,7 +296,7 @@ test-proxy-recorder <target-url> [options]
 | `--config, -c`   | *(auto)*       | Path to a config file (see below)   |
 | `--ws-timing`    | `burst`        | WebSocket replay pacing — `burst` or `original` (see below) |
 
-Secrets are redacted from recordings by default — see [Secret redaction](#secret-redaction) for the `--no-redact`, `--redact-headers`, and `--redact-body` flags.
+Secret redaction is **opt-in** (off by default) — enable it with `--redact`, or a `redaction` object (even `redaction: {}`) in the config; `redaction: false` keeps it off. See [Secret redaction](#secret-redaction) for the `--redact-headers` and `--redact-body` flags.
 
 By default, recorded WebSocket server messages are replayed as a **burst** on connect — fastest and fully deterministic, ideal for CI. Pass `--ws-timing original` (or `websocket: { timing: 'original' }` in the config) to instead re-pace them using the recorded timestamps, so messages arrive with their real inter-message gaps; a test then takes roughly the recording's wall-clock span. You can also set this **per test** via `playwrightProxy.before(page, testInfo, mode, { websocket: { timing: 'original' } })`, which overrides the proxy-level default for that session only.
 
@@ -347,6 +347,7 @@ export default defineConfig({
   port: 8100,
   recordingsDir: './e2e/recordings',
   timeout: 120_000,
+  // Presence of this object turns redaction on (use `redaction: false` to disable).
   redaction: {
     headers: ['x-api-key'],         // extra headers, merged with the defaults
     bodyPatterns: [/sk_live_\w+/g], // real RegExp literals — no CLI escaping
@@ -375,19 +376,19 @@ the argument wins when both are present.
 ## Secret redaction
 
 <details>
-<summary>Secrets are stripped automatically by default — show details</summary>
+<summary>Redaction is opt-in — show details</summary>
 
-Recordings are meant to be committed to git, so secrets are stripped **automatically** before anything is written to disk. By default the proxy replaces the values of these request/response headers with `[REDACTED]`:
+Recordings get committed to git, so you may want secrets stripped before anything is written to disk. Redaction is **off by default**; turn it on with `--redact`, or by giving `redaction` an object in the config — even an empty `redaction: {}` enables it, while `redaction: false` (or omitting it) keeps it off. Once enabled, the proxy replaces the values of these request/response headers with `[REDACTED]`:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-This is safe: replay matching ignores these headers, so redaction never breaks playback. It applies to both `.mock.json` recordings and WebSocket recordings.
+This is safe: replay matching ignores these headers, so redaction never breaks playback. Once enabled it applies to `.mock.json` recordings, WebSocket recordings, and `.har` files.
 
 When only *some* cookies are sensitive, allow-list the harmless ones by name (e.g. a `theme` or A/B-test cookie). Allow-listed cookies keep their values inside `Cookie`/`Set-Cookie`; every other cookie is still redacted.
 
-> **Note:** `.har` files (browser-side requests recorded via Playwright's `routeFromHAR`) are written by Playwright, not the proxy, so this redaction does not cover them. Keep tokens out of HAR by recording with short-lived test credentials and reviewing HARs before committing — see the recommended setup-auth pattern below.
+> **`.har` files** are written by Playwright's `routeFromHAR`, not the proxy, so they're redacted in a separate pass. `playwrightProxy.teardown()` rewrites every `.har` in the recordings dir using the **same redaction config** as the proxy (headers, `allowCookies`, and `bodyPatterns` all apply, to both the headers and the parsed `cookies` arrays). This runs from your Playwright **`globalTeardown`** — so HAR redaction requires a `globalTeardown` that calls `playwrightProxy.teardown()` (the [recommended setup](#global-teardown-recommended), scaffolded by `init`). It can't run per-test: Playwright flushes a HAR when its context closes but doesn't await close handlers, so redacting there races the process exit and can truncate the file. The teardown fetches the config from `/__control` (proxy must be running; if unreachable the built-in header defaults still apply), only rewrites files it actually changed, and leaves base64 response bodies untouched. For defense in depth, still record with short-lived test credentials and review HARs before committing — see the recommended setup-auth pattern below.
 
 ### Recommended auth pattern
 
@@ -395,19 +396,20 @@ To keep the login flow and credentials out of recordings entirely, run authentic
 
 ### Tweaking what gets redacted
 
-The defaults always apply while redaction is enabled; you can add to them or turn it off.
+Once enabled, the default headers always apply; you can add to them. (On the CLI, passing any `--redact-*` / `--allow-*` flag also turns redaction on; in a config file, presence of the `redaction` object is what enables it.)
 
 **CLI flags:**
 
+- `--redact` — enable secret redaction (off by default).
 - `--redact-headers <names>` — comma-separated extra header names to redact (merged with the defaults).
 - `--redact-body <patterns>` — comma-separated regex patterns to redact from request/response bodies.
 - `--allow-headers <names>` — comma-separated header names to exempt from redaction (e.g. `set-cookie`).
 - `--allow-cookies <names>` — comma-separated cookie names to keep unredacted inside `Cookie`/`Set-Cookie`.
-- `--no-redact` — disable redaction and commit raw secrets (not recommended).
 
 ```bash
-# Redact an API-key header and "sk_live_..." tokens, but keep the theme cookie
+# Enable redaction: redact an API-key header and "sk_live_..." tokens, keep the theme cookie
 test-proxy-recorder http://localhost:8000 \
+  --redact \
   --redact-headers x-api-key \
   --redact-body "sk_live_[a-zA-Z0-9]+" \
   --allow-cookies theme,locale
@@ -418,8 +420,8 @@ test-proxy-recorder http://localhost:8000 \
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';
 
+// Passing this object enables redaction; pass `false` (or nothing) to keep it off.
 const proxy = new ProxyServer('http://localhost:3000', './recordings', undefined, {
-  enabled: true,                       // default; set false to disable
   headers: ['x-api-key', 'x-auth'],    // extra headers, merged with the defaults
   bodyPatterns: [/sk_live_[a-z0-9]+/i], // regexes replaced in request/response bodies
   allowHeaders: ['set-cookie'],        // never redact these headers

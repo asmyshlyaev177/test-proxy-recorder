@@ -49,7 +49,8 @@ describe('loadConfig', () => {
     );
 
     const config = await loadConfig(undefined, dir);
-    const patterns = config?.redaction?.bodyPatterns ?? [];
+    const redaction = config?.redaction;
+    const patterns = (redaction && redaction.bodyPatterns) || [];
 
     expect(patterns).toHaveLength(1);
     expect(patterns[0]).toBeInstanceOf(RegExp);

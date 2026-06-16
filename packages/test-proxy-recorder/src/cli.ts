@@ -26,7 +26,7 @@ export interface CliOptions {
   port: number;
   recordingsDir: string;
   timeout: number;
-  redaction: RedactionConfig;
+  redaction: RedactionConfig | false;
   websocket: WebSocketReplayConfig;
 }
 
@@ -35,7 +35,7 @@ interface RawOptions {
   port?: string;
   dir?: string;
   timeout?: string;
-  redact: boolean;
+  redact?: boolean;
   redactHeaders?: string;
   redactBody?: string;
   allowHeaders?: string;
@@ -66,33 +66,48 @@ function resolveNumber(
   return value;
 }
 
-/** Merge redaction settings with CLI-flag-over-config-over-default precedence. */
+/**
+ * Resolve redaction with CLI-flag-over-config precedence. Redaction is opt-in:
+ * it's on when any redaction flag is passed (`--redact` / `--redact-*` /
+ * `--allow-*`) or the config provides a redaction object; otherwise (config
+ * `false` or omitted, no flags) it's off and this returns `false`.
+ */
 function resolveRedaction(
   options: RawOptions,
-  configRedaction: RedactionConfig | undefined,
-): RedactionConfig {
-  // commander sets `redact` to false only when --no-redact is passed; otherwise
-  // it defaults to true, so an explicit CLI override is distinguishable here.
+  configRedaction: RedactionConfig | false | undefined,
+): RedactionConfig | false {
+  const cliProvided =
+    options.redact === true ||
+    options.redactHeaders !== undefined ||
+    options.redactBody !== undefined ||
+    options.allowHeaders !== undefined ||
+    options.allowCookies !== undefined;
+
+  // Config object (even `{}`) enables; `false`/`undefined` does not.
+  const configEnabled = !!configRedaction;
+  if (!cliProvided && !configEnabled) {
+    return false;
+  }
+
+  const base: RedactionConfig = configRedaction || {};
   return {
-    enabled:
-      options.redact === false ? false : (configRedaction?.enabled ?? true),
     headers:
       options.redactHeaders !== undefined
         ? splitList(options.redactHeaders)
-        : (configRedaction?.headers ?? []),
+        : (base.headers ?? []),
     bodyPatterns:
       options.redactBody !== undefined
         ? splitList(options.redactBody)
-        : (configRedaction?.bodyPatterns ?? []),
+        : (base.bodyPatterns ?? []),
     allowHeaders:
       options.allowHeaders !== undefined
         ? splitList(options.allowHeaders)
-        : (configRedaction?.allowHeaders ?? []),
+        : (base.allowHeaders ?? []),
     allowCookies:
       options.allowCookies !== undefined
         ? splitList(options.allowCookies)
-        : (configRedaction?.allowCookies ?? []),
-    placeholder: configRedaction?.placeholder,
+        : (base.allowCookies ?? []),
+    placeholder: base.placeholder,
   };
 }
 
@@ -133,8 +148,8 @@ export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
     )
     .option('-t, --timeout <ms>', 'Session timeout in milliseconds')
     .option(
-      '--no-redact',
-      'Disable secret redaction (commit raw Authorization/Cookie headers — not recommended)',
+      '--redact',
+      'Enable secret redaction (off by default) — strip Authorization/Cookie/Set-Cookie before writing recordings',
     )
     .option(
       '--redact-headers <names>',

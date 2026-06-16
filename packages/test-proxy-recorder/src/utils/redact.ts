@@ -25,11 +25,6 @@ const COOKIE_HEADERS = new Set(['cookie', 'set-cookie']);
 
 export interface RedactionConfig {
   /**
-   * Master switch. Redaction is on by default; set to `false` to commit raw
-   * headers and bodies (not recommended).
-   */
-  enabled?: boolean;
-  /**
    * Additional header names (case-insensitive) to redact. Merged with
    * {@link DEFAULT_REDACTED_HEADERS} — the defaults always apply while
    * enabled.
@@ -254,15 +249,203 @@ function redactWebSocketRecording(
 }
 
 /**
+ * Redact a single flat header value (one `name: value` pair, as found in HAR
+ * `headers` arrays) using the resolved config. Cookie headers keep their
+ * allow-listed cookies; every other targeted header collapses to the
+ * placeholder.
+ */
+function redactHeaderString(
+  name: string,
+  value: string,
+  resolved: ResolvedRedaction,
+): string {
+  const lower = name.toLowerCase();
+  if (resolved.allowCookies.size > 0 && COOKIE_HEADERS.has(lower)) {
+    return lower === 'cookie'
+      ? redactCookieHeader(value, resolved.allowCookies, resolved.placeholder)
+      : redactSetCookieValue(
+          value,
+          resolved.allowCookies,
+          resolved.placeholder,
+        );
+  }
+  return resolved.placeholder;
+}
+
+/** Minimal structural typing for the parts of a HAR file we touch. */
+interface HarNameValue {
+  name: string;
+  value: string;
+}
+interface HarEntry {
+  request?: {
+    headers?: HarNameValue[];
+    cookies?: HarNameValue[];
+    postData?: { text?: string } & Record<string, unknown>;
+  } & Record<string, unknown>;
+  response?: {
+    headers?: HarNameValue[];
+    cookies?: HarNameValue[];
+    content?: { text?: string; encoding?: string } & Record<string, unknown>;
+  } & Record<string, unknown>;
+}
+export interface Har {
+  log?: { entries?: HarEntry[] } & Record<string, unknown>;
+}
+
+function redactHarHeaders(
+  headers: HarNameValue[] | undefined,
+  resolved: ResolvedRedaction,
+): HarNameValue[] | undefined {
+  if (!headers) {
+    return headers;
+  }
+  return headers.map((header) =>
+    resolved.headerSet.has(header.name.toLowerCase())
+      ? {
+          ...header,
+          value: redactHeaderString(header.name, header.value, resolved),
+        }
+      : header,
+  );
+}
+
+/**
+ * Redact a HAR `cookies` array. Only runs when the corresponding cookie header
+ * (`cookie` for requests, `set-cookie` for responses) is itself being redacted,
+ * so `allowHeaders: ['cookie']` keeps the array intact too.
+ */
+function redactHarCookies(
+  cookies: HarNameValue[] | undefined,
+  resolved: ResolvedRedaction,
+  enabledForThisSide: boolean,
+): HarNameValue[] | undefined {
+  if (!cookies || !enabledForThisSide) {
+    return cookies;
+  }
+  return cookies.map((cookie) =>
+    resolved.allowCookies.has(cookie.name.toLowerCase())
+      ? cookie
+      : { ...cookie, value: resolved.placeholder },
+  );
+}
+
+/**
+ * Return a redacted copy of a parsed HAR file. Mirrors {@link redactSession}
+ * for the `.har` files Playwright writes via `routeFromHAR`: redacts the same
+ * headers/cookies and applies body patterns to request `postData` and response
+ * `content`. The input is not mutated. `config.enabled === false` is a no-op.
+ */
+export function redactHar(har: Har, config?: RedactionConfig | false): Har {
+  // Redaction is opt-in: a config object (even `{}`) enables it; `false` or
+  // `undefined` is a no-op.
+  if (!config || !har?.log?.entries) {
+    return har;
+  }
+  const resolved = resolveRedaction(config);
+  const { regexes, placeholder } = resolved;
+
+  const entries = har.log.entries.map((entry) => {
+    const request = entry.request && {
+      ...entry.request,
+      headers: redactHarHeaders(entry.request.headers, resolved),
+      cookies: redactHarCookies(
+        entry.request.cookies,
+        resolved,
+        resolved.headerSet.has('cookie'),
+      ),
+      postData: entry.request.postData && {
+        ...entry.request.postData,
+        text:
+          redactBody(entry.request.postData.text, regexes, placeholder) ??
+          entry.request.postData.text,
+      },
+    };
+
+    const content = entry.response?.content;
+    const response = entry.response && {
+      ...entry.response,
+      headers: redactHarHeaders(entry.response.headers, resolved),
+      cookies: redactHarCookies(
+        entry.response.cookies,
+        resolved,
+        resolved.headerSet.has('set-cookie'),
+      ),
+      content: content && {
+        ...content,
+        // Body patterns only apply to text payloads; base64 is left as-is.
+        text:
+          content.encoding === 'base64'
+            ? content.text
+            : (redactBody(content.text, regexes, placeholder) ?? content.text),
+      },
+    };
+
+    return { ...entry, request, response };
+  });
+
+  return { ...har, log: { ...har.log, entries } };
+}
+
+/**
+ * JSON-safe form of {@link RedactionConfig} for sending over the `/__control`
+ * endpoint. `bodyPatterns` (which may be `RegExp`) become `{ source, flags }`.
+ */
+export interface SerializedRedactionConfig {
+  headers?: string[];
+  allowHeaders?: string[];
+  allowCookies?: string[];
+  bodyPatterns?: { source: string; flags: string }[];
+  placeholder?: string;
+}
+
+/**
+ * Serialize for the `/__control` wire. A redaction object becomes a
+ * JSON-safe object (enabled); `false`/`undefined` becomes `false` (disabled).
+ */
+export function serializeRedactionConfig(
+  config?: RedactionConfig | false,
+): SerializedRedactionConfig | false {
+  if (!config) {
+    return false;
+  }
+  const { bodyPatterns, ...rest } = config;
+  return {
+    ...rest,
+    bodyPatterns: bodyPatterns?.map((pattern) =>
+      typeof pattern === 'string'
+        ? { source: pattern, flags: 'g' }
+        : { source: pattern.source, flags: pattern.flags },
+    ),
+  };
+}
+
+export function deserializeRedactionConfig(
+  config?: SerializedRedactionConfig | false,
+): RedactionConfig | undefined {
+  if (!config) {
+    return undefined;
+  }
+  const { bodyPatterns, ...rest } = config;
+  return {
+    ...rest,
+    bodyPatterns: bodyPatterns?.map(
+      ({ source, flags }) => new RegExp(source, flags),
+    ),
+  };
+}
+
+/**
  * Return a redacted copy of a recording session. Sensitive headers are
  * stripped and any configured body patterns replaced. The input is not
- * mutated. When `config.enabled === false` the session is returned unchanged.
+ * mutated. Redaction is opt-in: a config object (even `{}`) enables it, while
+ * `false`/`undefined` returns the session unchanged.
  */
 export function redactSession(
   session: RecordingSession,
-  config?: RedactionConfig,
+  config?: RedactionConfig | false,
 ): RecordingSession {
-  if (config?.enabled === false) {
+  if (!config) {
     return session;
   }
 

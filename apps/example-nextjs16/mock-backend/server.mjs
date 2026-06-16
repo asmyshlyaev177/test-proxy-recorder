@@ -62,6 +62,17 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // Returns a secret in both a Set-Cookie header and the body, alongside a
+    // non-secret `message`. The e2e secret page renders `message` (stable across
+    // record/replay), while the recorder must scrub `apiSecret` and the cookie
+    // from the saved recordings.
+    if (req.method === 'GET' && url.pathname === '/secret') {
+      res.setHeader('Set-Cookie', 'session=top-secret-session-value; Path=/; HttpOnly');
+      res.writeHead(200);
+      res.end(JSON.stringify({ ok: true, message: 'Secret loaded', apiSecret: 'sk_live_HARSECRET123' }));
+      return;
+    }
+
     if (req.method === 'POST' && url.pathname === '/todos') {
       const body = await getBody(req);
       const { text } = JSON.parse(body);

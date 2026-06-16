@@ -2,7 +2,25 @@ import { Page } from '@playwright/test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { PlaywrightTestInfo } from './index.js';
-import { generateSessionId, playwrightProxy } from './index.js';
+import {
+  __resetProxyCachesForTests,
+  generateSessionId,
+  playwrightProxy,
+} from './index.js';
+
+// Mock the filesystem so HAR redaction can be observed without touching disk.
+const { mockReadFile, mockWriteFile, mockReaddir } = vi.hoisted(() => ({
+  mockReadFile: vi.fn(),
+  mockWriteFile: vi.fn().mockResolvedValue(undefined),
+  mockReaddir: vi.fn().mockResolvedValue([]),
+}));
+vi.mock('node:fs', () => ({
+  promises: {
+    readFile: mockReadFile,
+    writeFile: mockWriteFile,
+    readdir: mockReaddir,
+  },
+}));
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -277,9 +295,42 @@ describe('Playwright Integration', () => {
         },
       );
     });
+
+    it('does not redact HAR on context close (handler only cleans up)', async () => {
+      const mockPage = createMockPage();
+      mockFetch.mockResolvedValue({
+        ok: true,
+        json: async () => ({ ok: true }),
+      });
+      mockReadFile.mockReset();
+      mockWriteFile.mockReset().mockResolvedValue(undefined);
+
+      await playwrightProxy.before(
+        mockPage as unknown as Page,
+        { title: 'on close', titlePath: ['Har.spec.ts', 'on close'] },
+        'record',
+        { url: /api\.example\.com/ },
+      );
+
+      mockPage._mockContext._triggerEvent('close');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+
+      // Redaction moved to teardown — the close handler must not touch files
+      // (doing so races the process exit and can truncate the HAR).
+      expect(mockReadFile).not.toHaveBeenCalled();
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
   });
 
   describe('playwrightProxy.teardown', () => {
+    beforeEach(() => {
+      // teardown reads cached /__control lookups; start each test fresh.
+      __resetProxyCachesForTests();
+      mockReadFile.mockReset();
+      mockWriteFile.mockReset().mockResolvedValue(undefined);
+      mockReaddir.mockReset().mockResolvedValue([]);
+    });
+
     it('should switch to transparent mode without sessionId', async () => {
       mockFetch.mockResolvedValue({
         ok: true,
@@ -288,7 +339,6 @@ describe('Playwright Integration', () => {
 
       await playwrightProxy.teardown();
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8100/__control',
         {
@@ -299,6 +349,109 @@ describe('Playwright Integration', () => {
           }),
         },
       );
+    });
+
+    it('redacts each .har in the recordings dir, skipping unchanged files', async () => {
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+        if (!options || options.method === undefined) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              recordingsDir: '/recordings',
+              redaction: { headers: ['x-api-key'] },
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true }) });
+      });
+      mockReaddir.mockResolvedValue(['secret.har', 'todos.har', 'notes.txt']);
+      mockReadFile.mockImplementation((file: string) => {
+        if (file.endsWith('secret.har')) {
+          return Promise.resolve(
+            JSON.stringify({
+              log: {
+                entries: [
+                  {
+                    request: {
+                      headers: [
+                        { name: 'authorization', value: 'Bearer leaked' },
+                        { name: 'x-api-key', value: 'key-leaked' },
+                      ],
+                    },
+                    response: { headers: [] },
+                  },
+                ],
+              },
+            }),
+          );
+        }
+        // No secrets — nothing to redact.
+        return Promise.resolve(
+          JSON.stringify({
+            log: {
+              entries: [
+                { request: { headers: [{ name: 'accept', value: '*/*' }] } },
+              ],
+            },
+          }),
+        );
+      });
+
+      await playwrightProxy.teardown();
+
+      // Only the file that actually changed is rewritten; the clean one and the
+      // non-.har file are left untouched.
+      expect(mockWriteFile).toHaveBeenCalledTimes(1);
+      const [writtenPath, written] = mockWriteFile.mock.calls[0];
+      expect(writtenPath).toBe('/recordings/secret.har');
+      const headers = JSON.parse(written as string).log.entries[0].request
+        .headers as { name: string; value: string }[];
+      expect(headers.find((h) => h.name === 'authorization')!.value).toBe(
+        '[REDACTED]',
+      );
+      expect(headers.find((h) => h.name === 'x-api-key')!.value).toBe(
+        '[REDACTED]',
+      );
+    });
+
+    it('does not redact when redaction is disabled (wire `false`)', async () => {
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+        if (!options || options.method === undefined) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              recordingsDir: '/recordings',
+              redaction: false,
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true }) });
+      });
+      mockReaddir.mockResolvedValue(['secret.har']);
+
+      await playwrightProxy.teardown();
+
+      expect(mockReaddir).not.toHaveBeenCalled();
+      expect(mockWriteFile).not.toHaveBeenCalled();
+    });
+
+    it('does not redact when no redaction config is set (opt-in default)', async () => {
+      // GET returns recordingsDir but no `redaction` — the off-by-default case.
+      mockFetch.mockImplementation((_url: string, options?: RequestInit) => {
+        if (!options || options.method === undefined) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ recordingsDir: '/recordings' }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({ ok: true }) });
+      });
+      mockReaddir.mockResolvedValue(['secret.har']);
+
+      await playwrightProxy.teardown();
+
+      expect(mockReaddir).not.toHaveBeenCalled();
+      expect(mockWriteFile).not.toHaveBeenCalled();
     });
 
     it('should use custom port in teardown', async () => {

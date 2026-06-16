@@ -7,8 +7,12 @@ export default defineConfig({
   target: 'http://localhost:3002',
   port: 8100,
   recordingsDir: './e2e/recordings',
+  // Redaction is opt-in — a config object (even `{}`) enables it; omit it or
+  // pass `false` to disable.
   redaction: {
     // Authorization / Cookie / Set-Cookie are always redacted; add an app header.
     headers: ['x-api-key'],
+    // Scrub tokens embedded in request/response bodies (e.g. the /secret route).
+    bodyPatterns: [/sk_live_\w+/g],
   },
 });

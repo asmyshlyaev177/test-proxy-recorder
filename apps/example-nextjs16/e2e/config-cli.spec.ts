@@ -253,13 +253,13 @@ test.describe('config file values are applied', () => {
     );
   });
 
-  test('redaction.enabled: false — commits secrets raw', async () => {
+  test('redaction: false — commits secrets raw', async () => {
     await withProxy(
       {
         config: `export default {
            target: '${MOCK_BACKEND}',
            recordingsDir: './recordings',
-           redaction: { enabled: false },
+           redaction: false,
          };`,
       },
       async (proxy) => {
@@ -401,22 +401,25 @@ test.describe('CLI flags override config file', () => {
     );
   });
 
-  test('--no-redact overrides redaction.enabled from config', async () => {
+  test('--redact enables redaction over a config that disables it', async () => {
     await withProxy(
       {
         config: `export default {
            target: '${MOCK_BACKEND}',
            recordingsDir: './recordings',
-           redaction: { enabled: true, headers: ['x-api-key'] },
+           redaction: false,
          };`,
-        args: ['--no-redact'],
+        args: ['--redact'],
       },
       async (proxy) => {
-        const { json } = await proxy.record('cli-no-redact', {
+        const { json } = await proxy.record('cli-redact', {
           headers: { authorization: 'Bearer raw', 'x-api-key': 'raw-key' },
         });
         const headers = json.recordings[0].request.headers;
-        expect(headers.authorization).toBe('Bearer raw');
+        // --redact turns redaction on (with defaults) even though the config
+        // had it off — so the default Authorization header is redacted, while
+        // x-api-key (not a default, not configured) is left as-is.
+        expect(headers.authorization).toBe('[REDACTED]');
         expect(headers['x-api-key']).toBe('raw-key');
       },
     );

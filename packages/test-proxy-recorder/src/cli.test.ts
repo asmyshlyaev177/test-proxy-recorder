@@ -4,7 +4,13 @@ import path from 'node:path';
 
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { parseCliArgs } from './cli.js';
+import { type CliOptions, parseCliArgs } from './cli.js';
+
+/** Assert redaction resolved to an enabled config object, and return it typed. */
+function enabledRedaction(redaction: CliOptions['redaction']) {
+  expect(redaction).not.toBe(false);
+  return redaction as Exclude<CliOptions['redaction'], false>;
+}
 
 let dir: string;
 
@@ -48,7 +54,7 @@ describe('parseCliArgs precedence', () => {
       path.resolve(process.cwd(), './from-config'),
     );
     expect(opts.timeout).toBe(5000);
-    expect(opts.redaction.headers).toEqual(['x-config']);
+    expect(enabledRedaction(opts.redaction).headers).toEqual(['x-config']);
   });
 
   it('lets CLI flags override config values', async () => {
@@ -88,7 +94,8 @@ describe('parseCliArgs precedence', () => {
       path.resolve(process.cwd(), './recordings'),
     );
     expect(opts.timeout).toBe(120_000);
-    expect(opts.redaction.enabled).toBe(true);
+    // Redaction is opt-in — off (false) unless a config object or a flag enables it.
+    expect(opts.redaction).toBe(false);
   });
 
   it('lets --timeout override config.timeout', async () => {
@@ -101,17 +108,37 @@ describe('parseCliArgs precedence', () => {
     expect(opts.timeout).toBe(1234);
   });
 
-  it('--no-redact overrides redaction.enabled from config', async () => {
+  it('enables redaction when the config provides a redaction object', async () => {
     const config = writeConfig(
       `export default {
          target: 'http://localhost:7001',
-         redaction: { enabled: true, headers: ['x-config'] },
+         redaction: { headers: ['x-config'] },
        };`,
     );
 
-    const opts = await run(['--config', config, '--no-redact']);
+    const opts = await run(['--config', config]);
 
-    expect(opts.redaction.enabled).toBe(false);
+    expect(enabledRedaction(opts.redaction).headers).toEqual(['x-config']);
+  });
+
+  it('treats redaction: false in config as disabled', async () => {
+    const config = writeConfig(
+      `export default { target: 'http://localhost:7001', redaction: false };`,
+    );
+
+    const opts = await run(['--config', config]);
+
+    expect(opts.redaction).toBe(false);
+  });
+
+  it('--redact enables redaction over a config that disables it', async () => {
+    const config = writeConfig(
+      `export default { target: 'http://localhost:7001', redaction: false };`,
+    );
+
+    const opts = await run(['--config', config, '--redact']);
+
+    expect(opts.redaction).not.toBe(false);
   });
 
   it('CLI list flags replace (do not merge with) the config list', async () => {
@@ -129,7 +156,7 @@ describe('parseCliArgs precedence', () => {
       'x-cli-only',
     ]);
 
-    expect(opts.redaction.headers).toEqual(['x-cli-only']);
+    expect(enabledRedaction(opts.redaction).headers).toEqual(['x-cli-only']);
   });
 
   it('reads target from config when no positional argument is given', async () => {

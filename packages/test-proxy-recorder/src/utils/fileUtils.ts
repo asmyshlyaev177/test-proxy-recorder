@@ -99,7 +99,7 @@ function processRecordings(recordings: Recording[]): Recording[] {
 export async function saveRecordingSession(
   recordingsDir: string,
   session: RecordingSession,
-  redaction?: RedactionConfig,
+  redaction?: RedactionConfig | false,
 ): Promise<void> {
   const filePath = getRecordingPath(recordingsDir, session.id);
 
@@ -107,7 +107,7 @@ export async function saveRecordingSession(
 
   // Process recordings: add sequence numbers and deduplicate
   const processedRecordings = processRecordings(session.recordings);
-  // Strip secrets before anything touches disk (enabled by default).
+  // Strip secrets before anything touches disk (no-op unless redaction is on).
   const processedSession = redactSession(
     {
       ...session,

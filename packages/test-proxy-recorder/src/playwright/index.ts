@@ -1,3 +1,4 @@
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 
 import type { BrowserContext, Page, TestInfo } from '@playwright/test';
@@ -7,6 +8,13 @@ const registeredContexts = new WeakSet<BrowserContext>();
 
 import { RECORDING_ID_HEADER } from '../constants.js';
 import { type Mode, Modes, type WebSocketReplayConfig } from '../types';
+import {
+  deserializeRedactionConfig,
+  type Har,
+  redactHar,
+  type RedactionConfig,
+  type SerializedRedactionConfig,
+} from '../utils/redact.js';
 
 export type PlaywrightTestInfo = Pick<TestInfo, 'title' | 'titlePath'>;
 
@@ -225,20 +233,121 @@ async function getRecordingsDir(): Promise<string> {
   return cachedRecordingsDir;
 }
 
+// Cache the proxy's redaction config (fetched once from /__control).
+let cachedRedaction: RedactionConfig | undefined;
+let redactionFetched = false;
+
+/**
+ * Reset the cached `/__control` lookups. Test-only — not re-exported from the
+ * package entry, so it stays out of the public API.
+ * @internal
+ */
+export function __resetProxyCachesForTests(): void {
+  cachedRecordingsDir = null;
+  cachedRedaction = undefined;
+  redactionFetched = false;
+}
+
+/**
+ * Get the redaction config the proxy was started with, so HAR redaction matches
+ * the `.mock.json` redaction. Returns `undefined` if the proxy is unreachable or
+ * has no config (in which case the built-in defaults still apply).
+ */
+async function getRedactionConfig(): Promise<RedactionConfig | undefined> {
+  if (redactionFetched) {
+    return cachedRedaction;
+  }
+  redactionFetched = true;
+
+  const proxyPort = getProxyPort();
+  try {
+    const response = await fetch(`http://localhost:${proxyPort}/__control`);
+    if (response.ok) {
+      const data = (await response.json()) as {
+        redaction?: SerializedRedactionConfig | false;
+      };
+      cachedRedaction = deserializeRedactionConfig(data.redaction);
+    }
+  } catch {
+    // Proxy unreachable — fall back to built-in defaults.
+  }
+  return cachedRedaction;
+}
+
+/**
+ * Strip secrets from one `.har` file using the proxy's redaction config.
+ * Rewrites the file only when redaction actually changed something, so HARs with
+ * nothing to redact (e.g. ordinary recordings) keep Playwright's exact bytes and
+ * don't show up as spurious diffs. Best-effort: failures are logged, not thrown.
+ */
+async function redactHarFile(
+  harPath: string,
+  redaction: RedactionConfig | undefined,
+): Promise<void> {
+  try {
+    const content = await fs.readFile(harPath, 'utf8');
+    const parsed = JSON.parse(content) as Har;
+    const redacted = redactHar(parsed, redaction);
+    // Compact compare: redactHar preserves key order and only changes values,
+    // so unequal output means a secret was scrubbed.
+    if (JSON.stringify(parsed) === JSON.stringify(redacted)) {
+      return;
+    }
+    await fs.writeFile(harPath, `${JSON.stringify(redacted, null, 2)}\n`);
+  } catch (error) {
+    console.warn(`[HAR Redaction] Failed to redact ${harPath}:`, error);
+  }
+}
+
+/**
+ * Redact every `.har` file in the proxy's recordings directory. Called from
+ * `playwrightProxy.teardown()` once Playwright has flushed all HARs. A no-op
+ * when redaction is disabled (config `false`/omitted) or the proxy is
+ * unreachable for its config.
+ */
+async function redactHarRecordings(): Promise<void> {
+  const redaction = await getRedactionConfig();
+  // Opt-in: only scrub HARs when the proxy reports a redaction config.
+  if (!redaction) {
+    return;
+  }
+
+  const dir = await getRecordingsDir();
+  let entries: string[];
+  try {
+    entries = await fs.readdir(dir);
+  } catch {
+    // No recordings directory yet — nothing to redact.
+    return;
+  }
+
+  await Promise.all(
+    entries
+      .filter((name) => name.endsWith('.har'))
+      .map((name) => redactHarFile(path.join(dir, name), redaction)),
+  );
+}
+
 /**
  * Setup client-side recording/replay using Playwright's routeFromHAR
  */
+/**
+ * HAR file path for a session. Session path separators become underscores so
+ * recordings stay a flat directory.
+ */
+async function harPathForSession(sessionId: string): Promise<string> {
+  const harFileName = sessionId.replaceAll('/', '__');
+  const recordingsDir = await getRecordingsDir();
+  return path.join(recordingsDir, `${harFileName}.har`);
+}
+
 async function setupClientSideRecording(
   page: Page,
   sessionId: string,
   mode: Mode,
   url: string | RegExp,
 ): Promise<void> {
-  // Generate HAR file path from session ID
-  // Convert session path separators to underscores for flat file structure
-  const harFileName = sessionId.replaceAll('/', '__');
-  const recordingsDir = await getRecordingsDir();
-  const harPath = path.join(recordingsDir, `${harFileName}.har`);
+  const harPath = await harPathForSession(sessionId);
 
   try {
     await page.routeFromHAR(harPath, {
@@ -393,10 +502,17 @@ export const playwrightProxy = {
   },
 
   /**
-   * Global teardown - switches proxy to transparent mode
-   * Use this in Playwright's globalTeardown to ensure clean state
+   * Global teardown — switches the proxy to transparent mode and redacts the
+   * `.har` files Playwright wrote during the run.
+   *
+   * HAR redaction happens here, not per-test, on purpose: Playwright flushes a
+   * HAR when its context closes but does not await `context.on('close')`
+   * listeners, so redacting there races the process exit and can truncate the
+   * file. `globalTeardown` runs once, after every context has flushed, and IS
+   * awaited — so it's the only reliable place to scrub HARs.
    */
   async teardown(): Promise<void> {
+    await redactHarRecordings();
     await setProxyMode(Modes.transparent);
   },
 };

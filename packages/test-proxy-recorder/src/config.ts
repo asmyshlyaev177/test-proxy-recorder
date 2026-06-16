@@ -14,8 +14,12 @@ export interface Config {
   recordingsDir?: string;
   /** Session timeout in milliseconds. */
   timeout?: number;
-  /** Secret redaction settings. See {@link RedactionConfig}. */
-  redaction?: RedactionConfig;
+  /**
+   * Secret redaction. Off by default. Pass a config object (even `{}`) to
+   * enable it with the given options; pass `false` (or omit) to disable. See
+   * {@link RedactionConfig}.
+   */
+  redaction?: RedactionConfig | false;
   /** WebSocket replay pacing. See {@link WebSocketReplayConfig}. */
   websocket?: WebSocketReplayConfig;
 }
