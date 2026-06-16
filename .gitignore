@@ -13,6 +13,11 @@ coverage-reports
 apps/example-nextjs16/data/*
 apps/example-nextjs16/e2e/recordings/
 apps/example-nextjs16/data/todos.json
+
+# example-auth-* apps: gitignored auth state, recordings, and mock data.
+apps/example-auth-*/data/
+apps/example-auth-*/e2e/recordings/
+apps/example-auth-*/e2e/auth-state.json
 tsconfig.tsbuildinfo
 trace.zip
 test-results

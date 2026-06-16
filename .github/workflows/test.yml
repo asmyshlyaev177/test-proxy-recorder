@@ -90,9 +90,18 @@ jobs:
         # Actions steps.
         run: pnpm run example:test:e2e:ci
 
+      - name: Run auth-mock e2e record and replay
+        # The authenticated example (setup-auth → transparent login, then
+        # record/replay of protected requests with token + cookie redaction).
+        # Same single-step rule as above: it owns its whole stack. Runs after the
+        # example above, so its ports (3100/3102/8100) are free by then.
+        run: pnpm run auth:mock:test:e2e:ci
+
       - name: Upload test artifacts on failure
         if: failure()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
         with:
           name: playwright-results
-          path: apps/example-nextjs16/test-results/
+          path: |
+            apps/example-nextjs16/test-results/
+            apps/example-auth-mock/test-results/

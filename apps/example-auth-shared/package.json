@@ -1,0 +1,31 @@
+{
+  "name": "example-auth-shared",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Provider-agnostic core shared by the example-auth-* apps: app backend, UI, and e2e harness. The only per-provider differences live in each app's proxy.ts (middleware composition) and e2e/setup-auth.ts (how a session is obtained).",
+  "exports": {
+    "./TodoApp": "./src/components/TodoApp.tsx",
+    "./globals.css": "./src/styles/globals.css",
+    "./mock-backend": {
+      "types": "./mock-backend/server.d.ts",
+      "default": "./mock-backend/server.mjs"
+    }
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.0.0",
+    "react": ">=19.0.0",
+    "react-dom": ">=19.0.0",
+    "test-proxy-recorder": "workspace:*"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.59.1",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "test-proxy-recorder": "workspace:*",
+    "typescript": "^5.6.0"
+  }
+}
