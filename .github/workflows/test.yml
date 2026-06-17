@@ -11,6 +11,8 @@ on:
         required: false
         default: true
         type: boolean
+  schedule:
+    - cron: "0 21 1,15 * 2"
 
 jobs:
   test:
