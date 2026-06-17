@@ -36,7 +36,7 @@ description: Редактирование включено по умолчани
 - `--redact-headers <names>` — дополнительные имена заголовков для редактирования, через запятую (объединяются со значениями по умолчанию).
 - `--redact-body <patterns>` — шаблоны regex через запятую для редактирования из тел запроса/ответа.
 - `--allow-headers <names>` — имена заголовков через запятую, исключаемые из редактирования (например, `set-cookie`).
-- `--allow-cookies <names>` — имена cookie через запятую, оставляемые без редактирования внутри `Cookie`/`Set-Cookie`.
+- `--allow-cookies <names>` — имена cookie через запятую, оставляемых без редактирования внутри `Cookie`/`Set-Cookie`.
 
 ```bash
 # Redaction is already on; also redact an API-key header and "sk_live_..." tokens, keep the theme cookie

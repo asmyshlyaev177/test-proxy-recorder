@@ -17,9 +17,11 @@ curl -X POST http://localhost:8100/__control \
 
 ```typescript
 interface ControlRequest {
-  mode: 'transparent' | 'record' | 'replay';
-  id?: string;       // required for record/replay
+  mode?: 'transparent' | 'record' | 'replay'; // required unless cleanup is true
+  id?: string;       // required for record/replay (and for cleanup)
   timeout?: number;  // auto-reset timeout in ms (default: 120000)
+  cleanup?: boolean; // when true, clean up the session instead of switching mode
+  websocket?: WebSocketReplayConfig; // per-session WebSocket replay pacing override
 }
 ```
 
