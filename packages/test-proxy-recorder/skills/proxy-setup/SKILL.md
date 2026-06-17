@@ -194,8 +194,9 @@ Precedence is **CLI flag → config file → built-in default**: a flag always
 overrides the file, and `target` may come from either (the CLI argument wins).
 List flags (`--redact-headers`, `--redact-body`, `--allow-headers`,
 `--allow-cookies`) **replace** the corresponding config list rather than merging,
-so pass them only when you intend to override the file. `--no-redact` overrides
-`redaction.enabled` from the config.
+so pass them only when you intend to override the file. Redaction is on by
+default; `--no-redact` turns it off, overriding a `redaction` object in the
+config (and `redaction: false` in the config disables it without the flag).
 
 ### Secret redaction
 
@@ -225,11 +226,14 @@ test-proxy-recorder http://localhost:3002 --no-redact
 - `--allow-cookies <names>` — comma-separated cookie names kept unredacted inside `Cookie`/`Set-Cookie`; every other cookie in those headers is still redacted. Use when only some cookies are sensitive (session vs. theme/A-B-test).
 - `--no-redact` — turn redaction off.
 
-Caveat: `.har` files are written by Playwright's `routeFromHAR`, not the proxy,
-so this does **not** redact them. Keep tokens out of HAR by recording with
-short-lived test credentials and using the Auth setup pattern below (login runs
-in `transparent` mode against the real provider, with `storageState` saved to a
-gitignored file).
+`.har` files are written by Playwright's `routeFromHAR`, not the proxy, so they
+are redacted in a separate pass: `playwrightProxy.teardown()` rewrites every
+`.har` in the recordings dir using the **same** redaction config as the proxy.
+This requires a `globalTeardown` that calls `teardown()` (see below) and the
+proxy still running (it fetches the config from `/__control`). For defense in
+depth, still record with short-lived test credentials and use the Auth setup
+pattern below (login runs in `transparent` mode against the real provider, with
+`storageState` saved to a gitignored file).
 
 ### Auth setup
 

@@ -67,15 +67,21 @@ function resolveNumber(
 }
 
 /**
- * Resolve redaction with CLI-flag-over-config precedence. Redaction is opt-in:
- * it's on when any redaction flag is passed (`--redact` / `--redact-*` /
- * `--allow-*`) or the config provides a redaction object; otherwise (config
- * `false` or omitted, no flags) it's off and this returns `false`.
+ * Resolve redaction with CLI-flag-over-config precedence. Redaction is **on by
+ * default** — it stays on unless you turn it off, which you can do in exactly
+ * two ways: pass `--no-redact` on the CLI, or set `redaction: false` in the
+ * config. A `--no-redact` flag always wins; a config `redaction: false` is
+ * overridden by any redaction flag (`--redact` / `--redact-*` / `--allow-*`).
  */
 function resolveRedaction(
   options: RawOptions,
   configRedaction: RedactionConfig | false | undefined,
 ): RedactionConfig | false {
+  // Explicit `--no-redact` turns redaction off regardless of the config.
+  if (options.redact === false) {
+    return false;
+  }
+
   const cliProvided =
     options.redact === true ||
     options.redactHeaders !== undefined ||
@@ -83,9 +89,9 @@ function resolveRedaction(
     options.allowHeaders !== undefined ||
     options.allowCookies !== undefined;
 
-  // Config object (even `{}`) enables; `false`/`undefined` does not.
-  const configEnabled = !!configRedaction;
-  if (!cliProvided && !configEnabled) {
+  // `redaction: false` in the config disables it — but only when the CLI
+  // doesn't ask for redaction. Otherwise redaction is on (the default).
+  if (configRedaction === false && !cliProvided) {
     return false;
   }
 
@@ -149,7 +155,11 @@ export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
     .option('-t, --timeout <ms>', 'Session timeout in milliseconds')
     .option(
       '--redact',
-      'Enable secret redaction (off by default) — strip Authorization/Cookie/Set-Cookie before writing recordings',
+      'Enable secret redaction (on by default) — use to re-enable when the config sets `redaction: false`',
+    )
+    .option(
+      '--no-redact',
+      'Disable secret redaction (on by default) — keep Authorization/Cookie/Set-Cookie in recordings',
     )
     .option(
       '--redact-headers <names>',

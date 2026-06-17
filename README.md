@@ -296,7 +296,7 @@ test-proxy-recorder <target-url> [options]
 | `--config, -c`   | *(auto)*       | Path to a config file (see below)   |
 | `--ws-timing`    | `burst`        | WebSocket replay pacing — `burst` or `original` (see below) |
 
-Secret redaction is **opt-in** (off by default) — enable it with `--redact`, or a `redaction` object (even `redaction: {}`) in the config; `redaction: false` keeps it off. See [Secret redaction](#secret-redaction) for the `--redact-headers` and `--redact-body` flags.
+Secret redaction is **on by default** — Authorization/Cookie/Set-Cookie are stripped from recordings automatically. Turn it off with `--no-redact`, or `redaction: false` in the config. See [Secret redaction](#secret-redaction) for the `--redact-headers` and `--redact-body` flags that add to what's redacted.
 
 By default, recorded WebSocket server messages are replayed as a **burst** on connect — fastest and fully deterministic, ideal for CI. Pass `--ws-timing original` (or `websocket: { timing: 'original' }` in the config) to instead re-pace them using the recorded timestamps, so messages arrive with their real inter-message gaps; a test then takes roughly the recording's wall-clock span. You can also set this **per test** via `playwrightProxy.before(page, testInfo, mode, { websocket: { timing: 'original' } })`, which overrides the proxy-level default for that session only.
 
@@ -347,7 +347,7 @@ export default defineConfig({
   port: 8100,
   recordingsDir: './e2e/recordings',
   timeout: 120_000,
-  // Presence of this object turns redaction on (use `redaction: false` to disable).
+  // Redaction is on by default; this object customizes it (use `redaction: false` to disable).
   redaction: {
     headers: ['x-api-key'],         // extra headers, merged with the defaults
     bodyPatterns: [/sk_live_\w+/g], // real RegExp literals — no CLI escaping
@@ -376,15 +376,15 @@ the argument wins when both are present.
 ## Secret redaction
 
 <details>
-<summary>Redaction is opt-in — show details</summary>
+<summary>Redaction is on by default — show details</summary>
 
-Recordings get committed to git, so you may want secrets stripped before anything is written to disk. Redaction is **off by default**; turn it on with `--redact`, or by giving `redaction` an object in the config — even an empty `redaction: {}` enables it, while `redaction: false` (or omitting it) keeps it off. Once enabled, the proxy replaces the values of these request/response headers with `[REDACTED]`:
+Recordings get committed to git, so secrets are stripped before anything is written to disk. Redaction is **on by default**; the proxy replaces the values of these request/response headers with `[REDACTED]`:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-This is safe: replay matching ignores these headers, so redaction never breaks playback. Once enabled it applies to `.mock.json` recordings, WebSocket recordings, and `.har` files.
+This is safe: replay matching ignores these headers, so redaction never breaks playback. It applies to `.mock.json` recordings, WebSocket recordings, and `.har` files. To turn redaction off, pass `--no-redact` on the CLI or set `redaction: false` in the config.
 
 When only *some* cookies are sensitive, allow-list the harmless ones by name (e.g. a `theme` or A/B-test cookie). Allow-listed cookies keep their values inside `Cookie`/`Set-Cookie`; every other cookie is still redacted.
 
@@ -396,20 +396,20 @@ To keep the login flow and credentials out of recordings entirely, run authentic
 
 ### Tweaking what gets redacted
 
-Once enabled, the default headers always apply; you can add to them. (On the CLI, passing any `--redact-*` / `--allow-*` flag also turns redaction on; in a config file, presence of the `redaction` object is what enables it.)
+The default headers always apply (while redaction is on); you can add to them.
 
 **CLI flags:**
 
-- `--redact` — enable secret redaction (off by default).
+- `--no-redact` — disable secret redaction (on by default).
+- `--redact` — enable secret redaction; only needed to re-enable when the config sets `redaction: false`.
 - `--redact-headers <names>` — comma-separated extra header names to redact (merged with the defaults).
 - `--redact-body <patterns>` — comma-separated regex patterns to redact from request/response bodies.
 - `--allow-headers <names>` — comma-separated header names to exempt from redaction (e.g. `set-cookie`).
 - `--allow-cookies <names>` — comma-separated cookie names to keep unredacted inside `Cookie`/`Set-Cookie`.
 
 ```bash
-# Enable redaction: redact an API-key header and "sk_live_..." tokens, keep the theme cookie
+# Redaction is already on; also redact an API-key header and "sk_live_..." tokens, keep the theme cookie
 test-proxy-recorder http://localhost:8000 \
-  --redact \
   --redact-headers x-api-key \
   --redact-body "sk_live_[a-zA-Z0-9]+" \
   --allow-cookies theme,locale

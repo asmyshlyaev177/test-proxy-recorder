@@ -100,7 +100,7 @@ test.describe('full app e2e — every config option applied', () => {
     port: ${proxyPort},
     recordingsDir: ${JSON.stringify(recordingsDir)},
     redaction: {
-      // A redaction object (even {}) enables it — redaction is opt-in.
+      // Redaction is on by default; this object customizes it.
       headers: ['x-api-key'],          // redact this extra header
       allowHeaders: ['authorization'], // ...but exempt a default-redacted one
       allowCookies: ['theme'],         // keep this cookie, redact the rest

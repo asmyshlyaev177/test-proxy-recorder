@@ -94,8 +94,8 @@ describe('parseCliArgs precedence', () => {
       path.resolve(process.cwd(), './recordings'),
     );
     expect(opts.timeout).toBe(120_000);
-    // Redaction is opt-in — off (false) unless a config object or a flag enables it.
-    expect(opts.redaction).toBe(false);
+    // Redaction is on by default — an enabled config with no extra headers.
+    expect(enabledRedaction(opts.redaction).headers).toEqual([]);
   });
 
   it('lets --timeout override config.timeout', async () => {
@@ -127,6 +127,29 @@ describe('parseCliArgs precedence', () => {
     );
 
     const opts = await run(['--config', config]);
+
+    expect(opts.redaction).toBe(false);
+  });
+
+  it('--no-redact disables redaction even when the config omits it', async () => {
+    const config = writeConfig(
+      `export default { target: 'http://localhost:7001' };`,
+    );
+
+    const opts = await run(['--config', config, '--no-redact']);
+
+    expect(opts.redaction).toBe(false);
+  });
+
+  it('--no-redact disables redaction over a config that enables it', async () => {
+    const config = writeConfig(
+      `export default {
+         target: 'http://localhost:7001',
+         redaction: { headers: ['x-config'] },
+       };`,
+    );
+
+    const opts = await run(['--config', config, '--no-redact']);
 
     expect(opts.redaction).toBe(false);
   });

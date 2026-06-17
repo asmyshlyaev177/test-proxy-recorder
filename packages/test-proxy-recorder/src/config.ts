@@ -15,9 +15,10 @@ export interface Config {
   /** Session timeout in milliseconds. */
   timeout?: number;
   /**
-   * Secret redaction. Off by default. Pass a config object (even `{}`) to
-   * enable it with the given options; pass `false` (or omit) to disable. See
-   * {@link RedactionConfig}.
+   * Secret redaction. **On by default** — the Authorization/Cookie/Set-Cookie
+   * headers are stripped from recordings unless you turn it off. Pass a config
+   * object to customize what gets redacted, or `false` to disable it entirely.
+   * See {@link RedactionConfig}.
    */
   redaction?: RedactionConfig | false;
   /** WebSocket replay pacing. See {@link WebSocketReplayConfig}. */
