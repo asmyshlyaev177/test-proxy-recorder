@@ -29,6 +29,9 @@
     "example:test:e2e:ci": "pnpm --filter example-nextjs16 test:e2e:ci",
     "auth:mock:test:e2e": "pnpm --filter example-auth-mock test:e2e",
     "auth:mock:test:e2e:ci": "pnpm --filter example-auth-mock test:e2e:ci",
+    "auth:cognito:record": "pnpm --filter example-auth-cognito record",
+    "auth:cognito:test:e2e": "pnpm --filter example-auth-cognito test:e2e",
+    "auth:cognito:test:e2e:ci": "pnpm --filter example-auth-cognito test:e2e:ci",
     "extension:test:e2e": "pnpm --filter example-extension test:e2e",
     "init:test:e2e": "pnpm --filter example-init test:e2e"
   },

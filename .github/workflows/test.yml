@@ -62,6 +62,14 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.59.1-noble
       options: --user root
+    # Cognito creds come from repo secrets. NEXT_PUBLIC_* are baked at build time
+    # (not secret); COGNITO_TEST_* are the test-user credentials. When the secrets
+    # are absent (e.g. forks), the Cognito step below skips itself.
+    env:
+      NEXT_PUBLIC_COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+      NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+      COGNITO_TEST_EMAIL: ${{ secrets.COGNITO_TEST_EMAIL }}
+      COGNITO_TEST_PASSWORD: ${{ secrets.COGNITO_TEST_PASSWORD }}
     steps:
       - name: Checkout code
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.3.0
@@ -97,6 +105,19 @@ jobs:
         # example above, so its ports (3100/3102/8100) are free by then.
         run: pnpm run auth:mock:test:e2e:ci
 
+      # Real AWS Cognito example, run as two explicit steps so a failure is
+      # obviously "record" vs "replay". Both are skipped when the Cognito secrets
+      # aren't set (forks, or before a maintainer configures them); both need
+      # network to AWS for the login. End users would only run the replay step in
+      # CI and record locally — here we record too, to test the recorder itself.
+      - name: Run cognito auth e2e — record (with backend)
+        if: ${{ env.NEXT_PUBLIC_COGNITO_CLIENT_ID != '' }}
+        run: pnpm run auth:cognito:record
+
+      - name: Run cognito auth e2e — replay (no backend)
+        if: ${{ env.NEXT_PUBLIC_COGNITO_CLIENT_ID != '' }}
+        run: pnpm run auth:cognito:test:e2e
+
       - name: Upload test artifacts on failure
         if: failure()
         uses: actions/upload-artifact@b4b15b8c7c6ac21ea08fcf65892d2ee8f75cf882 # v4.4.3
@@ -105,3 +126,4 @@ jobs:
           path: |
             apps/example-nextjs16/test-results/
             apps/example-auth-mock/test-results/
+            apps/example-auth-cognito/test-results/

@@ -1,7 +1,7 @@
 # skills/_artifacts/skill_tree.yaml
 library:
   name: 'test-proxy-recorder'
-  version: '0.3.5'
+  version: '1.0.1'
   repository: 'https://github.com/asmyshlyaev177/test-proxy-recorder'
   description: 'Records real API responses through an HTTP proxy and replays them in Playwright tests — no backend required on CI.'
 generated_from:
@@ -30,13 +30,20 @@ skills:
       - 'asmyshlyaev177/test-proxy-recorder:README.md'
       - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwright/index.ts'
       - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/types.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/cli.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/config.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/utils/redact.ts'
       - 'asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16/package.json'
       - 'asmyshlyaev177/test-proxy-recorder:apps/example-extension/e2e/fixtures.ts'
       - 'asmyshlyaev177/test-proxy-recorder:apps/example-extension/playwright.config.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/package.json'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/e2e/setup-auth.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-auth-mock/package.json'
     subsystems:
       - 'browser-only (HAR only, no SSR)'
       - 'full-stack (proxy + HAR, SSR apps)'
-    references: []
+    references:
+      - 'references/common-mistakes.md'
 
   - name: 'nextjs-ssr'
     slug: 'nextjs-ssr'

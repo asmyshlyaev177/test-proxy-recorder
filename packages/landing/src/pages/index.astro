@@ -43,6 +43,22 @@ npx playwright test        # recordings written to e2e/recordings/
 # 2. Flip MODE back to 'replay' and commit the recordings
 git add e2e/recordings/
 git commit -m "add e2e recordings"`;
+
+const authSetupCode = `// e2e/auth.setup.ts — log in for real, once. Never recorded.
+import { test as setup } from '@playwright/test';
+import { setProxyMode } from 'test-proxy-recorder';
+
+setup('authenticate', async ({ page }) => {
+  await setProxyMode('transparent');     // login bypasses the recorder
+  await page.goto('/login');
+  await page.getByTestId('email').fill(process.env.TEST_EMAIL!);
+  await page.getByTestId('password').fill(process.env.TEST_PASSWORD!);
+  await page.getByTestId('signinButton').click();
+  await page.waitForURL('/dashboard');
+
+  // Reused by every test — they start already signed in.
+  await page.context().storageState({ path: 'e2e/.auth/state.json' });
+});`;
 ---
 
 <Layout>
@@ -183,6 +199,25 @@ git commit -m "add e2e recordings"`;
     </div>
   </section>
 
+  <!-- ======================================================= real auth -->
+  <section class="auth" id="auth">
+    <div class="container">
+      <h2>Works with your real auth provider</h2>
+      <p class="section-sub">
+        Log in through Cognito, Auth0, Clerk, or WorkOS — for real, on every run.
+        Only your app's API is recorded, so CI replays it with the backend off.
+        Your auth stays live; your data goes offline.
+      </p>
+      <div class="auth-code">
+        <Code code={authSetupCode} lang="ts" theme="one-dark-pro" />
+      </div>
+      <p class="auth-links">
+        <a href={`${repo}/tree/master/apps/example-auth-cognito`}>AWS Cognito example →</a>
+        <a href={`${repo}/tree/master/apps/example-auth-mock`}>Mock auth (no cloud account) →</a>
+      </p>
+    </div>
+  </section>
+
   <!-- ====================================================== quick start -->
   <section class="quick-start" id="quick-start">
     <div class="container qs-inner">
@@ -258,6 +293,26 @@ git commit -m "add e2e recordings"`;
 
   .section-sub a {
     color: var(--link);
+  }
+
+  /* ---------------------------------------------------------- real auth */
+
+  .auth-code {
+    max-width: 640px;
+    margin-top: 1.6rem;
+  }
+
+  .auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.4rem;
+    margin-top: 1.4rem;
+  }
+
+  .auth-links a {
+    color: var(--link);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
   }
 
   /* ------------------------------------------------------------- hero */

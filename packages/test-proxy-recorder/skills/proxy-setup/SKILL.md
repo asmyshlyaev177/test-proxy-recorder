@@ -16,7 +16,7 @@ description: >
   configuring record/replay.
 type: core
 library: test-proxy-recorder
-library_version: "0.3.5"
+library_version: "1.0.1"
 sources:
   - "asmyshlyaev177/test-proxy-recorder:README.md"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwright/index.ts"
@@ -27,6 +27,9 @@ sources:
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16/package.json"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/e2e/fixtures.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/playwright.config.ts"
+  - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/package.json"
+  - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/e2e/setup-auth.ts"
+  - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-mock/package.json"
 ---
 
 # test-proxy-recorder — Proxy Setup
@@ -291,6 +294,47 @@ direct calls to it (e.g. Cognito token refresh, OAuth redirects):
 const CLIENT_SIDE_URL = /cognito-.*\.amazonaws\.com/;
 ```
 
+### Replaying without the backend (external-auth apps)
+
+When login goes to an external provider (Cognito, Auth0, Clerk, …), the protected
+API responses come from recordings, so **replay needs no backend** — CI runs only
+the app + proxy. Recording stays a **manual, local** step (you, on a dev machine,
+with the real backend up); **CI only replays** from the committed recordings:
+
+```jsonc
+{
+  "scripts": {
+    "start:all":        "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm start\"",
+    "start:no-backend": "concurrently \"pnpm proxy\" \"pnpm start\"",
+    // LOCAL: run on a dev machine to (re)record, then COMMIT e2e/recordings/
+    "record":   "pnpm build && concurrently --kill-others --success first \"pnpm start:all\" \"wait-on $APP $PROXY/__control && RECORD_MODE=1 playwright test --workers 1\"",
+    // CI: replay from committed recordings — app + proxy only, no backend
+    "test:e2e": "pnpm build && concurrently --kill-others --success first \"pnpm start:no-backend\" \"wait-on $APP $PROXY/__control && playwright test --retries 1\""
+  }
+}
+```
+
+So the lifecycle is: `pnpm record` locally → commit `e2e/recordings/` → CI runs
+`pnpm test:e2e` with no backend. (Re-record only when the API changes.)
+
+If your auth `setup` re-authenticates during replay (instead of reusing a committed
+`storageState`), snapshot `storageState` as soon as the session token exists — don't
+wait for a protected data fetch, which runs in transparent mode and would hang with
+no backend:
+
+```typescript
+await page.waitForURL('/dashboard');
+// the token is written to storage before the redirect — snapshot now, do NOT
+// wait for the protected data to load (that request would hang without a backend)
+await page.waitForFunction(() => !!localStorage.getItem('auth-token'));
+await page.context().storageState({ path: AUTH_FILE });
+```
+
+See `apps/example-auth-cognito` (real Cognito) and `apps/example-auth-mock`
+(self-contained, no cloud account). Those apps additionally re-record on every CI
+run to test the recorder itself — *your* app should record locally and only replay
+in CI.
+
 ### Global teardown
 
 ```typescript
@@ -381,178 +425,11 @@ mid-session. It is a manual recovery tool, not a per-test hook.
 
 ## Common Mistakes
 
-### CRITICAL App env var not redirected through proxy
-
-Wrong:
-```json
-{
-  "scripts": {
-    "dev:proxy": "concurrently \"pnpm proxy\" \"pnpm dev\""
-  }
-}
-```
-
-Correct:
-```json
-{
-  "scripts": {
-    "dev:proxy": "concurrently \"pnpm proxy\" \"INTERNAL_API_URL=http://localhost:8100 pnpm dev\""
-  }
-}
-```
-
-The app's API base URL must point at the proxy, not the real backend. When
-omitted, requests bypass the proxy entirely and nothing is recorded.
-
-Source: README.md — Full-stack Quick Start
-
----
-
-### CRITICAL Wrong CLIENT_SIDE_URL pattern for HAR recording
-
-Wrong:
-```typescript
-// Matches the proxy URL — but the proxy handles server-side recording
-// automatically. This intercepts nothing useful for HAR.
-await playwrightProxy.before(page, testInfo, MODE, {
-  url: /localhost:8100/,
-});
-```
-
-Correct:
-```typescript
-// Match the actual external domains the browser calls directly:
-// third-party auth, CDN, analytics, chat SDKs, etc.
-const CLIENT_SIDE_URL = /cognito-.*\.amazonaws\.com|\.stream-io-api\.com/;
-await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
-
-// Browser-only / SPA with no SSR — match the real API domain
-await playwrightProxy.before(page, testInfo, MODE, { url: /api\.example\.com/ });
-```
-
-`url` must match the external domains the browser calls directly — not the
-proxy. Server-side fetches through the proxy are already recorded to
-`.mock.json` automatically. `url` is only for browser-side HAR recording of
-requests that never touch the proxy (third-party services, CDNs, auth providers).
-
-Source: README.md — Playwright Integration; apps/example-extension/e2e/fixtures.ts
-
----
-
-### HIGH teardown() called per-test breaks parallel replay
-
-Wrong:
-```typescript
-test.afterAll(async () => {
-  await playwrightProxy.teardown(); // resets global proxy mode for all workers
-});
-```
-
-Correct:
-```typescript
-// Omit afterAll entirely.
-// Session cleanup is automatic via context.on('close').
-// Only call teardown() in globalTeardown (see Global Teardown pattern above).
-```
-
-`teardown()` sets the **global** proxy mode to `transparent`. With
-`fullyParallel: true`, a fast test's `afterAll` fires while other tests are
-still replaying, switching the proxy mid-session and routing requests to the
-real network.
-
-Source: README.md — Parallel Replay section
-
----
-
-### HIGH webServer url points to proxy root not /__control
-
-Wrong:
-```typescript
-webServer: {
-  command: 'test-proxy-recorder http://localhost:8000 --port 8100',
-  url: 'http://localhost:8100',  // root proxies to backend — may 502
-}
-```
-
-Correct:
-```typescript
-webServer: {
-  command: 'test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings',
-  url: 'http://localhost:8100/__control',
-}
-```
-
-Playwright uses `url` to health-check that the server is ready. The proxy root
-`/` forwards to the backend, which may be unavailable, causing Playwright to
-report the server as not ready. `/__control` is always available.
-
-Source: README.md; apps/example-extension/playwright.config.ts
-
----
-
-### HIGH Recording files added to .gitignore
-
-Wrong:
-```gitignore
-# .gitignore
-e2e/recordings/
-```
-
-Correct:
-```gitignore
-# .gitignore — do NOT list e2e/recordings/
-
-# .gitattributes — collapse diffs without excluding files
-/e2e/recordings/** binary
-```
-
-CI has no recordings to replay from if the directory is gitignored. Tests will
-fail or hit the real network.
-
-Source: README.md — Switch to replay and commit
-
----
-
-### MEDIUM Recording with Next.js dev server produces flaky recordings
-
-Wrong:
-```bash
-# Recording against the dev server (MODE = 'record' in fixtures)
-next dev & npx playwright test --workers 1
-```
-
-Correct:
-```bash
-# Build first, then record against the production build
-pnpm build && npx playwright test --workers 1 --ui
-```
-
-The Next.js dev server is slow and can cause SSR fetches to timeout or execute
-out of order, producing incomplete recordings that fail in replay.
-
-Source: README.md — Full-stack Quick Start note; apps/example-nextjs16/package.json
-
----
-
-### MEDIUM Recording with multiple workers corrupts session files
-
-Wrong:
-```typescript
-// fixtures.ts — MODE set to 'record', running with default workers
-const MODE = 'record' as const;
-// playwright test  ← parallel workers write to same session files
-```
-
-Correct:
-```typescript
-// fixtures.ts
-const MODE = 'record' as const;
-// npx playwright test --workers 1 --ui  ← single worker when recording
-```
-
-Recording is a manual, single-worker operation. Replay is what uses multiple
-workers (`fullyParallel: true`). Set `MODE = 'record'` in the fixture file, then set it back to `'replay'` before committing.
-
-Source: apps/example-nextjs16/package.json; maintainer guidance
+Common failure modes — each with the wrong vs. correct pattern — are in
+[references/common-mistakes.md](references/common-mistakes.md): app env var not
+pointed at the proxy, wrong `CLIENT_SIDE_URL` (matching the proxy instead of
+external domains), `teardown()` per-test breaking parallel replay, `webServer.url`
+not on `/__control`, gitignored recordings, and recording against the Next.js dev
+server or with multiple workers.
 
 See also: test-proxy-recorder/nextjs-ssr — for Next.js SSR header propagation

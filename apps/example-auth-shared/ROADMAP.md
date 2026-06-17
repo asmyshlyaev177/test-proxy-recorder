@@ -49,8 +49,8 @@ apps/
     e2e/dashboard.spec.ts    the authenticated specs
     e2e/assert-redactions.mjs redaction guard
     playwright.config.ts     plain, self-contained
-  example-auth-cognito/     ← next
-  example-auth-clerk/  …    ← later
+  example-auth-cognito/     ← real AWS Cognito login (browser InitiateAuth)
+  example-auth-clerk/  …    ← next
 ```
 
 **The per-provider seam is exactly two files in each app:**
@@ -63,32 +63,54 @@ each app owns all of its own e2e code. The shared `/protected/todos` endpoint
 accepts **any** non-empty Bearer token or `session` cookie — it doesn't verify
 *who* issued the identity, which is what lets every provider record against it.
 
-## Per-provider CI auth
+## CI/CD
 
-All providers run in CI with a dedicated test account (the `channels/web`
-`AdminInitiateAuth` model), gated behind CI secrets. Programmatic logins hit the
-provider SDK directly, bypass the browser/proxy, and so are never recorded
-regardless; the UI flow runs in `transparent` mode for the same reason.
+Each provider example runs the same `test:e2e:ci` as `example-auth-mock`
+(record → assert redaction → replay) in a single job: recordings stay gitignored
+and are re-recorded every run. The only addition for a real provider:
+`e2e/setup-auth.ts` logs in with credentials read from env, supplied in CI as
+**secrets**. The protected app-data still goes to the shared mock backend and is
+recorded/redacted exactly as in the mock — the provider only handles login.
 
-| Provider | Status | CI login strategy |
-| -------- | ------ | ----------------- |
-| **mock** | ✅ done (`example-auth-mock`) | Form login in `transparent` mode. Always-green baseline; no secrets. |
-| **cognito** | ▢ next | `AdminInitiateAuth` (admin password) → inject tokens into `storageState`. |
-| **clerk** | ▢ planned | `@clerk/testing` token + Frontend API sign-in with a test user. |
-| **auth0** | ▢ planned | Resource Owner Password grant, test user. |
-| **workos** | ▢ planned | API session creation / password auth. |
-| **better-auth** | ▢ planned | Local `signIn` API — fully self-hosted, no secrets. |
-| **supabase** | ▢ planned | `signInWithPassword` (local stack or test project). |
+- Secrets live in this repo's Actions config, so pushes and same-repo PRs run the
+  full record + replay.
+- **Forks don't receive secrets** (by GitHub design). That's fine: a forker who
+  wants these examples green in their own CI sets their own provider credentials —
+  their responsibility, not something we design around.
+- Self-hosted providers (Better Auth, Supabase local, Firebase emulator) need no
+  secrets and run anywhere, forks included.
+
+## Providers to implement (most popular first)
+
+`CI login` = how a session is obtained in CI. Pricing is a non-issue — every
+provider's free tier (10k–1M MAUs, or self-hosted) is orders of magnitude beyond
+a couple of test users (an MAU counts per *user*, not per login). The deciding
+axis is whether CI needs secrets, not cost.
+
+| Provider | Status | CI login | CI secrets |
+| -------- | ------ | -------- | ---------- |
+| **mock** | ✅ done | Form login, `transparent` mode. | none |
+| **cognito** | ✅ done (`example-auth-cognito`) | Browser `InitiateAuth` (`USER_PASSWORD_AUTH`), public app client. | yes |
+| **next-auth / Auth.js** | ▢ planned | Credentials provider, programmatic sign-in. | often none |
+| **clerk** | ▢ planned | `@clerk/testing` token + Frontend API sign-in. | yes |
+| **supabase** | ▢ planned | `signInWithPassword`. | local stack: none / hosted: yes |
+| **auth0** | ▢ planned | Resource Owner Password grant. | yes |
+| **firebase** | ▢ planned | Identity Toolkit REST / Auth emulator. | emulator: none / real: yes |
+| **workos** | ▢ planned | API session / password auth. | yes |
+| **better-auth** | ▢ planned | Local `signIn` API — fully self-hosted. | none |
 
 ## Adding a new provider
 
 1. `cp -r apps/example-auth-mock apps/example-auth-<provider>` and bump ports.
-2. Replace `proxy.ts` with the provider-middleware + recorder composition.
-3. Replace `e2e/setup-auth.ts` with the provider's login (UI in dev, programmatic
-   token grant in CI — branch on `process.env.CI`, like `channels/web`).
-4. Wire provider env/secrets; keep `auth-state.json` gitignored.
+2. Replace `proxy.ts` with the provider-middleware ∘ recorder composition.
+3. Replace `e2e/setup-auth.ts` with the provider's login (UI in dev / programmatic
+   token grant in CI, like `channels/web`), reading credentials from env.
+4. Wire provider env/secrets; keep `auth-state.json` and `e2e/recordings/`
+   gitignored (re-recorded each run, same as the mock).
 5. Point the dashboard's `TodoApp` at `/protected/todos` with the provider's
    token — the shared backend and redaction guard need no changes.
+6. CI: add a `<provider>:test:e2e:ci` step to the `e2e` job and register its
+   secrets.
 
 ## Open follow-up
 
