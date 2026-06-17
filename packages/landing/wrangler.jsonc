@@ -1,0 +1,10 @@
+{
+  // The site is fully static, but the @astrojs/cloudflare adapter prerenders
+  // pages inside workerd at build time. Starlight's syntax highlighting and
+  // its toolchain reach for Node built-ins (path/fs/util), so the prerender
+  // environment needs nodejs_compat. A recent compatibility_date also makes
+  // bare specifiers like `path` resolve to `node:path`.
+  "name": "test-proxy-recorder-landing",
+  "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"]
+}

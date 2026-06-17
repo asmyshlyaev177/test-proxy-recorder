@@ -1,0 +1,65 @@
+---
+title: test-proxy-recorder
+description: Playwright のための VCR — 実際の API レスポンスを一度記録し、CI で決定論的に再生します。Next.js の SSR、ブラウザ、WebSocket のトラフィックに対応。バックエンド不要、手書きのモック不要。
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**Playwright のための VCR。** 実際の API レスポンスを一度記録し、CI で決定論的に再生します。Next.js の SSR、ブラウザ、WebSocket のトラフィックに対応 — バックエンド不要、手書きのモック不要。
+
+プロキシはテスト実行中に実際の API レスポンスを記録し、CI で再生します。テストは高速かつ決定論的に保たれ、モックのフィクスチャを手作業で保守する必要はありません。
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## なぜ使うのか
+
+- **CI でバックエンド不要** — 実際の API に対して一度記録し、以降は毎回の CI 実行で再生します。
+- **手書きのモック不要** — フィクスチャを手で書く代わりに、実際のやり取りをキャプチャします。
+- **SSR 対応** — Next.js や類似フレームワークのサーバーサイドリクエストを記録します。
+- **ブラウザサイド対応** — ブラウザの `fetch` 呼び出し、Chrome 拡張の API 呼び出し、アナリティクスなどを記録します。
+- **決定論的** — 毎回同じレスポンスで、不安定なネットワークがありません。
+- **WebSocket 対応** — WebSocket 接続を記録・再生します。
+
+## 比較
+
+各モックツールはそれぞれ得意分野が異なります。test-proxy-recorder は、手書きのモックなしで SSR・ブラウザ・WebSocket をまたいで**実際の**トラフィックを記録できる唯一のツールです — その組み合わせこそ、他のツールが埋めていない隙間です。
+
+| 機能 | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| 実トラフィックの記録 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| サーバーサイド (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| ブラウザサイド | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Playwright ネイティブ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| メンテナンス継続中 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js は Node の HTTP をインターセプトするため、アプリのプロセス内では SSR のモックが可能ですが、Playwright の実行の一部としては機能しません。MSW と Mocky Balboa も実際のレスポンスを再生しますが、モックを記録するのではなく手で書きます。
+
+### 他を選ぶべき場合
+
+- **トラフィックがすべてブラウザサイド** — Playwright 内蔵の `routeFromHAR` は依存なしです。まずそれから始め、SSR が出てきたら本ツールを追加してください。
+- **レスポンスを手作りしたい、またはエラー/エッジケースを強制したい** — MSW の手書きハンドラーと大きなエコシステムの方が適しており、Playwright をはるかに超えて機能します。
+- **SSR なしの軽量なブラウザのみキャッシュ** — [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) がより少ない設定でそれを実現します。
+
+Polly.js はこのアプローチ（HTTP の記録/再生、「JS のための VCR」）の着想元ですが、現在は事実上メンテナンスされておらず、それが本ツールが存在する理由の一つです。
+
+## ここから始める
+
+<CardGrid>
+  <LinkCard title="クイックスタート" href="/ja/docs/getting-started/quick-start/" description="1 つの init コマンドでセットアップ全体を生成します。" />
+  <LinkCard title="手動セットアップ" href="/ja/docs/getting-started/manual-setup/" description="フルスタックまたはブラウザのみのアプリ向けに手で組み込みます。" />
+  <LinkCard title="仕組み" href="/ja/docs/getting-started/how-it-works/" description="プロキシと HAR の記録メカニズム。" />
+  <LinkCard title="API リファレンス" href="/docs/reference/api/readme/" description="playwrightProxy、setProxyMode、defineConfig、および Next.js ヘルパー。" />
+</CardGrid>
+
+## 要件
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0（peer dependency）

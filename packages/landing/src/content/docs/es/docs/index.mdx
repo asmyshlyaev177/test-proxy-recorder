@@ -1,0 +1,65 @@
+---
+title: test-proxy-recorder
+description: VCR para Playwright — graba respuestas reales de la API una vez y reprodúcelas de forma determinista en CI. Cubre SSR de Next.js, navegador y WebSockets, sin backend y sin mocks escritos a mano.
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**VCR para Playwright.** Graba respuestas reales de la API una vez y reprodúcelas de forma determinista en CI. Cubre tráfico de SSR de Next.js, del navegador y de WebSocket — sin backend, sin mocks escritos a mano.
+
+El proxy graba respuestas reales de la API durante una ejecución de pruebas y luego las reproduce en CI. Las pruebas se mantienen rápidas y deterministas, y nunca mantienes fixtures de mock a mano.
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## Por qué
+
+- **Sin backend en CI** — graba una vez contra la API real y reproduce en cada ejecución de CI.
+- **Sin mocks manuales** — captura interacciones reales en lugar de escribir fixtures a mano.
+- **Soporte de SSR** — graba peticiones del lado del servidor de Next.js y frameworks similares.
+- **Soporte del lado del navegador** — graba llamadas `fetch` del navegador, llamadas a API de extensiones de Chrome, analítica, etc.
+- **Determinista** — las mismas respuestas siempre, sin red inestable.
+- **Soporte de WebSocket** — graba y reproduce conexiones WebSocket.
+
+## Comparación
+
+Las herramientas de mocking son buenas para trabajos distintos. test-proxy-recorder es la que graba tráfico **real** a través de SSR, navegador y WebSockets sin mocks escritos a mano — esa combinación es el hueco que las demás dejan abierto.
+
+| Característica | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Graba tráfico real | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Lado del servidor (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| Lado del navegador | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Nativo de Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Mantenido | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js intercepta el HTTP de Node, así que el mocking de SSR es posible dentro del proceso de la app, pero no como parte de una ejecución de Playwright. MSW y Mocky Balboa también reproducen respuestas reales — pero escribes los mocks a mano en lugar de grabarlos.
+
+### Cuándo recurrir a otra cosa
+
+- **Todo tu tráfico es del lado del navegador** — el `routeFromHAR` integrado de Playwright no tiene dependencias. Empieza ahí; añade esto cuando aparezca el SSR.
+- **Quieres crear respuestas a mano o forzar casos de error/límite** — los handlers escritos de MSW y su gran ecosistema encajan mejor, y funcionan mucho más allá de Playwright.
+- **Caché ligera solo de navegador, sin SSR** — [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) hace justo eso con menos configuración.
+
+Polly.js es la inspiración de este enfoque (grabar/reproducir HTTP, «VCR para JS»); ahora está prácticamente sin mantenimiento, lo cual es parte de por qué esto existe.
+
+## Empieza aquí
+
+<CardGrid>
+  <LinkCard title="Inicio rápido" href="/es/docs/getting-started/quick-start/" description="Genera toda la configuración con un solo comando init." />
+  <LinkCard title="Configuración manual" href="/es/docs/getting-started/manual-setup/" description="Conéctalo a mano para apps full-stack o solo de navegador." />
+  <LinkCard title="Cómo funciona" href="/es/docs/getting-started/how-it-works/" description="Los mecanismos de grabación por proxy y HAR." />
+  <LinkCard title="Referencia de la API" href="/docs/reference/api/readme/" description="playwrightProxy, setProxyMode, defineConfig y los ayudantes de Next.js." />
+</CardGrid>
+
+## Requisitos
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0 (dependencia de pares)

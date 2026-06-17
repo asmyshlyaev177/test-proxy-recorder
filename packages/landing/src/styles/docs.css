@@ -1,0 +1,29 @@
+/* Brand theming for the Starlight docs, matched to the marketing landing page
+   (src/styles/global.css). The landing uses a blue primary (oklch hue 262) and
+   a red "rec" accent (hue 29); we map Starlight's accent ramp to the primary. */
+
+:root {
+  --sl-color-accent-low: oklch(0.92 0.04 262);
+  --sl-color-accent: oklch(0.45 0.15 262);
+  --sl-color-accent-high: oklch(0.32 0.12 262);
+  --sl-color-text-accent: oklch(0.45 0.15 262);
+}
+
+:root[data-theme='dark'] {
+  --sl-color-accent-low: oklch(0.26 0.06 262);
+  --sl-color-accent: oklch(0.55 0.16 262);
+  --sl-color-accent-high: oklch(0.82 0.09 262);
+  --sl-color-text-accent: oklch(0.74 0.115 262);
+}
+
+/* The recording dot from the landing wordmark, reused in the site title. */
+.site-title::before {
+  content: '';
+  display: inline-block;
+  width: 0.55rem;
+  height: 0.55rem;
+  margin-right: 0.1rem;
+  border-radius: 50%;
+  background: oklch(0.65 0.21 29);
+  box-shadow: 0 0 0 3px oklch(0.95 0.018 29 / 0.6);
+}
