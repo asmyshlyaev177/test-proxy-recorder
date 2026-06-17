@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.0.1...v1.0.2) (2026-06-17)
+
+
+### Bug Fixes
+
+* enable secrets redaction by default ([b635175](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/b6351753f3852244e6430f3da7b27e04a47f48c6))
+
 ## [1.0.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.0.0...v1.0.1) (2026-06-16)
 
 
