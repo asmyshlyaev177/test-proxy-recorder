@@ -59,6 +59,31 @@ setup('authenticate', async ({ page }) => {
   // Reused by every test — they start already signed in.
   await page.context().storageState({ path: 'e2e/.auth/state.json' });
 });`;
+
+// Comparison table. y = yes, n = no, p = partial (see footnote).
+const compareCols = [
+  'Record real traffic',
+  'Server-side (SSR)',
+  'Browser-side',
+  'WebSocket',
+  'Playwright-native',
+  'Maintained',
+];
+const compareRows: {
+  tool: string;
+  self?: boolean;
+  note?: string;
+  cells: ('y' | 'n' | 'p')[];
+}[] = [
+  { tool: 'test-proxy-recorder', self: true, cells: ['y', 'y', 'y', 'y', 'y', 'y'] },
+  { tool: 'Playwright routeFromHAR', cells: ['y', 'n', 'y', 'n', 'y', 'y'] },
+  { tool: 'MSW', cells: ['n', 'y', 'y', 'y', 'n', 'y'] },
+  { tool: 'Polly.js', cells: ['y', 'p', 'y', 'n', 'n', 'n'] },
+  { tool: 'playwright-network-cache', cells: ['y', 'n', 'y', 'n', 'y', 'y'] },
+  { tool: 'Mocky Balboa', cells: ['n', 'y', 'y', 'n', 'y', 'y'] },
+];
+const markGlyph = { y: '✓', n: '✕', p: '~' } as const;
+const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
 ---
 
 <Layout>
@@ -199,6 +224,91 @@ setup('authenticate', async ({ page }) => {
     </div>
   </section>
 
+  <!-- ======================================================= comparison -->
+  <section class="compare" id="comparison">
+    <div class="container">
+      <h2>Where it fits</h2>
+      <p class="section-sub">
+        The mocking tools are good at different jobs. The combination below — recording
+        real traffic across SSR, browser, and WebSockets, with no hand-written mocks — is
+        the gap the others leave open.
+      </p>
+
+      <div class="compare-scroll">
+        <table class="compare-table">
+          <caption class="vh">
+            Feature comparison of test-proxy-recorder against Playwright routeFromHAR, MSW,
+            Polly.js, playwright-network-cache, and Mocky Balboa.
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="vh">Feature</span></th>
+              {
+                compareRows.map((row) => (
+                  <th scope="col" class={row.self ? 'is-self' : undefined}>
+                    {row.tool}
+                    {row.note && <span class="row-note">{row.note}</span>}
+                  </th>
+                ))
+              }
+            </tr>
+          </thead>
+          <tbody>
+            {
+              compareCols.map((col, i) => (
+                <tr>
+                  <th scope="row">{col}</th>
+                  {compareRows.map((row) => {
+                    const c = row.cells[i];
+                    return (
+                      <td class={row.self ? 'is-self' : undefined}>
+                        <span class={`mark mark-${c}`} aria-hidden="true">
+                          {markGlyph[c]}
+                        </span>
+                        <span class="vh">{markText[c]}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="compare-foot">
+        <span class="mark mark-p" aria-hidden="true">~</span> Polly.js intercepts Node HTTP,
+        so SSR mocking is possible inside the app process, but not as part of a Playwright
+        run. MSW and Mocky Balboa replay real responses too — but you hand-write the mocks
+        rather than recording them.
+      </p>
+
+      <div class="compare-when">
+        <h3>When to reach for something else</h3>
+        <ul>
+          <li>
+            <strong>All your traffic is browser-side.</strong> Playwright's built-in
+            <code>routeFromHAR</code> is zero-dependency — start there, add this when SSR
+            shows up.
+          </li>
+          <li>
+            <strong>You want to hand-craft responses or force error and edge cases.</strong>
+            MSW's authored handlers and large ecosystem fit that better, and work far
+            beyond Playwright.
+          </li>
+          <li>
+            <strong>Lightweight browser-only caching, no SSR.</strong>
+            <code>playwright-network-cache</code> does just that with less to set up.
+          </li>
+        </ul>
+        <p class="compare-credit">
+          Polly.js walked so this could run — it's the inspiration, now effectively
+          unmaintained.
+        </p>
+      </div>
+    </div>
+  </section>
+
   <!-- ======================================================= real auth -->
   <section class="auth" id="auth">
     <div class="container">
@@ -293,6 +403,157 @@ setup('authenticate', async ({ page }) => {
 
   .section-sub a {
     color: var(--link);
+  }
+
+  /* visually hidden — accessible text equivalents for the table marks */
+  .vh {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* --------------------------------------------------------- comparison */
+
+  .compare-scroll {
+    margin-top: 2rem;
+    overflow-x: auto;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    min-width: 720px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+
+  .compare-table thead th {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink);
+    vertical-align: bottom;
+    line-height: 1.25;
+  }
+
+  .compare-table thead th:first-child,
+  .compare-table tbody th {
+    text-align: left;
+  }
+
+  .compare-table tbody th {
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .row-note {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  /* highlight the test-proxy-recorder column */
+  .compare-table th.is-self,
+  .compare-table td.is-self {
+    background: var(--primary-soft);
+  }
+
+  .compare-table thead th.is-self {
+    color: var(--primary-strong);
+    box-shadow: inset 0 3px 0 var(--primary);
+  }
+
+  .mark {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .mark-y {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .mark-n {
+    color: var(--muted);
+    opacity: 0.55;
+  }
+
+  .mark-p {
+    color: var(--rec-bright);
+    font-weight: 700;
+  }
+
+  .compare-foot {
+    margin-top: 1.1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    max-width: 70ch;
+  }
+
+  .compare-foot .mark-p {
+    font-size: 0.85rem;
+  }
+
+  .compare-when {
+    margin-top: 2.6rem;
+  }
+
+  .compare-when h3 {
+    font-size: 1.05rem;
+  }
+
+  .compare-when ul {
+    margin-top: 1rem;
+    display: grid;
+    gap: 0.8rem;
+    padding: 0;
+    list-style: none;
+    max-width: 72ch;
+  }
+
+  .compare-when li {
+    color: var(--muted);
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .compare-when li::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--primary);
+  }
+
+  .compare-when li strong {
+    color: var(--ink);
+    font-weight: 600;
+  }
+
+  .compare-when code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+  }
+
+  .compare-credit {
+    margin-top: 1.4rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    font-style: italic;
   }
 
   /* ---------------------------------------------------------- real auth */

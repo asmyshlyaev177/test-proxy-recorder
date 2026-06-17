@@ -26,6 +26,7 @@ Fast, deterministic Playwright tests without maintaining manual mocks. The proxy
 ## Contents
 
 - [Why](#why)
+- [Comparison](#comparison)
 - [Quick Start](#quick-start)
 - [How it works](#how-it-works)
 - [CLI](#cli)
@@ -52,6 +53,31 @@ Fast, deterministic Playwright tests without maintaining manual mocks. The proxy
 - **Browser-side support** — records browser `fetch` calls, Chrome extension API calls, analytics, etc.
 - **Deterministic** — same responses every time, no flaky network
 - **WebSocket support** — records and replays WebSocket connections
+
+---
+
+## Comparison
+
+The mocking tools are good at different jobs. test-proxy-recorder is the one that records **real** traffic across SSR, browser, and WebSockets without hand-written mocks — that combination is the gap the others leave open.
+
+| Feature | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Record real traffic | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Server-side (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| Browser-side | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Playwright-native | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Maintained | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js intercepts Node HTTP, so SSR mocking is possible inside the app process, but not as part of a Playwright run. MSW and Mocky Balboa replay real responses too — but you hand-write the mocks rather than recording them.
+
+**When to reach for something else:**
+
+- **All your traffic is browser-side** — Playwright's built-in `routeFromHAR` is zero-dependency. Start there; add this when SSR shows up.
+- **You want to hand-craft responses or force error/edge cases** — MSW's authored handlers and large ecosystem fit that better, and work far beyond Playwright.
+- **Lightweight browser-only caching, no SSR** — [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) does just that with less to set up.
+
+Polly.js is the inspiration for this approach (record/replay HTTP, "VCR for JS"); it's now effectively unmaintained, which is part of why this exists.
 
 ---
 
