@@ -452,6 +452,10 @@ Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-p
 
 [`apps/example-websocket`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-websocket) — a live BTC-USD price ticker backed by Binance's public WebSocket feed. Records the real feed once through the proxy, then replays deterministic prices on CI with no network or exchange account. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-websocket/README.md).
 
+### Authenticated app — real auth provider, replay with no backend
+
+[`apps/example-auth-cognito`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — a Next.js app that logs into a **real AWS Cognito** user pool, then records/replays its protected API. Login stays live every run (never recorded); the protected data replays with the backend turned off, and the auth token is redacted from the recordings. The integration is just a handful of files — see its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-auth-cognito/README.md). For the same pattern with **no cloud account**, see [`apps/example-auth-mock`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-mock).
+
 ---
 
 ## Integrations
@@ -765,6 +769,19 @@ Need one sooner, or a different framework? [Open an issue](https://github.com/as
 ## Contributing
 
 Contributions welcome! Please submit a Pull Request.
+
+### Maintaining the AI skills
+
+The agent skills live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
+Check them periodically — and whenever the library's API or the examples change:
+
+```bash
+npx @tanstack/intent@latest validate   # structure/format/line-limit checks (run before committing skill edits)
+npx @tanstack/intent@latest stale      # flags version drift vs the published library — re-review the skills it lists
+```
+
+`validate` must pass; `stale` is advisory — when it reports drift after a release,
+re-review the affected skill content (and bump its `library_version`).
 
 ---
 

@@ -10,7 +10,7 @@ export interface Todo {
 }
 
 // Dev/test: point to the proxy (http://localhost:8100) so browser requests are recorded.
-// Production: point to the real backend URL.
+// Production: rebuild with NEXT_PUBLIC_API_URL set to the real backend URL.
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8100';
 
 export interface TodoAppProps {

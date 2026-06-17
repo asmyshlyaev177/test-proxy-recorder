@@ -11,7 +11,7 @@ description: >
 type: framework
 library: test-proxy-recorder
 framework: nextjs
-library_version: "0.3.5"
+library_version: "1.0.1"
 requires:
   - test-proxy-recorder/proxy-setup
 sources:
