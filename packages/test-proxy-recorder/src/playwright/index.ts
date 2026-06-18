@@ -478,7 +478,7 @@ export const playwrightProxy = {
     // Setup cleanup handler for UI mode and manual test runs
     // Use context.on('close') instead of page.on('close') because:
     // - page.on('close') fires during navigation/reload (unreliable)
-    // - context.on('close') only fires when browser context closes (reliable)
+    // - context.on('close')  only fires when browser context closes (reliable)
     // This ensures cleanup happens in UI mode while not interfering with normal test runs
     const context = page.context();
 
