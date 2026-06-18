@@ -9,12 +9,12 @@ const mode = process.env.RECORD_MODE ? 'record' : 'replay';
 const BACKEND_URL = 'http://localhost:3012';
 
 async function seed(text: string) {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' }).catch(() => false);
+  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
   await fetch(`${BACKEND_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
-  }).catch(() => false);
+  });
 }
 
 test.beforeEach(async ({ page }, testInfo) => {

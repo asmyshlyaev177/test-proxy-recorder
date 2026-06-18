@@ -75,16 +75,10 @@ registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED 
 ```
 
 It patches the global `fetch` to copy the current request's `x-test-rcrd-id` onto
-outgoing requests, so the proxy can tell concurrent replay sessions apart.
-
-:::caution[Not `instrumentation.ts`]
-On the Edge runtime, installing the patch from `instrumentation.ts`'s
-`register()` does **not** work: that hook runs in a different context than the
-one rendering your routes, so the `globalThis.fetch` it patches isn't the one
-your Server Components call. The root layout shares the request runtime, so the
-patch lands on the right `fetch`. Note that `next start` runs in production mode,
-so set `TEST_PROXY_RECORDER_ENABLED=true` for your e2e run.
-:::
+outgoing requests, so the proxy can tell concurrent replay sessions apart. Call
+it from the root layout (not `instrumentation.ts`), and remember that `next
+start` runs in production mode — set `TEST_PROXY_RECORDER_ENABLED=true` for your
+e2e run.
 
 A complete, runnable project lives in the [Edge runtime example](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
 
