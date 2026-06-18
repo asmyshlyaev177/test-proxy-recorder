@@ -7,6 +7,34 @@ import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 
+/**
+ * Support `## Heading {#custom-id}` syntax in markdown. Astro/Starlight don't
+ * handle the `{#id}` attribute out of the box: without this the literal
+ * `{#id}` text is slugified into the anchor (e.g. `authenticated-app` becomes
+ * `authenticated-app-authenticated-app`) and rendered verbatim in the heading,
+ * which breaks every cross-link that targets the intended id. This strips the
+ * marker from the rendered text and pins it as the heading's id; Starlight's
+ * rehype-slug then sees an explicit id and leaves it alone. Headings are always
+ * top-level mdast nodes and the marker is plain text at the end, so a shallow
+ * walk avoids pulling in unist-util-visit.
+ */
+function remarkCustomHeadingIds() {
+  /** @param {{ children: any[] }} tree */
+  return (tree) => {
+    for (const node of tree.children) {
+      if (node.type !== 'heading' || node.children.length === 0) continue;
+      const last = node.children[node.children.length - 1];
+      if (last.type !== 'text') continue;
+      const match = last.value.match(/\s*\{#([\w-]+)\}\s*$/);
+      if (!match) continue;
+      last.value = last.value.slice(0, match.index).trimEnd();
+      node.data ??= {};
+      node.data.hProperties ??= {};
+      node.data.hProperties.id = match[1];
+    }
+  };
+}
+
 // Adapter is declared explicitly (instead of relying on Cloudflare's build-time
 // auto-config) so the version is pinned in the lockfile and the build is
 // reproducible. The site is static; the adapter packages it for Cloudflare.
@@ -14,6 +42,7 @@ const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 export default defineConfig({
   site: 'https://test-proxy-recorder.dev',
   adapter: cloudflare(),
+  markdown: { remarkPlugins: [remarkCustomHeadingIds] },
   integrations: [
     sitemap(),
     // Docs site. The hand-built marketing page owns `/` (src/pages/index.astro);
