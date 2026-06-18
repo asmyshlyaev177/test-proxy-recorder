@@ -7,6 +7,8 @@ covering multiple auth providers without duplicating an app per provider.
 
 An authenticated app has two kinds of traffic, and they need opposite treatment:
 
+
+
 | Traffic | Mode | Why |
 | ------- | ---- | --- |
 | **Login** (credentials → token) | `transparent` | Must never land in a committed recording. |
