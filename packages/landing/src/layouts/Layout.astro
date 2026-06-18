@@ -7,6 +7,7 @@ import ThemeToggle from '../components/ThemeToggle.astro';
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 const npmUrl = 'https://www.npmjs.com/package/test-proxy-recorder';
+const discordUrl = 'https://discord.gg/w7rgYbY5zz';
 const authorUrl = 'https://asmyshlyaev177.dev';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
@@ -124,8 +125,10 @@ const jsonLd = {
         </a>
         <nav aria-label="Site">
           <a href="#quick-start">Quick start</a>
+          <a href={`${base}/docs/`}>Docs</a>
           <a href={npmUrl}>npm</a>
           <a href={repo}>GitHub</a>
+          <a href={discordUrl}>Discord</a>
           <ThemeToggle />
         </nav>
       </div>

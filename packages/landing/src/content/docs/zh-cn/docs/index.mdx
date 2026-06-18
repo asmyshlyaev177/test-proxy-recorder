@@ -1,0 +1,65 @@
+---
+title: test-proxy-recorder
+description: 面向 Playwright 的 VCR —— 真实 API 响应只录制一次，即可在 CI 中确定性地回放。覆盖 Next.js SSR、浏览器和 WebSocket 流量。无需后端，无需手写 mock。
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**面向 Playwright 的 VCR。** 真实 API 响应只录制一次，即可在 CI 中确定性地回放。覆盖 Next.js SSR、浏览器和 WebSocket 流量 —— 无需后端，无需手写 mock。
+
+代理在一次测试运行期间录制真实的 API 响应，随后在 CI 中回放。测试保持快速且确定，你再也不必手动维护 mock fixture。
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## 为什么
+
+- **CI 上无需后端** —— 对真实 API 录制一次，之后每次 CI 运行都回放。
+- **无需手写 mock** —— 捕获真实交互，而不是手写 fixture。
+- **支持 SSR** —— 录制 Next.js 等框架的服务端请求。
+- **支持浏览器端** —— 录制浏览器 `fetch` 调用、Chrome 扩展的 API 调用、分析埋点等。
+- **确定性** —— 每次都是相同的响应，没有不稳定的网络。
+- **支持 WebSocket** —— 录制并回放 WebSocket 连接。
+
+## 对比
+
+各类 mock 工具各有所长。test-proxy-recorder 是唯一一个无需手写 mock 即可跨 SSR、浏览器和 WebSocket 录制**真实**流量的工具 —— 这一组合正是其他工具留下的空白。
+
+| 功能 | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| 录制真实流量 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| 服务端 (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| 浏览器端 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Playwright 原生 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| 仍在维护 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js 拦截 Node 的 HTTP，因此在应用进程内可以 mock SSR，但无法作为 Playwright 运行的一部分。MSW 和 Mocky Balboa 也会回放真实响应 —— 但你需要手写 mock，而不是录制。
+
+### 何时选择其他工具
+
+- **你的全部流量都在浏览器端** —— Playwright 内置的 `routeFromHAR` 零依赖。先从它开始；等 SSR 出现时再加上本工具。
+- **你想手工编写响应或强制错误/边界情形** —— MSW 的手写 handler 和庞大生态更合适，而且远不止用于 Playwright。
+- **仅浏览器、无 SSR 的轻量缓存** —— [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) 用更少的配置就能做到。
+
+Polly.js 是这一思路（录制/回放 HTTP，「JS 的 VCR」）的灵感来源；它现在基本已无人维护，这也是本工具存在的部分原因。
+
+## 从这里开始
+
+<CardGrid>
+  <LinkCard title="快速开始" href="/zh-cn/docs/getting-started/quick-start/" description="用一条 init 命令生成整套配置。" />
+  <LinkCard title="手动配置" href="/zh-cn/docs/getting-started/manual-setup/" description="为全栈或纯浏览器应用手动接入。" />
+  <LinkCard title="工作原理" href="/zh-cn/docs/getting-started/how-it-works/" description="代理与 HAR 两种录制机制。" />
+  <LinkCard title="API 参考" href="/docs/reference/api/readme/" description="playwrightProxy、setProxyMode、defineConfig 以及 Next.js 辅助函数。" />
+</CardGrid>
+
+## 环境要求
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0（peer dependency）

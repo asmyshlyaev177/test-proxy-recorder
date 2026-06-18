@@ -1,0 +1,65 @@
+---
+title: test-proxy-recorder
+description: VCR for Playwright — record real API responses once, replay them deterministically on CI. Covers Next.js SSR, browser, and WebSocket traffic, with no backend and no hand-written mocks.
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**VCR for Playwright.** Record real API responses once, replay them deterministically on CI. Covers Next.js SSR, browser, and WebSocket traffic — no backend, no hand-written mocks.
+
+The proxy records real API responses during a test run, then replays them on CI. Tests stay fast and deterministic, and you never maintain mock fixtures by hand.
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## Why
+
+- **No backend on CI** — record once against the real API, replay on every CI run.
+- **No manual mocks** — capture real interactions instead of hand-writing fixtures.
+- **SSR support** — records server-side requests from Next.js and similar frameworks.
+- **Browser-side support** — records browser `fetch` calls, Chrome extension API calls, analytics, and more.
+- **Deterministic** — the same responses every time, with no flaky network.
+- **WebSocket support** — records and replays WebSocket connections.
+
+## Comparison
+
+The mocking tools are good at different jobs. test-proxy-recorder is the one that records **real** traffic across SSR, browser, and WebSockets without hand-written mocks — that combination is the gap the others leave open.
+
+| Feature | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Record real traffic | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Server-side (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| Browser-side | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Playwright-native | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Maintained | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js intercepts Node HTTP, so SSR mocking is possible inside the app process, but not as part of a Playwright run. MSW and Mocky Balboa replay real responses too — but you hand-write the mocks rather than recording them.
+
+### When to reach for something else
+
+- **All your traffic is browser-side** — Playwright's built-in `routeFromHAR` is zero-dependency. Start there; add this when SSR shows up.
+- **You want to hand-craft responses or force error/edge cases** — MSW's authored handlers and large ecosystem fit that better, and work far beyond Playwright.
+- **Lightweight browser-only caching, no SSR** — [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) does just that with less to set up.
+
+Polly.js is the inspiration for this approach (record/replay HTTP, "VCR for JS"); it's now effectively unmaintained, which is part of why this exists.
+
+## Start here
+
+<CardGrid>
+  <LinkCard title="Quick start" href="/docs/getting-started/quick-start/" description="Scaffold the whole setup with one init command." />
+  <LinkCard title="Manual setup" href="/docs/getting-started/manual-setup/" description="Wire it up by hand for full-stack or browser-only apps." />
+  <LinkCard title="How it works" href="/docs/getting-started/how-it-works/" description="The proxy and HAR recording mechanisms." />
+  <LinkCard title="API reference" href="/docs/reference/api/readme/" description="playwrightProxy, setProxyMode, defineConfig, and the Next.js helpers." />
+</CardGrid>
+
+## Requirements
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0 (peer dependency)

@@ -1,64 +1,20 @@
 ---
-import { Code } from 'astro:components';
+// Code snippets render through markdown partials (src/snippets/*.md) rather
+// than astro:components' <Code>. Starlight disables Astro's built-in Shiki in
+// favour of Expressive Code; EC highlights markdown at build time in Node, so
+// these blocks prerender to static HTML and work under the Cloudflare workerd
+// prerender (where a render-time highlighter does not).
+import { Content as InstallSnippet } from '../snippets/install.md';
+import { Content as ConfigSnippet } from '../snippets/config.md';
+import { Content as FixtureSnippet } from '../snippets/fixture.md';
+import { Content as RecordSnippet } from '../snippets/record.md';
+import { Content as AuthSetupSnippet } from '../snippets/auth-setup.md';
 import Layout from '../layouts/Layout.astro';
 import RecorderScene from '../components/RecorderScene.astro';
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 
 const installCmd = 'npm i -D test-proxy-recorder';
-
-const configCode = `import { defineConfig } from '@playwright/test';
-
-export default defineConfig({
-  webServer: {
-    command: 'test-proxy-recorder https://api.example.com --port 8100 --dir ./e2e/recordings',
-    url: 'http://localhost:8100/__control',
-    reuseExistingServer: true,
-  },
-});`;
-
-const fixtureCode = `// e2e/my.test.ts
-import { test, expect } from '@playwright/test';
-import { playwrightProxy } from 'test-proxy-recorder';
-
-// The external API(s) your browser talks to.
-const CLIENT_SIDE_URL = /api\\.example\\.com/;
-
-// 'record' hits the real API and saves responses.
-// 'replay' serves them from disk — no network needed.
-const MODE = 'replay' as const;
-
-test.beforeEach(async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
-});
-
-test('homepage loads', async ({ page }) => {
-  await page.goto('https://myapp.com/');
-  await expect(page.getByText('Welcome')).toBeVisible();
-});`;
-
-const recordCode = `# 1. Set MODE = 'record' in your test file, run against the real API
-npx playwright test        # recordings written to e2e/recordings/
-
-# 2. Flip MODE back to 'replay' and commit the recordings
-git add e2e/recordings/
-git commit -m "add e2e recordings"`;
-
-const authSetupCode = `// e2e/auth.setup.ts — log in for real, once. Never recorded.
-import { test as setup } from '@playwright/test';
-import { setProxyMode } from 'test-proxy-recorder';
-
-setup('authenticate', async ({ page }) => {
-  await setProxyMode('transparent');     // login bypasses the recorder
-  await page.goto('/login');
-  await page.getByTestId('email').fill(process.env.TEST_EMAIL!);
-  await page.getByTestId('password').fill(process.env.TEST_PASSWORD!);
-  await page.getByTestId('signinButton').click();
-  await page.waitForURL('/dashboard');
-
-  // Reused by every test — they start already signed in.
-  await page.context().storageState({ path: 'e2e/.auth/state.json' });
-});`;
 
 // Comparison table. y = yes, n = no, p = partial (see footnote).
 const compareCols = [
@@ -319,7 +275,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
         Your auth stays live; your data goes offline.
       </p>
       <div class="auth-code">
-        <Code code={authSetupCode} lang="ts" theme="one-dark-pro" />
+        <AuthSetupSnippet />
       </div>
       <p class="auth-links">
         <a href={`${repo}/tree/master/apps/example-auth-cognito`}>AWS Cognito example →</a>
@@ -340,7 +296,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
       <ol class="steps">
         <li class="step">
           <h3>Install</h3>
-          <Code code={`npm install --save-dev test-proxy-recorder`} lang="bash" theme="one-dark-pro" />
+          <InstallSnippet />
         </li>
         <li class="step">
           <h3>Add the proxy to <code>playwright.config.ts</code></h3>
@@ -348,7 +304,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
             The proxy process provides session management via its <code>/__control</code>
             endpoint; for browser-only recording the target URL is never hit.
           </p>
-          <Code code={configCode} lang="ts" theme="one-dark-pro" />
+          <ConfigSnippet />
         </li>
         <li class="step">
           <h3>Wire it into your tests</h3>
@@ -356,7 +312,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
             One <code>beforeEach</code> covers the whole file: match the external API
             domain, pick <code>record</code> or <code>replay</code>.
           </p>
-          <Code code={fixtureCode} lang="ts" theme="one-dark-pro" />
+          <FixtureSnippet />
         </li>
         <li class="step">
           <h3>Record, commit, replay</h3>
@@ -364,7 +320,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
             Recordings live in git — that's what makes CI deterministic. Don't gitignore
             them.
           </p>
-          <Code code={recordCode} lang="bash" theme="one-dark-pro" />
+          <RecordSnippet />
         </li>
       </ol>
     </div>

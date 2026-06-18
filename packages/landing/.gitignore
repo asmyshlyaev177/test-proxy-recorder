@@ -1,2 +1,7 @@
 # Local Cloudflare/Wrangler runtime state
 .wrangler/
+
+# API reference generated from TypeScript/JSDoc by starlight-typedoc on build
+src/content/docs/docs/reference/api/
+# TypeDoc bookkeeping
+.typedoc-build/
