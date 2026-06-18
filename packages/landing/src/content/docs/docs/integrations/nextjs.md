@@ -60,6 +60,34 @@ const res = await fetch('http://localhost:8100/api/data', {
 
 See the [API reference](/docs/reference/api/readme/) for the full signatures of the `test-proxy-recorder/nextjs` helpers.
 
+## Edge runtime
+
+Routes that opt into the Edge runtime (`export const runtime = 'edge'`) need one
+extra step. The middleware and manual-forwarding approaches above still work, but
+if you'd rather tag every server-side `fetch` automatically, call
+`registerProxyFetch()` at the top level of your **root layout**:
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED is set
+```
+
+It patches the global `fetch` to copy the current request's `x-test-rcrd-id` onto
+outgoing requests, so the proxy can tell concurrent replay sessions apart.
+
+:::caution[Not `instrumentation.ts`]
+On the Edge runtime, installing the patch from `instrumentation.ts`'s
+`register()` does **not** work: that hook runs in a different context than the
+one rendering your routes, so the `globalThis.fetch` it patches isn't the one
+your Server Components call. The root layout shares the request runtime, so the
+patch lands on the right `fetch`. Note that `next start` runs in production mode,
+so set `TEST_PROXY_RECORDER_ENABLED=true` for your e2e run.
+:::
+
+A complete, runnable project lives in the [Edge runtime example](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
+
 ## package.json scripts
 
 Start services from scripts, not from `playwright.config.ts`:

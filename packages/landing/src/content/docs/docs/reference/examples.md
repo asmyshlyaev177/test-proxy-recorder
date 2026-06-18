@@ -9,6 +9,10 @@ Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-p
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — a Next.js 16 todo app with a mock backend, proxy, and Playwright e2e tests. Records both SSR fetches (`.mock.json`) and browser fetches (`.har`), and includes a WebSocket chat against the local backend. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
 
+## Next.js Edge runtime {#nextjs-edge}
+
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — a Next.js 16 app whose page renders on the **Edge runtime** (`export const runtime = 'edge'`). Its SSR `fetch` is tagged with the recording-session id via `registerProxyFetch()` (called from the root layout), so concurrent replay sessions stay distinct where `instrumentation.ts` can't reach. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
+
 ## Chrome extension {#chrome-extension}
 
 [`apps/example-extension`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — a real Chrome extension that calls X/Twitter's API from a content script; browser requests are recorded to `.har` and replayed offline, with no live API or account needed on CI. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-extension/README.md).

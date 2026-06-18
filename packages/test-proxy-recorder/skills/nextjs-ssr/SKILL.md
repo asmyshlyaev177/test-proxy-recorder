@@ -4,10 +4,12 @@ description: >
   Wire the x-test-rcrd-id session header through Next.js so server-side fetches
   are recorded under the correct Playwright test session. Covers
   setNextProxyHeaders, createHeadersWithRecordingId, getRecordingId,
-  RECORDING_ID_HEADER, middleware.ts (Next.js 13–15), proxy.ts (Next.js 16),
+  RECORDING_ID_HEADER, registerProxyFetch (automatic fetch tagging for the Edge
+  runtime), middleware.ts (Next.js 13–15), proxy.ts (Next.js 16),
   the React cache() memoization pattern for next/headers, and the axios
   interceptor pattern for SSR requests. Load this skill when setting up
-  test-proxy-recorder in a Next.js app that makes server-side API calls.
+  test-proxy-recorder in a Next.js app that makes server-side API calls,
+  including Edge-runtime routes.
 type: framework
 library: test-proxy-recorder
 framework: nextjs
@@ -17,7 +19,9 @@ requires:
 sources:
   - "asmyshlyaev177/test-proxy-recorder:README.md"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/middleware.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/registerProxyFetch.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16"
+  - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs-edge"
 ---
 
 This skill builds on test-proxy-recorder/proxy-setup. Read it first for proxy
@@ -96,6 +100,37 @@ export async function GET(request: Request) {
 
 `createHeadersWithRecordingId` merges the session ID into your headers object.
 It is a no-op when the session ID is absent (browser-only tests, or production).
+
+### Edge runtime — tag every fetch automatically with registerProxyFetch
+
+For routes on the Edge runtime (`export const runtime = 'edge'`), or to avoid
+threading the header through every fetch by hand, call `registerProxyFetch()` at
+the **top level of the root layout**. It patches the global `fetch` so every
+server-side request carries the current session's `x-test-rcrd-id`.
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+It reads the id via `next/headers`, so it only acts inside a request scope and
+leaves build-time/non-request fetches untouched. It tags every server-side fetch
+(not just proxy-bound ones): the id is inert anywhere but the proxy and never
+affects replay matching, and during tests everything you record routes through
+the proxy anyway.
+
+Call it from the root layout, **not** `instrumentation.ts` — see Common
+Mistakes. Source: apps/example-nextjs-edge/app/layout.tsx
 
 ### Memoize header lookup with React cache() (App Router)
 
@@ -202,6 +237,38 @@ either old name silently does nothing — the session header is never forwarded
 and all SSR recordings are grouped under the wrong session.
 
 Source: apps/example-nextjs16/proxy.ts
+
+---
+
+### HIGH Patching fetch from instrumentation.ts on the Edge runtime
+
+Wrong:
+```typescript
+// instrumentation.ts — register() runs in a different context than the one
+// rendering Edge routes, so this globalThis.fetch is NOT the one your Server
+// Components call. The patch silently never fires; SSR fetches stay untagged.
+export async function register() {
+  const { registerProxyFetch } = await import('test-proxy-recorder/nextjs');
+  registerProxyFetch();
+}
+```
+
+Correct:
+```typescript
+// app/layout.tsx — the root layout shares the request runtime with your pages,
+// so the patch lands on the fetch the Edge route actually uses.
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch();
+```
+
+On the Edge runtime, `instrumentation.ts`'s `register()` runs in a separate
+context from route rendering, so a `globalThis.fetch` patch installed there does
+not affect Server Component fetches. Call `registerProxyFetch()` from the root
+layout instead. Also remember that `next start` runs in production mode, so set
+`TEST_PROXY_RECORDER_ENABLED=true` on the app process or the patch is a no-op.
+
+Source: apps/example-nextjs-edge/app/layout.tsx; packages/test-proxy-recorder/src/nextjs/registerProxyFetch.ts
 
 ---
 

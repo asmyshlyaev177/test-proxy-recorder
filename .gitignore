@@ -13,6 +13,8 @@ coverage-reports
 apps/example-nextjs16/data/*
 apps/example-nextjs16/e2e/recordings/
 apps/example-nextjs16/data/todos.json
+apps/example-nextjs-edge/data/*
+apps/example-nextjs-edge/e2e/recordings/
 
 # example-auth-* apps: gitignored auth state, recordings, mock data, local env.
 apps/example-auth-*/data/
