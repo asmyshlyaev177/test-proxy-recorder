@@ -354,7 +354,10 @@ describe('detectNextjs', () => {
 
   it('assumes the current convention when the version is non-numeric', () => {
     writeNextPkg('latest');
-    expect(detectNextjs(dir)).toEqual({ major: null, useProxyConvention: true });
+    expect(detectNextjs(dir)).toEqual({
+      major: null,
+      useProxyConvention: true,
+    });
   });
 });
 

@@ -124,8 +124,6 @@ export function recordWebSocket(
 
   // Wait for backend connection before accepting client
   backendWs.on('open', () => {
-    console.log(`WebSocket recording: connected to backend ${backendWsUrl}`);
-
     // Remember the subprotocol the backend negotiated so replay can answer
     // with the same one
     if (backendWs.protocol) {
@@ -179,12 +177,10 @@ export function recordWebSocket(
       // Handle close
       clientWs.on('close', () => {
         backendWs.close();
-        console.log('Client WebSocket closed');
       });
 
       backendWs.on('close', () => {
         clientWs.close();
-        console.log('Backend WebSocket closed');
       });
     });
   });
@@ -269,8 +265,7 @@ class ReplayPlayer {
 
   /** Register socket handlers and serve any initial server messages. */
   start(): void {
-    this.ws.on('message', (data) => {
-      console.log(`Replay: Client sent: ${data.toString()}`);
+    this.ws.on('message', () => {
       this.onClientMessage();
     });
     this.ws.on('error', (err) => {
@@ -326,7 +321,6 @@ class ReplayPlayer {
       clearTimeout(timer);
     }
     this.timers.clear();
-    console.log('Replay WebSocket closed');
   }
 }
 
@@ -338,10 +332,8 @@ export function replayWebSocket(
   req: http.IncomingMessage,
   socket: Duplex,
   wsRecording: WebSocketRecording,
-  recordingId: string,
   config?: WebSocketReplayConfig,
 ): void {
-  const url = req.url || '/';
   const timing = config?.timing ?? 'burst';
 
   // Create WebSocket server for replay, answering with the recorded
@@ -365,9 +357,6 @@ export function replayWebSocket(
   });
 
   wss.handleUpgrade(fakeReq, socket, Buffer.alloc(0), (ws) => {
-    console.log(
-      `Replaying WebSocket: ${url} (session: ${recordingId}, timing: ${timing})`,
-    );
     new ReplayPlayer(ws, wsRecording.messages, timing).start();
   });
 }

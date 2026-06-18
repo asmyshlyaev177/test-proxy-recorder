@@ -767,7 +767,6 @@ export class ProxyServer {
         req,
         socket,
         wsRecording,
-        recordingId,
         sessionState.wsReplay ?? this.wsReplay,
       );
     } catch (error) {
