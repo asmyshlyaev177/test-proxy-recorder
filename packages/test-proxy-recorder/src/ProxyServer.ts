@@ -706,8 +706,11 @@ export class ProxyServer {
    * Resolve the recording ID for a WebSocket upgrade request.
    * Mirrors getRecordingIdOrError(): prefer the header/cookie from the request,
    * fall back to this.replayId only when there is at most one active session.
-   * Browsers cannot set custom headers on WebSocket handshakes from JS, but
-   * Playwright's setExtraHTTPHeaders / cookies still reach the upgrade request.
+   * On a browser WebSocket handshake the recording-id *header* does not arrive:
+   * page.route() can't intercept the upgrade, and setExtraHTTPHeaders does not
+   * propagate to it. The `proxy-recording-id` cookie (set on the proxy origin by
+   * playwrightProxy.before) does ride along, so for concurrent WS replay the
+   * cookie is the only channel that carries the session id.
    */
   private getWsRecordingId(req: http.IncomingMessage): string | null {
     const fromRequest = getRecordingIdFromRequest(req);

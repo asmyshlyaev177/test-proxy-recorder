@@ -11,3 +11,4 @@ export {
   getRecordingId,
   setNextProxyHeaders,
 } from './nextjs/middleware.js';
+export { registerProxyFetch } from './nextjs/registerProxyFetch.js';

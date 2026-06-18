@@ -100,6 +100,12 @@ jobs:
         # Actions steps.
         run: pnpm run example:test:e2e:ci
 
+      - name: Run edge-runtime e2e record and replay
+        # Edge-runtime SSR example. Same single-step rule: its test:e2e:ci script
+        # owns the whole stack and uses its own ports (3010/8110/3012), so it
+        # won't collide with the steps around it.
+        run: pnpm run example-edge:test:e2e:ci
+
       - name: Run auth-mock e2e record and replay
         # The authenticated example (setup-auth → transparent login, then
         # record/replay of protected requests with token + cookie redaction).
@@ -127,5 +133,6 @@ jobs:
           name: playwright-results
           path: |
             apps/example-nextjs16/test-results/
+            apps/example-nextjs-edge/test-results/
             apps/example-auth-mock/test-results/
             apps/example-auth-cognito/test-results/

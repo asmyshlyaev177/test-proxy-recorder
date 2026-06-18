@@ -54,16 +54,21 @@ skills:
     description: >
       Wire x-test-rcrd-id session header through Next.js so server-side fetches
       are recorded under the correct test session. Covers setNextProxyHeaders,
-      createHeadersWithRecordingId, getRecordingId, middleware.ts (Next.js 13–15),
+      createHeadersWithRecordingId, getRecordingId, registerProxyFetch (automatic
+      fetch tagging for the Edge runtime), middleware.ts (Next.js 13–15),
       proxy.ts (Next.js 16), React cache() memoization, and the axios SSR
-      interceptor pattern. Required for any Next.js app using SSR fetches.
+      interceptor pattern. Required for any Next.js app using SSR fetches,
+      including Edge-runtime routes.
     requires:
       - 'proxy-setup'
     sources:
       - 'asmyshlyaev177/test-proxy-recorder:README.md'
       - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/middleware.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/registerProxyFetch.ts'
       - 'asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-nextjs-edge'
     subsystems:
       - 'Next.js 13–15 (middleware.ts)'
       - 'Next.js 16 (proxy.ts)'
+      - 'Edge runtime (registerProxyFetch from root layout)'
     references: []

@@ -79,6 +79,7 @@ Full walkthrough — including the manual setup for full-stack (SSR) and browser
 Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps), each with its own README:
 
 - [Next.js 16](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — server-side (`.mock.json`) + browser (`.har`), with a WebSocket chat
+- [Next.js Edge runtime](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — SSR on the Edge runtime, with `registerProxyFetch` tagging server-side fetches so concurrent replay sessions stay distinct
 - [Chrome extension](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — browser-side (`.har`), replayed offline
 - [Crypto ticker](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-websocket) — third-party WebSocket feed, replayed deterministically
 - [Authenticated app](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — real AWS Cognito login, protected API replayed with no backend

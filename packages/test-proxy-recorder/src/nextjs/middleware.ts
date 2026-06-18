@@ -23,7 +23,7 @@ export interface NextJSResponse {
  *
  * @returns true if the recorder should be active, false otherwise
  */
-function isRecorderEnabled(): boolean {
+export function isRecorderEnabled(): boolean {
   const isProduction = process.env.NODE_ENV === 'production';
   const isExplicitlyEnabled =
     process.env.TEST_PROXY_RECORDER_ENABLED === 'true' ||

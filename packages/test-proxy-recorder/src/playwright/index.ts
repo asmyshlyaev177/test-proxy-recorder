@@ -413,10 +413,12 @@ export const playwrightProxy = {
       [RECORDING_ID_HEADER]: sessionId,
     });
 
-    // Also set the fallback cookie on the proxy origin. WebSocket handshakes
-    // initiated by the browser cannot be intercepted by page.route() and may
-    // not receive extra HTTP headers in all browsers, but they do send
-    // cookies — the proxy reads proxy-recording-id as a fallback.
+    // Also set the fallback cookie on the proxy origin. Browser WebSocket
+    // handshakes cannot be intercepted by page.route(), and setExtraHTTPHeaders
+    // does not propagate to the upgrade request (verified on Chromium), so the
+    // recording-id header never reaches the proxy for a WS connection. The
+    // handshake does send same-origin cookies, so the proxy reads
+    // proxy-recording-id as the session id for concurrent WS replay.
     const fallbackProxyPort = getProxyPort();
     await page.context().addCookies([
       {
