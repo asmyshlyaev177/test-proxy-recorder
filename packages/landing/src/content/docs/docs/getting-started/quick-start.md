@@ -1,35 +1,49 @@
 ---
 title: Quick start
-description: Scaffold test-proxy-recorder into a project with a single init command, then record once and replay on CI.
+description: One init command scaffolds test-proxy-recorder — Next.js SSR middleware included. Point your API at the proxy, record once, replay on CI.
 ---
 
-Install:
+## 1. Scaffold
 
 ```bash
 npm install --save-dev test-proxy-recorder
-```
-
-## Fastest: scaffold with `init`
-
-One command wires test-proxy-recorder into a project:
-
-```bash
 npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recordings
 ```
 
-All arguments are optional and fall back to sensible defaults (`http://localhost:3000`, port `8100`, `./e2e/recordings`). It generates and edits files **non-destructively** — existing files and scripts are never overwritten unless you pass `--force`.
+This writes everything and overwrites nothing:
 
-### What `init` generates and edits
+```text
+test-proxy-recorder.config.ts
+playwright.config.ts
+proxy.ts                 # Next.js only — SSR middleware
+e2e/fixtures.ts          # record vs replay
+e2e/global-teardown.ts
+package.json             # + proxy / test:e2e scripts
+```
 
-- `test-proxy-recorder.config.ts` — the proxy config (auto-discovered, so `npx test-proxy-recorder` then needs no flags).
-- `playwright.config.ts` — adds a `webServer` pointing at the proxy's `/__control` endpoint plus a `globalTeardown`. An existing Playwright config is **edited in place**; if you don't have Playwright at all, `init` runs the Playwright CLI to set it up first (pass `--no-install` to skip).
-- `e2e/fixtures.ts` and `e2e/global-teardown.ts` — the per-test proxy fixture and teardown.
-- `package.json` — adds `proxy`, `proxy:reset`, `test:e2e`, and `test:e2e:record` scripts. If you have a `dev` script it's wrapped: the original moves to `dev:app` and `dev` becomes a `concurrently` command that runs the proxy alongside your app (so `npm run dev` records while you develop). `concurrently` is added to `devDependencies`.
+## 2. Point your app's API at the proxy
 
-A Playwright config that already defines a `webServer` is left untouched, with a note on what to add.
+The one thing `init` can't guess: which env var holds your API base URL. Point it at the proxy when the recorder is enabled, at the real backend otherwise — the proxy never runs in production:
 
-## The one manual step
+```ts
+const API_BASE =
+  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
+    ? 'https://api.example.com'
+    : 'http://localhost:8100'; // proxy address from `init`
+```
 
-The **one step `init` can't do for you** is routing your app's backend calls through the proxy — which env var holds your API base URL, and how you scope it to dev, is app-specific. `init` prints concrete instructions for this when it finishes: point that env var at `http://localhost:8100` **in dev/test only, never in production** (for example, prefix the `dev:app` script, using `cross-env` on Windows). The proxy then forwards to your real backend while recording and serves recordings on replay.
+## 3. Record once, replay forever
 
-Then write a test, record once against the real API, switch to replay, and commit `e2e/recordings/`. The [manual setup](/docs/getting-started/manual-setup/) shows that loop in full.
+```bash
+# fixtures.ts: MODE = 'record' — capture real responses
+npm run test:e2e:record
+
+# fixtures.ts: MODE = 'replay' — then commit the recordings
+git add e2e/recordings/ && git commit -m "add e2e recordings"
+```
+
+CI now replays with the backend off — same responses every time.
+
+---
+
+Wiring it up by hand, or want the details? See [manual setup](/docs/getting-started/manual-setup/) and [how it works](/docs/getting-started/how-it-works/).

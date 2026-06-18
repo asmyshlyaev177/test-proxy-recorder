@@ -15,13 +15,22 @@ description: Подключите test-proxy-recorder вручную в full-sta
 {
   "scripts": {
     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
-    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+    "dev:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run serve\""
   }
 }
 ```
 
-`INTERNAL_API_URL` — это переменная окружения, которую ваше приложение использует для базового URL API; направьте её на прокси вместо реального бэкенда. Замените её на ту переменную, что использует ваше приложение (например, `API_URL`, `NEXT_PUBLIC_API_URL`).
+В коде приложения направьте базовый URL API на прокси, когда recorder включён, и на реальный бэкенд в остальных случаях — прокси никогда не запускается в продакшене:
+
+```ts
+const API_BASE =
+  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
+    ? 'https://api.example.com'
+    : 'http://localhost:8100'; // адрес прокси
+```
+
+`TEST_PROXY_RECORDER_ENABLED` устанавливается скриптами `dev:proxy` / `serve:proxy` выше, а также скриптами, сгенерированными `init`. Используйте ту переменную окружения, которую ваше приложение уже использует для базового URL API — то же условие применяется.
 
 :::note[Next.js]
 Для записи и воспроизведения тестов предпочитайте `build` + `serve`, а не `dev`. Dev-сервер Next.js медленный и может приводить к таймаутам или нестабильным записям.

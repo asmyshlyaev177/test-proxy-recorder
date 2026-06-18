@@ -15,13 +15,22 @@ description: 为全栈（SSR + 浏览器）应用，或纯浏览器的 SPA / 扩
 {
   "scripts": {
     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
-    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+    "dev:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run serve\""
   }
 }
 ```
 
-`INTERNAL_API_URL` 是你的应用用于 API 基础 URL 的环境变量 —— 把它指向代理而不是真实后端。请替换为你的应用实际使用的变量（例如 `API_URL`、`NEXT_PUBLIC_API_URL`）。
+在你的应用代码中，当 recorder 启用时将 API 基础 URL 指向代理，否则指向真实后端 —— 代理从不在生产环境中运行：
+
+```ts
+const API_BASE =
+  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
+    ? 'https://api.example.com'
+    : 'http://localhost:8100'; // 代理地址
+```
+
+`TEST_PROXY_RECORDER_ENABLED` 由上面的 `dev:proxy` / `serve:proxy` 脚本以及 `init` 生成的脚本设置。请使用你的应用已有的 API 基础 URL 环境变量 —— 同样的条件判断适用。
 
 :::note[Next.js]
 录制和回放测试时，相较 `dev` 更推荐 `build` + `serve`。Next.js 的开发服务器较慢，可能导致超时或不稳定的录制。

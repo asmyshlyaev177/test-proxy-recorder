@@ -6,11 +6,13 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import {
   CONFIG_FILENAME,
+  detectNextjs,
   type InitOptions,
   type InitResult,
   injectProxyIntoConfig,
   parseInitArgs,
   renderConfig,
+  renderNextMiddleware,
   runInit,
   type ScaffoldStatus,
 } from './init.js';
@@ -320,10 +322,102 @@ describe('runInit — package.json scripts', () => {
   });
 });
 
+/** Write a package.json declaring a `next` dependency at `range`. */
+const writeNextPkg = (range: string) =>
+  writeFileSync(
+    path.join(dir, 'package.json'),
+    JSON.stringify({ dependencies: { next: range } }, null, 2),
+  );
+
+describe('detectNextjs', () => {
+  it('returns null when there is no package.json', () => {
+    expect(detectNextjs(dir)).toBeNull();
+  });
+
+  it('returns null when the project does not depend on next', () => {
+    writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ dependencies: { react: '^19.0.0' } }),
+    );
+    expect(detectNextjs(dir)).toBeNull();
+  });
+
+  it('uses the proxy.ts convention for Next.js 16+', () => {
+    writeNextPkg('^16.2.4');
+    expect(detectNextjs(dir)).toEqual({ major: 16, useProxyConvention: true });
+  });
+
+  it('uses the middleware.ts convention for Next.js 15 and earlier', () => {
+    writeNextPkg('~15.0.0');
+    expect(detectNextjs(dir)).toEqual({ major: 15, useProxyConvention: false });
+  });
+
+  it('assumes the current convention when the version is non-numeric', () => {
+    writeNextPkg('latest');
+    expect(detectNextjs(dir)).toEqual({ major: null, useProxyConvention: true });
+  });
+});
+
+describe('renderNextMiddleware', () => {
+  it('exports proxy() for the proxy convention', () => {
+    const out = renderNextMiddleware({ major: 16, useProxyConvention: true });
+    expect(out).toContain('export function proxy(');
+    expect(out).toContain(
+      "import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs'",
+    );
+    expect(out).toContain('setNextProxyHeaders(request, response)');
+  });
+
+  it('exports middleware() for the middleware convention', () => {
+    const out = renderNextMiddleware({ major: 15, useProxyConvention: false });
+    expect(out).toContain('export function middleware(');
+  });
+});
+
+describe('runInit — Next.js middleware', () => {
+  it('scaffolds proxy.ts for a Next.js 16 project', () => {
+    writeNextPkg('^16.2.4');
+
+    const result = runInit(options(), dir);
+
+    expect(statusOf(result, 'proxy.ts')).toBe('created');
+    expect(read('proxy.ts')).toContain('export function proxy(');
+  });
+
+  it('scaffolds middleware.ts for a Next.js 15 project', () => {
+    writeNextPkg('^15.3.0');
+
+    const result = runInit(options(), dir);
+
+    expect(statusOf(result, 'middleware.ts')).toBe('created');
+    expect(read('middleware.ts')).toContain('export function middleware(');
+  });
+
+  it('does not scaffold middleware for a non-Next.js project', () => {
+    const result = runInit(options(), dir);
+
+    expect(
+      result.actions.some(
+        (a) => a.relPath === 'proxy.ts' || a.relPath === 'middleware.ts',
+      ),
+    ).toBe(false);
+  });
+
+  it('leaves an existing middleware file alone (skipped, not clobbered)', () => {
+    writeNextPkg('^16.2.4');
+    writeFileSync(path.join(dir, 'proxy.ts'), 'export const config = {};');
+
+    const result = runInit(options(), dir);
+
+    expect(statusOf(result, 'proxy.ts')).toBe('skipped');
+    expect(read('proxy.ts')).toBe('export const config = {};');
+  });
+});
+
 describe('parseInitArgs', () => {
   it('applies built-in defaults when no arguments are given', () => {
     expect(parseInitArgs([])).toEqual({
-      target: 'http://localhost:3000',
+      target: 'http://localhost:3002',
       port: 8100,
       dir: './e2e/recordings',
       force: false,

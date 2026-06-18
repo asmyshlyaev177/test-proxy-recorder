@@ -9,6 +9,8 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 The proxy records real API responses during a test run, then replays them on CI. Tests stay fast and deterministic, and you never maintain mock fixtures by hand.
 
+The footprint is small: one dev-dependency and a lightweight proxy that runs **alongside your app during the test run** — not a service you deploy or operate. You point your app's API base URL at it once; record against the real backend, then replay from disk on CI.
+
 ```text
                         Record mode                          Replay mode
 

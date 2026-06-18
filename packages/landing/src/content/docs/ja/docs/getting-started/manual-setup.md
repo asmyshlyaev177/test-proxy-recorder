@@ -15,13 +15,22 @@ Next.js や類似フレームワーク向けで、サーバーとブラウザの
 {
   "scripts": {
     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
-    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+    "dev:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run serve\""
   }
 }
 ```
 
-`INTERNAL_API_URL` はアプリが API のベース URL に使う環境変数です — 実際のバックエンドの代わりにプロキシへ向けてください。アプリが使う変数（例: `API_URL`、`NEXT_PUBLIC_API_URL`）に置き換えてください。
+アプリのコードでは、recorder が有効な場合はプロキシへ、そうでない場合は実際のバックエンドへ API のベース URL を向けてください — プロキシは本番では実行されません：
+
+```ts
+const API_BASE =
+  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
+    ? 'https://api.example.com'
+    : 'http://localhost:8100'; // プロキシのアドレス
+```
+
+`TEST_PROXY_RECORDER_ENABLED` は上記の `dev:proxy` / `serve:proxy` スクリプト、および `init` が生成したスクリプトによって設定されます。アプリが API のベース URL に既に使用している環境変数を使ってください — 同じ条件分岐が適用されます。
 
 :::note[Next.js]
 テストの記録・再生には `dev` より `build` + `serve` を推奨します。Next.js の開発サーバーは遅く、タイムアウトや不安定な記録を引き起こすことがあります。

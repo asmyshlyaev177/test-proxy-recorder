@@ -3,11 +3,13 @@ title: Manual setup
 description: Wire test-proxy-recorder into a full-stack (SSR + browser) app or a browser-only SPA or extension by hand, then record once and replay on CI.
 ---
 
-Prefer one command? See the [quick start](/docs/getting-started/quick-start/). The setups below show the full record → replay loop by hand.
+Most people should run [`init`](/docs/getting-started/quick-start/) — it writes every file below for you. This page is the reference for what `init` generates, so you can wire it up by hand, drop codegen, or understand each piece.
 
 ## Full-stack (SSR + browser)
 
 For Next.js and similar frameworks, where both the server and the browser make API calls. Use both recording mechanisms together — see [how it works](/docs/getting-started/how-it-works/).
+
+The proxy is a lightweight process you start **alongside your app for the test run** (via a script, as below, or Playwright's `webServer`) — it's not infrastructure you deploy or maintain. The whole setup is: start it next to your app, point your app's API base URL at it, propagate the session header from SSR, and write one fixture.
 
 ### 1. Add scripts to `package.json`
 
@@ -15,19 +17,51 @@ For Next.js and similar frameworks, where both the server and the browser make A
 {
   "scripts": {
     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
-    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+    "dev:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run serve\""
   }
 }
 ```
 
-`INTERNAL_API_URL` is the env var your app uses for the API base URL — point it at the proxy instead of the real backend. Replace it with whatever env var your app uses (for example `API_URL`, `NEXT_PUBLIC_API_URL`).
+In your app code, point the API base URL at the proxy when the recorder is enabled, at the real backend otherwise — the proxy never runs in production:
+
+```ts
+const API_BASE =
+  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
+    ? 'https://api.example.com'
+    : 'http://localhost:8100'; // proxy address
+```
+
+`TEST_PROXY_RECORDER_ENABLED` is set by the `dev:proxy` / `serve:proxy` scripts above, and by `init`'s generated scripts. Use whatever env var your app already uses for the API base URL (for example `API_URL`, `NEXT_PUBLIC_API_URL`) — the same conditional applies.
 
 :::note[Next.js]
 Prefer `build` + `serve` over `dev` for recording and replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
 :::
 
-### 2. Write a test
+### 2. Propagate the SSR session header (Next.js)
+
+Server-side `fetch` calls need the recording-session header forwarded so the proxy knows which test they belong to. Add a middleware — `proxy.ts` on Next.js 16+, `middleware.ts` on 15 and earlier (`init` writes this for you):
+
+```typescript
+// proxy.ts  (Next.js 16 middleware convention)
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
+
+export function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+  setNextProxyHeaders(request, response); // no-op in production
+  return response;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
+```
+
+See the [Next.js integration](/docs/integrations/nextjs/) for the Edge runtime and manual header forwarding. Browser-only apps can skip this step.
+
+### 3. Write a test
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -50,7 +84,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 3. Record
+### 4. Record
 
 ```bash
 # Terminal 1
@@ -60,7 +94,7 @@ npm run serve:proxy
 npx playwright test
 ```
 
-### 4. Switch to replay and commit
+### 5. Switch to replay and commit
 
 ```bash
 git add e2e/recordings/
