@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.1.0...v1.1.1) (2026-06-18)
+
+
+### Documentation
+
+* more concise docs ([f12a04a](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/f12a04a5f1c01cc99cd114aa3101f6ea61d00ae4))
+* more concise docs ([e16b498](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/e16b498dc59391716917bd80919ff2ddbb8e0b13))
+
 ## [1.1.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.0.3...v1.1.0) (2026-06-18)
 
 
