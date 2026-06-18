@@ -7,6 +7,10 @@ SSR frameworks like Next.js make server-side `fetch` calls that go through the p
 
 For SSR requests to carry this header, use one of the following.
 
+:::tip
+[`test-proxy-recorder init`](/docs/getting-started/quick-start/) detects Next.js and scaffolds the middleware below automatically — `proxy.ts` on 16+, `middleware.ts` on 15 and earlier. This page is for wiring it up by hand or for the Edge runtime.
+:::
+
 ## Middleware (recommended)
 
 Next.js 16 uses `proxy.ts` as the middleware entry point (with the exported function named `proxy`). Place it at the project root alongside `next.config.ts`:

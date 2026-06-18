@@ -15,13 +15,22 @@ Para Next.js y frameworks similares, donde tanto el servidor como el navegador h
 {
   "scripts": {
     "proxy": "test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings",
-    "dev:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run dev\"",
-    "serve:proxy": "concurrently \"npm run proxy\" \"INTERNAL_API_URL=http://localhost:8100 npm run serve\""
+    "dev:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run dev\"",
+    "serve:proxy": "concurrently \"npm run proxy\" \"TEST_PROXY_RECORDER_ENABLED=1 npm run serve\""
   }
 }
 ```
 
-`INTERNAL_API_URL` es la variable de entorno que tu app usa para la URL base de la API — apúntala al proxy en lugar de al backend real. Reemplázala por la variable que use tu app (por ejemplo `API_URL`, `NEXT_PUBLIC_API_URL`).
+En el código de tu app, apunta la URL base de la API al proxy cuando el recorder está activado, y al backend real en caso contrario — el proxy nunca se ejecuta en producción:
+
+```ts
+const API_BASE =
+  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
+    ? 'https://api.example.com'
+    : 'http://localhost:8100'; // dirección del proxy
+```
+
+`TEST_PROXY_RECORDER_ENABLED` lo establecen los scripts `dev:proxy` / `serve:proxy` de arriba, y los scripts generados por `init`. Usa la variable de entorno que tu app ya use para la URL base de la API — la misma condicional aplica.
 
 :::note[Next.js]
 Prefiere `build` + `serve` antes que `dev` para grabar y reproducir pruebas. El servidor de desarrollo de Next.js es lento y puede provocar timeouts o grabaciones inestables.

@@ -3,8 +3,9 @@
 import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-// The external API(s) your browser talks to.
-const CLIENT_SIDE_URL = /api\.example\.com/;
+// Full-stack: the browser also talks to the proxy, so match its URL.
+// (Browser-only app? Match your real API domain instead, e.g. /api\.example\.com/.)
+const CLIENT_SIDE_URL = /localhost:8100/;
 
 // 'record' hits the real API and saves responses.
 // 'replay' serves them from disk — no network needed.
@@ -15,7 +16,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 });
 
 test('homepage loads', async ({ page }) => {
-  await page.goto('https://myapp.com/');
+  await page.goto('/');
   await expect(page.getByText('Welcome')).toBeVisible();
 });
 ```

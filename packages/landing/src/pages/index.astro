@@ -5,7 +5,8 @@
 // these blocks prerender to static HTML and work under the Cloudflare workerd
 // prerender (where a render-time highlighter does not).
 import { Content as InstallSnippet } from '../snippets/install.md';
-import { Content as ConfigSnippet } from '../snippets/config.md';
+import { Content as ApiEnvSnippet } from '../snippets/api-env.md';
+import { Content as MiddlewareSnippet } from '../snippets/middleware.md';
 import { Content as FixtureSnippet } from '../snippets/fixture.md';
 import { Content as RecordSnippet } from '../snippets/record.md';
 import { Content as AuthSetupSnippet } from '../snippets/auth-setup.md';
@@ -50,8 +51,8 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
         <p class="hero-eyebrow">VCR for Playwright</p>
         <h1>Record once.<br />Replay forever.</h1>
         <p class="hero-sub">
-          test-proxy-recorder captures real API responses while your Playwright suite runs
-          locally, then replays them byte-for-byte on CI. No backend, no network, no
+          Captures real API responses while your Playwright suite runs locally,
+          then replays them byte-for-byte on CI. No backend, no network, no
           hand-written mocks to maintain.
         </p>
         <div class="hero-actions">
@@ -99,46 +100,14 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
     </div>
   </section>
 
-  <!-- ============================================================= why -->
-  <section class="why">
-    <div class="container why-grid">
-      <div class="why-copy">
-        <h2>CI shouldn't depend on a live backend</h2>
-        <p>
-          Every flaky e2e run has the same root cause: the network. Hand-written mocks rot
-          the moment the API changes, and spinning up a real backend on CI is slow,
-          stateful, and expensive. Recording real traffic once — and replaying it
-          deterministically — removes the whole failure class.
-        </p>
-      </div>
-      <dl class="why-list">
-        <div class="why-item">
-          <dt>No backend on CI</dt>
-          <dd>Record once against the real API, replay on every run after that.</dd>
-        </div>
-        <div class="why-item">
-          <dt>No manual mocks</dt>
-          <dd>Capture real interactions instead of hand-writing fixtures that drift.</dd>
-        </div>
-        <div class="why-item">
-          <dt>SSR and browser-side</dt>
-          <dd>Records server-side fetches (Next.js&nbsp;SSR) and browser requests alike.</dd>
-        </div>
-        <div class="why-item">
-          <dt>Deterministic replays</dt>
-          <dd>Same responses every time — including WebSocket connections.</dd>
-        </div>
-      </dl>
-    </div>
-  </section>
-
-  <!-- ====================================================== mechanisms -->
+  <!-- ======================================================= mechanisms -->
   <section class="mechanisms">
     <div class="container">
       <h2>Two recorders, one proxy</h2>
       <p class="section-sub">
-        Requests originate in two places, so there are two recording mechanisms. Use either
-        one — or both together.
+        Requests originate in two places, so there are two recording mechanisms.
+        Use either — or both together. Both record once and replay from disk, so
+        CI runs with the backend off and no hand-written mocks.
       </p>
       <div class="mech-grid">
         <article class="mech">
@@ -148,8 +117,8 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           </header>
           <p class="mech-flow">Next.js SSR → proxy → real API</p>
           <p>
-            Sits between your server and the API. Records server-side requests — SSR
-            fetches, route handlers, anything your backend-for-frontend calls.
+            Sits between your server and the API. Records server-side requests —
+            SSR fetches, route handlers, anything your backend-for-frontend calls.
           </p>
           <p class="mech-when">For full-stack apps where the server calls the API.</p>
           <a class="mech-example" href={`${repo}/tree/master/apps/example-nextjs16`}>
@@ -163,8 +132,8 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           </header>
           <p class="mech-flow">browser → HAR intercept → real API</p>
           <p>
-            Intercepts in the browser itself. Records client-side <code>fetch</code> calls,
-            Chrome extension API traffic, analytics, third-party APIs.
+            Intercepts in the browser itself. Records client-side <code>fetch</code>
+            calls, Chrome extension API traffic, analytics, third-party APIs.
           </p>
           <p class="mech-when">For SPAs, extensions, and browser-only apps.</p>
           <a class="mech-example" href={`${repo}/tree/master/apps/example-extension`}>
@@ -172,11 +141,6 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           </a>
         </article>
       </div>
-      <p class="mech-aside">
-        Technically, that makes it a <strong>man-in-the-middle</strong>. Don't worry — this
-        one works for you: it intercepts your API traffic, takes meticulous notes, and the
-        only thing it ever steals is the flakiness.
-      </p>
     </div>
   </section>
 
@@ -233,35 +197,11 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
       </div>
 
       <p class="compare-foot">
-        <span class="mark mark-p" aria-hidden="true">~</span> Polly.js intercepts Node HTTP,
-        so SSR mocking is possible inside the app process, but not as part of a Playwright
-        run. MSW and Mocky Balboa replay real responses too — but you hand-write the mocks
-        rather than recording them.
+        <span class="mark mark-p" aria-hidden="true">~</span> Polly.js intercepts Node HTTP, so
+        SSR mocking is possible inside the app process, but not as part of a Playwright run.
+        MSW and Mocky Balboa replay real responses too — but you hand-write the mocks.
+        When to reach for something else is covered in the <a href="/docs/#comparison">docs</a>.
       </p>
-
-      <div class="compare-when">
-        <h3>When to reach for something else</h3>
-        <ul>
-          <li>
-            <strong>All your traffic is browser-side.</strong> Playwright's built-in
-            <code>routeFromHAR</code> is zero-dependency — start there, add this when SSR
-            shows up.
-          </li>
-          <li>
-            <strong>You want to hand-craft responses or force error and edge cases.</strong>
-            MSW's authored handlers and large ecosystem fit that better, and work far
-            beyond Playwright.
-          </li>
-          <li>
-            <strong>Lightweight browser-only caching, no SSR.</strong>
-            <code>playwright-network-cache</code> does just that with less to set up.
-          </li>
-        </ul>
-        <p class="compare-credit">
-          Polly.js walked so this could run — it's the inspiration, now effectively
-          unmaintained.
-        </p>
-      </div>
     </div>
   </section>
 
@@ -271,8 +211,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
       <h2>Works with your real auth provider</h2>
       <p class="section-sub">
         Log in through Cognito, Auth0, Clerk, or WorkOS — for real, on every run.
-        Only your app's API is recorded, so CI replays it with the backend off.
-        Your auth stays live; your data goes offline.
+        Only your app's API is recorded; auth stays live, your data goes offline.
       </p>
       <div class="auth-code">
         <AuthSetupSnippet />
@@ -287,39 +226,45 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
   <!-- ====================================================== quick start -->
   <section class="quick-start" id="quick-start">
     <div class="container qs-inner">
-      <h2>Deterministic in four steps</h2>
+      <h2>Set up in three steps</h2>
       <p class="section-sub">
-        The browser-only setup, exactly as it ships. Full-stack (SSR) setup is in the
-        <a href={`${repo}#full-stack-ssr--browser-quick-start`}>README</a>.
+        Scaffold everything with one command, point your API at the proxy, then
+        record and commit. Browser-only app? <code>init</code> skips the SSR
+        middleware for you.
       </p>
 
       <ol class="steps">
         <li class="step">
-          <h3>Install</h3>
+          <h3>Install &amp; scaffold</h3>
+          <p class="step-note">
+            <code>init</code> writes the proxy config, a Playwright fixture, a
+            global teardown, <code>package.json</code> scripts, and (on Next.js)
+            the SSR middleware — non-destructively.
+          </p>
           <InstallSnippet />
         </li>
         <li class="step">
-          <h3>Add the proxy to <code>playwright.config.ts</code></h3>
+          <h3>Point your app's API at the proxy</h3>
           <p class="step-note">
-            The proxy process provides session management via its <code>/__control</code>
-            endpoint; for browser-only recording the target URL is never hit.
+            The one thing <code>init</code> can't guess: which env var holds your
+            API base URL. Point it at the proxy when the recorder is enabled, at
+            the real backend otherwise — the proxy never runs in production.
           </p>
-          <ConfigSnippet />
-        </li>
-        <li class="step">
-          <h3>Wire it into your tests</h3>
+          <ApiEnvSnippet />
           <p class="step-note">
-            One <code>beforeEach</code> covers the whole file: match the external API
-            domain, pick <code>record</code> or <code>replay</code>.
+            On Next.js, <code>init</code> also writes the SSR middleware that tags
+            server-side <code>fetch</code> calls — a no-op in production:
           </p>
-          <FixtureSnippet />
+          <MiddlewareSnippet />
         </li>
         <li class="step">
           <h3>Record, commit, replay</h3>
           <p class="step-note">
-            Recordings live in git — that's what makes CI deterministic. Don't gitignore
-            them.
+            Set <code>MODE = 'record'</code>, run once against the real API, then
+            flip to <code>'replay'</code> and commit. Recordings live in git —
+            that's what makes CI deterministic. Don't gitignore them.
           </p>
+          <FixtureSnippet />
           <RecordSnippet />
         </li>
       </ol>
@@ -465,51 +410,8 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
     font-size: 0.85rem;
   }
 
-  .compare-when {
-    margin-top: 2.6rem;
-  }
-
-  .compare-when h3 {
-    font-size: 1.05rem;
-  }
-
-  .compare-when ul {
-    margin-top: 1rem;
-    display: grid;
-    gap: 0.8rem;
-    padding: 0;
-    list-style: none;
-    max-width: 72ch;
-  }
-
-  .compare-when li {
-    color: var(--muted);
-    padding-left: 1.1rem;
-    position: relative;
-  }
-
-  .compare-when li::before {
-    content: '→';
-    position: absolute;
-    left: 0;
-    color: var(--primary);
-  }
-
-  .compare-when li strong {
-    color: var(--ink);
-    font-weight: 600;
-  }
-
-  .compare-when code {
-    font-family: var(--font-mono);
-    font-size: 0.85em;
-  }
-
-  .compare-credit {
-    margin-top: 1.4rem;
-    color: var(--muted);
-    font-size: 0.85rem;
-    font-style: italic;
+  .compare-foot a {
+    color: var(--link);
   }
 
   /* ---------------------------------------------------------- real auth */
@@ -653,54 +555,6 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
     aspect-ratio: 16 / 9;
   }
 
-  /* -------------------------------------------------------------- why */
-
-  .why {
-    background: var(--surface);
-    border-block: 1px solid var(--line);
-  }
-
-  .why-grid {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
-    gap: clamp(2rem, 5vw, 5rem);
-    align-items: start;
-  }
-
-  .why-copy p {
-    margin-top: 1.1rem;
-    color: var(--muted);
-  }
-
-  .why-list {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1.9rem 2.25rem;
-    margin-top: 0.45rem;
-  }
-
-  .why-item dt {
-    font-weight: 700;
-    letter-spacing: -0.01em;
-  }
-
-  .why-item dt::before {
-    content: '✓';
-    color: var(--primary);
-    font-weight: 700;
-    margin-right: 0.5rem;
-  }
-
-  :global([data-theme='dark']) .why-item dt::before {
-    color: var(--link);
-  }
-
-  .why-item dd {
-    margin-top: 0.35rem;
-    font-size: var(--step--1);
-    color: var(--muted);
-  }
-
   /* ------------------------------------------------------- mechanisms */
 
   .mech-grid {
@@ -769,17 +623,6 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
 
   :global([data-theme='dark']) .mech-example {
     color: var(--link);
-  }
-
-  .mech-aside {
-    margin-top: 1.6rem;
-    font-size: var(--step--1);
-    color: var(--muted);
-    max-width: 62ch;
-  }
-
-  .mech-aside strong {
-    color: var(--ink);
   }
 
   /* ------------------------------------------------------- quick start */
@@ -892,25 +735,16 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
   /* ------------------------------------------------------- responsive */
 
   @media (max-width: 880px) {
-    .hero-grid,
-    .why-grid {
+    .hero-grid {
       grid-template-columns: 1fr;
     }
 
     .hero-sub {
       max-width: 52ch;
     }
-
-    .why-list {
-      gap: 1.5rem 1.75rem;
-    }
   }
 
   @media (max-width: 560px) {
-    .why-list {
-      grid-template-columns: 1fr;
-    }
-
     .step :global(.astro-code) {
       font-size: 0.78rem;
     }
