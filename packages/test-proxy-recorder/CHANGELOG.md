@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.1.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.0.3...v1.1.0) (2026-06-18)
+
+
+### Features
+
+* nextjs edge runtime example/tests ([d3cc134](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/d3cc134219d2878ec6c72adbc439fa486d98946b))
+* nextjs edge runtime example/tests ([9c83b62](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/9c83b62f689667964edd9d9c2517e8507bba9649))
+
 ## [1.0.3](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.0.2...v1.0.3) (2026-06-18)
 
 
