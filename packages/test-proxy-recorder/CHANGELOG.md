@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.2.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.1.1...v1.2.0) (2026-06-19)
+
+
+### Features
+
+* fetch/axios patching flow and AI setup ([c107ec8](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/c107ec847f465da047d74e223be81e621d65834f))
+* fetch/axios pathcing flow and AI setup ([dbe7852](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/dbe7852a2506cebfa3e46e59bf394bbdf202ec92))
+
+
+### Bug Fixes
+
+* fix axios types ([b64a4dc](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/b64a4dce7fc213b05c8539fac698fed7d2f83da0))
+* init dymanic import fix ([60c0ad5](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/60c0ad5526c2f22e07a4b9fc4a9002f40dd35535))
+
 ## [1.1.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.1.0...v1.1.1) (2026-06-18)
 
 
