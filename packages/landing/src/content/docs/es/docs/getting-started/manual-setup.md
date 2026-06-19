@@ -3,11 +3,13 @@ title: Configuración manual
 description: Integra test-proxy-recorder a mano en una app full-stack (SSR + navegador) o en una SPA o extensión solo de navegador, luego graba una vez y reproduce en CI.
 ---
 
-¿Prefieres un solo comando? Mira el [inicio rápido](/es/docs/getting-started/quick-start/). Las configuraciones de abajo muestran el ciclo completo grabar → reproducir a mano.
+La mayoría debería ejecutar [`init`](/es/docs/getting-started/quick-start/) — escribe por ti todos los archivos de abajo. Esta página es la referencia de lo que `init` genera, para que puedas cablearlo a mano, omitir el codegen o entender cada pieza.
 
 ## Full-stack (SSR + navegador)
 
 Para Next.js y frameworks similares, donde tanto el servidor como el navegador hacen llamadas a la API. Usa ambos mecanismos de grabación juntos — mira [cómo funciona](/es/docs/getting-started/how-it-works/).
+
+El proxy es un proceso ligero que arrancas **junto a tu app para la ejecución de la prueba** (vía un script, como abajo, o el `webServer` de Playwright) — no es infraestructura que despliegas o mantienes. El setup completo es: arráncalo junto a tu app, apunta la URL base de la API de tu app hacia él, propaga la cabecera de sesión desde SSR y escribe un fixture.
 
 ### 1. Añade scripts a `package.json`
 
@@ -30,13 +32,34 @@ const API_BASE =
     : 'http://localhost:8100'; // dirección del proxy
 ```
 
-`TEST_PROXY_RECORDER_ENABLED` lo establecen los scripts `dev:proxy` / `serve:proxy` de arriba, y los scripts generados por `init`. Usa la variable de entorno que tu app ya use para la URL base de la API — la misma condicional aplica.
+`TEST_PROXY_RECORDER_ENABLED` lo establecen los scripts `dev:proxy` / `serve:proxy` de arriba, y los scripts generados por `init`. Usa la variable de entorno que tu app ya use para la URL base de la API (por ejemplo `API_URL`, `NEXT_PUBLIC_API_URL`) — la misma condicional aplica.
 
 :::note[Next.js]
 Prefiere `build` + `serve` antes que `dev` para grabar y reproducir pruebas. El servidor de desarrollo de Next.js es lento y puede provocar timeouts o grabaciones inestables.
 :::
 
-### 2. Escribe una prueba
+### 2. Etiqueta los fetch del lado del servidor (Next.js)
+
+Las llamadas `fetch` del lado del servidor necesitan la cabecera de sesión de grabación para que el proxy sepa a qué prueba pertenecen. Playwright ya la establece en la navegación del navegador, así que el id está en `next/headers` — solo tienes que adjuntarlo a las peticiones SSR salientes. Añade una línea a tu root layout (`init` hace esto por ti):
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // no-op en producción salvo TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+Esto funciona en los runtimes Node **y** Edge. Para apps con axios, llama a `registerProxyAxios(instance)` en cada instancia del lado del servidor; para un único fetch, `createHeadersWithRecordingId(await headers())` es una alternativa sin parchear. Un `proxy.ts`/`middleware.ts` con `setNextProxyHeaders` es **opcional** — solo expone el id, no etiqueta los fetch. **Graba contra un build de producción** (`next build && next start`), no `next dev`. Mira la [integración de Next.js](/es/docs/integrations/nextjs/) para más detalles. Las apps solo de navegador pueden saltarse este paso.
+
+### 3. Escribe una prueba
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -59,7 +82,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 3. Graba
+### 4. Graba
 
 ```bash
 # Terminal 1
@@ -69,7 +92,7 @@ npm run serve:proxy
 npx playwright test
 ```
 
-### 4. Cambia a reproducción y haz commit
+### 5. Cambia a reproducción y haz commit
 
 ```bash
 git add e2e/recordings/

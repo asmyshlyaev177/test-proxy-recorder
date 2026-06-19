@@ -3,11 +3,13 @@ title: Ручная настройка
 description: Подключите test-proxy-recorder вручную в full-stack (SSR + браузер) приложение или в SPA/расширение только для браузера, затем запишите один раз и воспроизводите в CI.
 ---
 
-Предпочитаете одну команду? См. [быстрый старт](/ru/docs/getting-started/quick-start/). Настройки ниже показывают полный цикл запись → воспроизведение вручную.
+Большинство людей должно запустить [`init`](/ru/docs/getting-started/quick-start/) — он записывает все файлы ниже за вас. Эта страница — справочник того, что генерирует `init`, чтобы вы могли подключить всё вручную, убрать codegen или понимать каждую часть.
 
 ## Full-stack (SSR + браузер)
 
 Для Next.js и аналогичных фреймворков, где и сервер, и браузер делают вызовы API. Используйте оба механизма записи вместе — см. [как это работает](/ru/docs/getting-started/how-it-works/).
+
+Прокси — это лёгкий процесс, который вы запускаете **вместе с вашим приложением для тест-прогона** (через скрипт, как ниже, или через `webServer` Playwright) — это не инфраструктура, которую вы деплоите или поддерживаете. Весь сетап: запустите его рядом с приложением, направьте базовый URL API вашего приложения на него, пробросьте заголовок сессии из SSR и напишите одну фикстуру.
 
 ### 1. Добавьте скрипты в `package.json`
 
@@ -30,13 +32,34 @@ const API_BASE =
     : 'http://localhost:8100'; // адрес прокси
 ```
 
-`TEST_PROXY_RECORDER_ENABLED` устанавливается скриптами `dev:proxy` / `serve:proxy` выше, а также скриптами, сгенерированными `init`. Используйте ту переменную окружения, которую ваше приложение уже использует для базового URL API — то же условие применяется.
+`TEST_PROXY_RECORDER_ENABLED` устанавливается скриптами `dev:proxy` / `serve:proxy` выше, а также скриптами, сгенерированными `init`. Используйте ту переменную окружения, которую ваше приложение уже использует для базового URL API (например `API_URL`, `NEXT_PUBLIC_API_URL`) — то же условие применяется.
 
 :::note[Next.js]
-Для записи и воспроизведения тестов предпочитайте `build` + `serve`, а не `dev`. Dev-сервер Next.js медленный и может приводить к таймаутам или нестабильным записям.
+Предпочитайте `build` + `serve`, а не `dev` для записи и воспроизведения тестов. Dev-сервер Next.js медленный и может приводить к таймаутам или нестабильным записям.
 :::
 
-### 2. Напишите тест
+### 2. Тегируйте серверные fetch (Next.js)
+
+Серверные вызовы `fetch` нуждаются в заголовке recording-session, чтобы прокси знал, какому тесту они принадлежат. Playwright уже устанавливает его на навигацию браузера, поэтому id находится в `next/headers` — вам нужно лишь прикрепить его к исходящим SSR-запросам. Добавьте одну строку в ваш root layout (`init` делает это за вас):
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+Это работает на Node **и** Edge-runtime. Для axios-приложений вызовите `registerProxyAxios(instance)` на каждом серверном инстансе; для одиночного fetch `createHeadersWithRecordingId(await headers())` — альтернатива без патча. `proxy.ts`/`middleware.ts` с `setNextProxyHeaders` **опциональны** — они только расскрывают id, они не тегируют fetch. **Записывайте против продакшен-сборки** (`next build && next start`), не `next dev`. См. [интеграцию Next.js](/ru/docs/integrations/nextjs/) для подробностей. Приложения только для браузера могут пропустить этот шаг.
+
+### 3. Напишите тест
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -59,7 +82,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 3. Запишите
+### 4. Запишите
 
 ```bash
 # Terminal 1
@@ -69,7 +92,7 @@ npm run serve:proxy
 npx playwright test
 ```
 
-### 4. Переключитесь на воспроизведение и закоммитьте
+### 5. Переключитесь на воспроизведение и закоммитьте
 
 ```bash
 git add e2e/recordings/
