@@ -436,4 +436,5 @@ external domains), `teardown()` per-test breaking parallel replay, `webServer.ur
 not on `/__control`, gitignored recordings, and recording against the Next.js dev
 server or with multiple workers.
 
-See also: test-proxy-recorder/nextjs-ssr — for Next.js SSR header propagation
+See also: test-proxy-recorder/nextjs-ssr — for tagging Next.js SSR fetches
+(registerProxyFetch / registerProxyAxios; the middleware is optional)

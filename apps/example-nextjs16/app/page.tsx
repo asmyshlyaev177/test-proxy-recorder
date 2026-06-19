@@ -1,5 +1,10 @@
 import TodoApp, { type Todo } from './components/TodoApp';
 
+// Render on the server per request so the SSR fetch below runs in a real request
+// scope — that's where registerProxyFetch() (app/layout.tsx) can read the test's
+// recording-session id off the incoming request and tag the outgoing fetch.
+export const dynamic = 'force-dynamic';
+
 // NOTE: BACKEND_URL controls where SSR fetches go.
 // Dev/test: point to the proxy (http://localhost:8100) so SSR requests are also recorded.
 // Production: point to the real backend URL directly.

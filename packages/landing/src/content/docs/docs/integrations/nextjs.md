@@ -1,55 +1,46 @@
 ---
 title: Next.js
-description: Propagate the recording-session header from Next.js server-side fetches — via middleware (recommended) or manual header forwarding — so SSR requests are recorded and replayed.
+description: Tag Next.js server-side fetches with the recording-session header so SSR is recorded and replayed — via registerProxyFetch (recommended, any runtime), registerProxyAxios for axios, or createHeadersWithRecordingId per call. The middleware is optional.
 ---
 
-SSR frameworks like Next.js make server-side `fetch` calls that go through the proxy without a browser context. The proxy identifies which session those requests belong to via the `x-test-rcrd-id` header — the same header `playwrightProxy.before()` sets on the browser `page`. This header is **only required for SSR** — for browser-only tests the proxy falls back to the globally set session automatically.
-
-For SSR requests to carry this header, use one of the following.
+SSR frameworks like Next.js make server-side `fetch` calls that go through the proxy without a browser context. The proxy identifies which session those requests belong to via the `x-test-rcrd-id` header. Playwright's `playwrightProxy.before()` already sets it on the browser navigation that triggers SSR, so the id is available in `next/headers` — the job is to **attach it to outgoing server-side requests**. (Browser-only tests need none of this; the proxy falls back to the globally set session.)
 
 :::tip
-[`test-proxy-recorder init`](/docs/getting-started/quick-start/) detects Next.js and scaffolds the middleware below automatically — `proxy.ts` on 16+, `middleware.ts` on 15 and earlier. This page is for wiring it up by hand or for the Edge runtime.
+[`test-proxy-recorder init`](/docs/getting-started/quick-start/) detects Next.js and wires the recommended approach below into your root layout automatically.
 :::
 
-## Middleware (recommended)
-
-Next.js 16 uses `proxy.ts` as the middleware entry point (with the exported function named `proxy`). Place it at the project root alongside `next.config.ts`:
-
-```typescript
-// proxy.ts  (Next.js 16 middleware convention)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
-
-export function proxy(request: NextRequest) {
-  const response = NextResponse.next();
-  setNextProxyHeaders(request, response); // no-op in production
-  return response;
-}
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-};
-```
-
-:::note[Next.js 15 and earlier]
-The entry point is `middleware.ts` with the function named `middleware` — everything else is identical:
-
-```typescript
-// middleware.ts
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
-
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  setNextProxyHeaders(request, response); // no-op in production
-  return response;
-}
-```
+:::caution[Record against a production build]
+Record with `next build && next start`, not `next dev`. The dev server can reset the global `fetch` patch between requests ([vercel/next.js#47596](https://github.com/vercel/next.js/issues/47596)), and is slower/flakier. Since `next start` runs in production mode, set `TEST_PROXY_RECORDER_ENABLED=true` on the app process for your e2e run.
 :::
 
-## Manual header forwarding
+## registerProxyFetch (recommended)
+
+One line in your **root layout** tags every server-side `fetch` — Server Components, Route Handlers, on the Node **and** Edge runtimes:
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
+```
+
+It patches the global `fetch` to copy the current request's `x-test-rcrd-id` onto outgoing requests, so the proxy can tell concurrent replay sessions apart. Call it from the root layout — **not** `instrumentation.ts`, whose context differs from the one rendering your routes on the Edge runtime, so a patch there silently never fires.
+
+## axios — registerProxyAxios
+
+If your server-side requests go through axios, register each server-side instance once:
+
+```typescript
+import { registerProxyAxios } from 'test-proxy-recorder/nextjs';
+
+registerProxyAxios(axiosForServer);
+```
+
+It adds a request interceptor that stamps the id (never touching global `fetch`), so it's immune to the dev-server caveat above. No-op in production / in the browser; idempotent per instance; never overwrites a caller-set id.
+
+## Per-call — createHeadersWithRecordingId
+
+Patch-free, and works under `next dev` too. Use it for a single fetch, or when you'd rather not patch global `fetch`:
 
 ```typescript
 import { headers } from 'next/headers';
@@ -62,29 +53,28 @@ const res = await fetch('http://localhost:8100/api/data', {
 });
 ```
 
-See the [API reference](/docs/reference/api/readme/) for the full signatures of the `test-proxy-recorder/nextjs` helpers.
+## Middleware (optional)
 
-## Edge runtime
-
-Routes that opt into the Edge runtime (`export const runtime = 'edge'`) need one
-extra step. The middleware and manual-forwarding approaches above still work, but
-if you'd rather tag every server-side `fetch` automatically, call
-`registerProxyFetch()` at the top level of your **root layout**:
+A `proxy.ts` (Next.js 16+, exported `proxy`) or `middleware.ts` (15 and earlier, exported `middleware`) calling `setNextProxyHeaders` makes the id available via `next/headers`, but **does not tag outgoing fetches** — so it is not required when you use one of the helpers above. Reach for it only if you already own a middleware (auth, etc.), and still pair it with a helper to do the tagging:
 
 ```typescript
-// app/layout.tsx
-import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+// proxy.ts  (Next.js 16+)
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
 
-registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED is set
+export function proxy(request: NextRequest) {
+  const response = NextResponse.next();
+  setNextProxyHeaders(request, response); // exposes the id; pair with a helper above
+  return response;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
+};
 ```
 
-It patches the global `fetch` to copy the current request's `x-test-rcrd-id` onto
-outgoing requests, so the proxy can tell concurrent replay sessions apart. Call
-it from the root layout (not `instrumentation.ts`), and remember that `next
-start` runs in production mode — set `TEST_PROXY_RECORDER_ENABLED=true` for your
-e2e run.
-
-A complete, runnable project lives in the [Edge runtime example](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
+See the [API reference](/docs/reference/api/readme/) for the full signatures of the `test-proxy-recorder/nextjs` helpers. A complete, runnable Edge project lives in the [Edge runtime example](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
 
 ## package.json scripts
 

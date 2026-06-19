@@ -150,7 +150,10 @@ pnpm build && npx playwright test --workers 1 --ui
 ```
 
 The Next.js dev server is slow and can cause SSR fetches to timeout or execute
-out of order, producing incomplete recordings that fail in replay.
+out of order, producing incomplete recordings that fail in replay. It can also
+reset a `registerProxyFetch` global-`fetch` patch between requests
+([vercel/next.js#47596](https://github.com/vercel/next.js/issues/47596)), so SSR
+fetches lose the session id — another reason to record against build+start.
 
 Source: README.md — Full-stack Quick Start note; apps/example-nextjs16/package.json
 

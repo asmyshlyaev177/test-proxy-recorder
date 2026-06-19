@@ -24,8 +24,11 @@ test-proxy-recorder + Cognito integration is only these:
 | [e2e/dashboard.spec.ts](e2e/dashboard.spec.ts) | `playwrightProxy.before(...)` — one line that records/replays the protected calls. |
 | [test-proxy-recorder.config.ts](test-proxy-recorder.config.ts) + the `record`/`test:e2e` scripts | Point the proxy at your API; record vs. replay. |
 
-(And [proxy.ts](proxy.ts) — the Next.js middleware — but for plain Cognito it's just
-the recorder; a provider with its own middleware composes it there.)
+(No Next.js middleware needed here: the protected data is fetched **client-side**,
+so the browser request is recorded directly. Apps that fetch protected data
+**server-side** add `registerProxyFetch()` to the root layout — or
+`registerProxyAxios(instance)` for axios — to tag SSR requests; see the
+`nextjs-ssr` skill.)
 
 ## Map this example to your app
 

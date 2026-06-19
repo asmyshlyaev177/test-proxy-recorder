@@ -1,4 +1,10 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
@@ -10,9 +16,10 @@ import {
   type InitOptions,
   type InitResult,
   injectProxyIntoConfig,
+  injectRegisterProxyFetch,
   parseInitArgs,
+  renderAgentPrompt,
   renderConfig,
-  renderNextMiddleware,
   runInit,
   type ScaffoldStatus,
 } from './init.js';
@@ -342,78 +349,175 @@ describe('detectNextjs', () => {
     expect(detectNextjs(dir)).toBeNull();
   });
 
-  it('uses the proxy.ts convention for Next.js 16+', () => {
+  it('parses the major version for Next.js 16+', () => {
     writeNextPkg('^16.2.4');
-    expect(detectNextjs(dir)).toEqual({ major: 16, useProxyConvention: true });
+    expect(detectNextjs(dir)).toEqual({ major: 16 });
   });
 
-  it('uses the middleware.ts convention for Next.js 15 and earlier', () => {
+  it('parses the major version for Next.js 15 and earlier', () => {
     writeNextPkg('~15.0.0');
-    expect(detectNextjs(dir)).toEqual({ major: 15, useProxyConvention: false });
+    expect(detectNextjs(dir)).toEqual({ major: 15 });
   });
 
-  it('assumes the current convention when the version is non-numeric', () => {
+  it('returns a null major when the version is non-numeric', () => {
     writeNextPkg('latest');
-    expect(detectNextjs(dir)).toEqual({
-      major: null,
-      useProxyConvention: true,
-    });
+    expect(detectNextjs(dir)).toEqual({ major: null });
   });
 });
 
-describe('renderNextMiddleware', () => {
-  it('exports proxy() for the proxy convention', () => {
-    const out = renderNextMiddleware({ major: 16, useProxyConvention: true });
-    expect(out).toContain('export function proxy(');
-    expect(out).toContain(
-      "import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs'",
+describe('injectRegisterProxyFetch', () => {
+  const layout = `import type { Metadata } from 'next';
+import './globals.css';
+
+export const metadata: Metadata = { title: 'App' };
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return <html><body>{children}</body></html>;
+}
+`;
+
+  it('adds the import and a top-level registerProxyFetch() call after the imports', () => {
+    const { contents, changed } = injectRegisterProxyFetch(layout);
+
+    expect(changed).toBe(true);
+    expect(contents).toContain(
+      "import { registerProxyFetch } from 'test-proxy-recorder/nextjs';",
     );
-    expect(out).toContain('setNextProxyHeaders(request, response)');
+    expect(contents).toContain('registerProxyFetch();');
+    // Call sits after the import block but before the component.
+    expect(contents.indexOf('registerProxyFetch();')).toBeLessThan(
+      contents.indexOf('export default function RootLayout'),
+    );
+    expect(
+      contents.indexOf("from 'test-proxy-recorder/nextjs'"),
+    ).toBeGreaterThan(contents.indexOf("import './globals.css'"));
   });
 
-  it('exports middleware() for the middleware convention', () => {
-    const out = renderNextMiddleware({ major: 15, useProxyConvention: false });
-    expect(out).toContain('export function middleware(');
+  it('is idempotent — bails when already wired', () => {
+    const wired = `import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+registerProxyFetch();
+${layout}`;
+    const { changed, reason } = injectRegisterProxyFetch(wired);
+
+    expect(changed).toBe(false);
+    expect(reason).toContain('registerProxyFetch');
+  });
+
+  it("bails on a client-component layout ('use client')", () => {
+    const { changed, reason } = injectRegisterProxyFetch(
+      `'use client';\n${layout}`,
+    );
+
+    expect(changed).toBe(false);
+    expect(reason).toContain('use client');
+  });
+
+  it('bails when there is no import to anchor to', () => {
+    const { changed, reason } = injectRegisterProxyFetch(
+      'export default function L() { return null; }',
+    );
+
+    expect(changed).toBe(false);
+    expect(reason).toBe('could not find an import to anchor to');
   });
 });
 
-describe('runInit — Next.js middleware', () => {
-  it('scaffolds proxy.ts for a Next.js 16 project', () => {
+describe('runInit — Next.js SSR (registerProxyFetch in root layout)', () => {
+  /** Create an app/layout.tsx under the temp dir. */
+  const writeLayout = (rel = 'app/layout.tsx') => {
+    const abs = path.join(dir, rel);
+    mkdirSync(path.dirname(abs), { recursive: true });
+    writeFileSync(
+      abs,
+      `import './globals.css';\n\nexport default function RootLayout({ children }) {\n  return children;\n}\n`,
+    );
+    return rel;
+  };
+
+  it('injects registerProxyFetch into the root layout for a Next.js project', () => {
+    writeNextPkg('^16.2.4');
+    writeLayout();
+
+    const result = runInit(options(), dir);
+
+    expect(statusOf(result, 'app/layout.tsx')).toBe('updated');
+    expect(read('app/layout.tsx')).toContain(
+      "import { registerProxyFetch } from 'test-proxy-recorder/nextjs';",
+    );
+    expect(read('app/layout.tsx')).toContain('registerProxyFetch();');
+  });
+
+  it('finds the layout under src/', () => {
+    writeNextPkg('^16.2.4');
+    writeLayout('src/app/layout.tsx');
+
+    const result = runInit(options(), dir);
+
+    expect(statusOf(result, 'src/app/layout.tsx')).toBe('updated');
+  });
+
+  it('skips (with guidance) when no root layout exists', () => {
     writeNextPkg('^16.2.4');
 
     const result = runInit(options(), dir);
 
-    expect(statusOf(result, 'proxy.ts')).toBe('created');
-    expect(read('proxy.ts')).toContain('export function proxy(');
+    const action = result.actions.find((a) => a.relPath.includes('layout'));
+    expect(action?.status).toBe('skipped');
+    expect(action?.detail).toContain('no root layout');
   });
 
-  it('scaffolds middleware.ts for a Next.js 15 project', () => {
-    writeNextPkg('^15.3.0');
+  it('does not wire anything for a non-Next.js project', () => {
+    writeLayout();
 
     const result = runInit(options(), dir);
 
-    expect(statusOf(result, 'middleware.ts')).toBe('created');
-    expect(read('middleware.ts')).toContain('export function middleware(');
+    expect(result.actions.some((a) => a.relPath.includes('layout'))).toBe(
+      false,
+    );
+    // Layout is left untouched.
+    expect(read('app/layout.tsx')).not.toContain('registerProxyFetch');
   });
 
-  it('does not scaffold middleware for a non-Next.js project', () => {
+  it('leaves an already-wired layout alone (skipped, not double-wired)', () => {
+    writeNextPkg('^16.2.4');
+    const abs = path.join(dir, 'app/layout.tsx');
+    mkdirSync(path.dirname(abs), { recursive: true });
+    writeFileSync(
+      abs,
+      `import { registerProxyFetch } from 'test-proxy-recorder/nextjs';\nregisterProxyFetch();\nexport default function L({ children }) { return children; }\n`,
+    );
+
     const result = runInit(options(), dir);
 
+    expect(statusOf(result, 'app/layout.tsx')).toBe('skipped');
     expect(
-      result.actions.some(
-        (a) => a.relPath === 'proxy.ts' || a.relPath === 'middleware.ts',
-      ),
-    ).toBe(false);
+      read('app/layout.tsx').match(/registerProxyFetch\(\)/g)?.length,
+    ).toBe(1);
+  });
+});
+
+describe('renderAgentPrompt', () => {
+  it('fills the template with the proxy URL, target, and recordings dir', () => {
+    const out = renderAgentPrompt(
+      options({ port: 8123, target: 'http://localhost:4000', dir: './rec' }),
+    );
+
+    expect(out).toContain('http://localhost:8123');
+    expect(out).toContain('http://localhost:4000');
+    expect(out).toContain('./rec');
+    // No unsubstituted placeholders left.
+    expect(out).not.toMatch(/\{\{.*?\}\}/);
   });
 
-  it('leaves an existing middleware file alone (skipped, not clobbered)', () => {
-    writeNextPkg('^16.2.4');
-    writeFileSync(path.join(dir, 'proxy.ts'), 'export const config = {};');
+  it('carries the canonical prompt content (skills, helpers, numbered steps)', () => {
+    const out = renderAgentPrompt(options());
 
-    const result = runInit(options(), dir);
-
-    expect(statusOf(result, 'proxy.ts')).toBe('skipped');
-    expect(read('proxy.ts')).toBe('export const config = {};');
+    expect(out).toContain('npx @tanstack/intent');
+    expect(out).toContain('registerProxyFetch()');
+    expect(out).toContain('registerProxyAxios(instance)');
+    expect(out).toContain('TEST_PROXY_RECORDER_ENABLED=true');
+    expect(out).toMatch(/^1\. /m);
+    expect(out).toContain('Never commit secrets.');
   });
 });
 

@@ -26,6 +26,7 @@
     "test-proxy-recorder": "./dist/proxy.js"
   },
   "files": [
+    "dist/**/*.md",
     "dist/**/*.js",
     "dist/**/*.mjs",
     "dist/**/*.cjs",

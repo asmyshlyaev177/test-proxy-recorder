@@ -31,5 +31,9 @@ export {
 export {
   createHeadersWithRecordingId,
   getRecordingId,
+  type ProxyAxiosInstance,
+  type ProxyAxiosRequestConfig,
+  registerProxyAxios,
+  registerProxyFetch,
   setNextProxyHeaders,
 } from './nextjs';
