@@ -63,7 +63,16 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
               <span class="copy-label">Copy</span>
             </button>
           </span>
-          <a class="btn btn-ghost" href={repo}>GitHub</a>
+          <a class="btn btn-ghost btn-star" href={`${repo}/stargazers`}>
+            <span class="star-glyph" aria-hidden="true">★</span> Star on GitHub
+            <img
+              class="star-count"
+              src="https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=flat&label=&color=%23eab308"
+              alt="GitHub star count"
+              height="20"
+              loading="lazy"
+            />
+          </a>
         </div>
         <p class="hero-fine">
           MIT · TypeScript · works with Next.js SSR, SPAs &amp; Chrome extensions ·
@@ -304,8 +313,16 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
             <span class="copy-label">Copy</span>
           </button>
         </span>
-        <a class="btn btn-on-dark" href={repo}>Star on GitHub</a>
+        <a class="btn btn-on-dark btn-star" href={`${repo}/stargazers`}>
+          <span class="star-glyph" aria-hidden="true">★</span> Star on GitHub
+        </a>
       </div>
+      <p class="cta-fine">
+        If it saved you an afternoon, a star takes one second — it's how the next
+        person finds it, and it tells a solo maintainer to keep building.
+        Hit a snag or have an idea? <a href={`${repo}/issues/new`}>Open an issue</a> or
+        <a href="https://discord.gg/w7rgYbY5zz">join Discord</a>.
+      </p>
     </div>
   </section>
 </Layout>
@@ -753,6 +770,41 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
     align-items: center;
     gap: 0.85rem;
     margin-top: 2.2rem;
+  }
+
+  /* ----------------------------------------------------------- star cta */
+
+  .btn-star {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .star-glyph {
+    color: #eab308;
+    font-size: 1.05em;
+    line-height: 1;
+  }
+
+  .star-count {
+    display: block;
+    height: 20px;
+    width: auto;
+    border-radius: 4px;
+  }
+
+  .cta-fine {
+    margin-top: 1.6rem;
+    max-width: 52ch;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: oklch(0.9 0.04 262);
+  }
+
+  .cta-fine a {
+    color: oklch(1 0 0);
+    text-decoration: underline;
+    text-underline-offset: 2px;
   }
 
   .cmd-on-dark {

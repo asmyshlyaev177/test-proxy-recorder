@@ -2,6 +2,7 @@
 
 > **VCR for Playwright** — record real API responses once, replay them deterministically on CI. Covers Next.js SSR, browser, and WebSocket traffic. No backend, no hand-written mocks.
 
+[![GitHub stars](https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=social)](https://github.com/asmyshlyaev177/test-proxy-recorder/stargazers)
 [![npm](https://img.shields.io/npm/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
 [![CI](https://github.com/asmyshlyaev177/test-proxy-recorder/actions/workflows/test.yml/badge.svg)](https://github.com/asmyshlyaev177/test-proxy-recorder/actions/workflows/test.yml)
 [![node](https://img.shields.io/node/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
@@ -80,6 +81,9 @@ Then set `MODE = 'record'`, run once against the real API, flip to `'replay'`, a
 
 Full walkthrough: [quick start](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [manual setup](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/).
 
+> **Did that just save you an afternoon of hand-writing mocks?**
+> A [⭐ on GitHub](https://github.com/asmyshlyaev177/test-proxy-recorder) takes one second and is how the next person fighting flaky e2e tests finds this. I'm a solo maintainer and read every star as a signal to keep going.
+
 ## Examples
 
 Full working apps in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps), each with its own README:
@@ -101,9 +105,16 @@ Using an AI coding agent? `npx @tanstack/intent@latest install` adds skills so i
 - Node.js >= 20.0.0
 - `@playwright/test` >= 1.0.0 (peer dependency)
 
-## Contributing
+## Feedback & contributing
 
-Contributions welcome — please open a PR. The agent skills live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
+This is built and maintained in the open by one person, and every bit of feedback steers what gets built next:
+
+- **[⭐ Star the repo](https://github.com/asmyshlyaev177/test-proxy-recorder)** — the fastest way to support it, and it genuinely helps others discover it.
+- **Hit a rough edge or have an idea?** [Open an issue](https://github.com/asmyshlyaev177/test-proxy-recorder/issues/new) or say hi in [Discord](https://discord.gg/w7rgYbY5zz) — even a one-line "this confused me" is gold.
+- **Want to contribute?** PRs welcome. 
+
+## AI skill
+The agent skills live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
 ## License
 
