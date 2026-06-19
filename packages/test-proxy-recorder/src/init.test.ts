@@ -420,6 +420,41 @@ ${layout}`;
     expect(changed).toBe(false);
     expect(reason).toBe('could not find an import to anchor to');
   });
+
+  it('anchors after the import block, not inside a dynamic import() expression', () => {
+    // Regression: a multi-line `import('…')` call expression must not be
+    // mistaken for the last import statement — inserting inside it corrupts
+    // the file (e.g. splitting `import('../core/auth/hub').then(...)`).
+    const withDynamicImport = `import { type PropsWithChildren } from 'react';
+import dynamic from 'next/dynamic';
+
+import './globals.css';
+
+const AuthHubLazy = dynamic(() =>
+  import('../core/auth/hub').then((mod) => ({ default: mod.AuthHub })),
+);
+
+export default function RootLayout({ children }: PropsWithChildren) {
+  return <html><body>{children}</body></html>;
+}
+`;
+
+    const { contents, changed } = injectRegisterProxyFetch(withDynamicImport);
+
+    expect(changed).toBe(true);
+    // The dynamic import statement is left intact.
+    expect(contents).toContain(
+      "import('../core/auth/hub').then((mod) => ({ default: mod.AuthHub })),",
+    );
+    // The injected call lands after the real import block and before the
+    // dynamic() expression — never inside it.
+    expect(contents.indexOf('registerProxyFetch();')).toBeLessThan(
+      contents.indexOf('const AuthHubLazy'),
+    );
+    expect(contents.indexOf('registerProxyFetch();')).toBeGreaterThan(
+      contents.indexOf("import './globals.css'"),
+    );
+  });
 });
 
 describe('runInit — Next.js SSR (registerProxyFetch in root layout)', () => {

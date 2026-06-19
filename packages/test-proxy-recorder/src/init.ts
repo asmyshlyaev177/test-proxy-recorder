@@ -365,7 +365,11 @@ export function injectRegisterProxyFetch(source: string): {
 
   // End index of the last top-level import (`import x from 'y'` or `import 'y'`).
   // One pattern covers both: anything up to the module specifier, then `'…'`.
-  const importRe = /import\b[^;'"]*['"][^'"]+['"];?/g;
+  // Anchored to the start of a line (so it only matches statements, not an
+  // `import` mid-expression) and with a negative lookahead that rejects dynamic
+  // `import(...)` calls and `import.meta` — a bare `import('x')` is an
+  // expression, not a statement we can safely anchor an insertion after.
+  const importRe = /^[ \t]*import\b(?!\s*[(.])[^;'"]*['"][^'"]+['"];?/gm;
   let lastEnd = -1;
   for (const match of source.matchAll(importRe)) {
     if (match.index !== undefined) lastEnd = match.index + match[0].length;
