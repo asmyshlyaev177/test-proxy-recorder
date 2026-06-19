@@ -4,9 +4,10 @@
 // favour of Expressive Code; EC highlights markdown at build time in Node, so
 // these blocks prerender to static HTML and work under the Cloudflare workerd
 // prerender (where a render-time highlighter does not).
+import { Content as AiPromptSnippet } from '../snippets/ai-prompt.md';
 import { Content as InstallSnippet } from '../snippets/install.md';
 import { Content as ApiEnvSnippet } from '../snippets/api-env.md';
-import { Content as MiddlewareSnippet } from '../snippets/middleware.md';
+import { Content as SsrTagSnippet } from '../snippets/register-proxy-fetch.md';
 import { Content as FixtureSnippet } from '../snippets/fixture.md';
 import { Content as RecordSnippet } from '../snippets/record.md';
 import { Content as AuthSetupSnippet } from '../snippets/auth-setup.md';
@@ -230,8 +231,25 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
       <p class="section-sub">
         Scaffold everything with one command, point your API at the proxy, then
         record and commit. Browser-only app? <code>init</code> skips the SSR
-        middleware for you.
+        step for you.
       </p>
+
+      <div class="ai-setup">
+        <h3>Fastest path: hand it to your AI agent</h3>
+        <p class="step-note">
+          Copy this, swap in your backend URL, and paste it into Claude Code,
+          Cursor, or any coding agent — it runs <code>init</code> and finishes
+          the wiring from the prompt <code>init</code> prints.
+        </p>
+        <div class="ai-prompt">
+          <AiPromptSnippet />
+          <button class="copy-btn copy-btn--float" type="button" data-copy-pre>
+            <span class="copy-label">Copy</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="section-sub">Or wire it up by hand:</p>
 
       <ol class="steps">
         <li class="step">
@@ -239,7 +257,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           <p class="step-note">
             <code>init</code> writes the proxy config, a Playwright fixture, a
             global teardown, <code>package.json</code> scripts, and (on Next.js)
-            the SSR middleware — non-destructively.
+            wires SSR fetch tagging into your root layout — non-destructively.
           </p>
           <InstallSnippet />
         </li>
@@ -252,10 +270,11 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           </p>
           <ApiEnvSnippet />
           <p class="step-note">
-            On Next.js, <code>init</code> also writes the SSR middleware that tags
-            server-side <code>fetch</code> calls — a no-op in production:
+            On Next.js, <code>init</code> also adds <code>registerProxyFetch()</code>
+            to your root layout to tag server-side <code>fetch</code> calls — a
+            no-op in production:
           </p>
-          <MiddlewareSnippet />
+          <SsrTagSnippet />
         </li>
         <li class="step">
           <h3>Record, commit, replay</h3>
@@ -522,6 +541,25 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
   .copy-btn.copied {
     background: oklch(0.42 0.1 150);
     border-color: transparent;
+  }
+
+  .ai-prompt {
+    position: relative;
+  }
+
+  /* Floats over the rendered code block (top-right), like a typical
+     copy-to-clipboard affordance on a snippet. */
+  .copy-btn--float {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    z-index: 2;
+  }
+
+  /* EC renders its own copy button, but its icon color resolves to an undefined
+     Starlight var on this page (invisible). Hide it and use our labeled one. */
+  .ai-prompt :global(.copy) {
+    display: none;
   }
 
   /* ------------------------------------------------------------- demo */

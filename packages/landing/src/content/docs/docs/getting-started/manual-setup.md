@@ -38,28 +38,26 @@ const API_BASE =
 Prefer `build` + `serve` over `dev` for recording and replaying tests. The Next.js dev server is slow and can cause timeouts or flaky recordings.
 :::
 
-### 2. Propagate the SSR session header (Next.js)
+### 2. Tag server-side fetches (Next.js)
 
-Server-side `fetch` calls need the recording-session header forwarded so the proxy knows which test they belong to. Add a middleware — `proxy.ts` on Next.js 16+, `middleware.ts` on 15 and earlier (`init` writes this for you):
+Server-side `fetch` calls need the recording-session header so the proxy knows which test they belong to. Playwright already sets it on the browser navigation, so the id is in `next/headers` — you just attach it to outgoing SSR requests. Add one line to your root layout (`init` does this for you):
 
 ```typescript
-// proxy.ts  (Next.js 16 middleware convention)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 
-export function proxy(request: NextRequest) {
-  const response = NextResponse.next();
-  setNextProxyHeaders(request, response); // no-op in production
-  return response;
+registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
 }
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-};
 ```
 
-See the [Next.js integration](/docs/integrations/nextjs/) for the Edge runtime and manual header forwarding. Browser-only apps can skip this step.
+This works on the Node **and** Edge runtimes. For axios apps, call `registerProxyAxios(instance)` on each server-side instance instead; for a single fetch, `createHeadersWithRecordingId(await headers())` is a patch-free alternative. A `proxy.ts`/`middleware.ts` with `setNextProxyHeaders` is **optional** — it only exposes the id, it doesn't tag fetches. **Record against a production build** (`next build && next start`), not `next dev`. See the [Next.js integration](/docs/integrations/nextjs/) for details. Browser-only apps can skip this step.
 
 ### 3. Write a test
 

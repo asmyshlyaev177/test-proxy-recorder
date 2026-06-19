@@ -12,6 +12,8 @@ export default defineConfig([
     dts: true,
     sourcemap: true,
     clean: true,
+    // Ship the AI-agent prompt template next to the built CLI so `init` can read it.
+    onSuccess: 'cp src/agent-prompt.md dist/agent-prompt.md',
     splitting: false,
     treeshake: true,
     outDir: 'dist',

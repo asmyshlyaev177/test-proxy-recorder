@@ -3,11 +3,13 @@ title: Configuration manuelle
 description: Branchez test-proxy-recorder à la main dans une app full-stack (SSR + navigateur) ou une SPA/extension navigateur uniquement, puis enregistrez une fois et rejouez en CI.
 ---
 
-Vous préférez une seule commande ? Voir le [démarrage rapide](/fr/docs/getting-started/quick-start/). Les configurations ci-dessous montrent la boucle complète enregistrer → rejouer à la main.
+La plupart des gens devraient lancer [`init`](/fr/docs/getting-started/quick-start/) — il écrit pour vous chaque fichier ci-dessous. Cette page est la référence de ce que `init` génère, pour pouvoir tout brancher à la main, déposer du codegen, ou comprendre chaque pièce.
 
 ## Full-stack (SSR + navigateur)
 
 Pour Next.js et les frameworks similaires, où le serveur et le navigateur font tous deux des appels d'API. Utilisez les deux mécanismes d'enregistrement ensemble — voir [comment ça marche](/fr/docs/getting-started/how-it-works/).
+
+Le proxy est un processus léger que vous lancez **à côté de votre app pour le run de test** (via un script, comme ci-dessous, ou via `webServer` de Playwright) — ce n'est pas une infrastructure que vous déployez ou maintenez. Tout le setup : lancez-le à côté de votre app, pointez l'URL de base de votre API vers lui, propagez l'en-tête de session depuis le SSR, et écrivez une fixture.
 
 ### 1. Ajoutez des scripts à `package.json`
 
@@ -36,7 +38,28 @@ const API_BASE =
 Préférez `build` + `serve` à `dev` pour enregistrer et rejouer les tests. Le serveur de développement de Next.js est lent et peut provoquer des timeouts ou des enregistrements instables.
 :::
 
-### 2. Écrivez un test
+### 2. Tagger les fetches côté serveur (Next.js)
+
+Les appels `fetch` côté serveur ont besoin de l'en-tête de session d'enregistrement pour que le proxy sache à quel test ils appartiennent. Playwright le définit déjà sur la navigation navigateur, donc l'id est dans `next/headers` — il suffit de l'attacher aux requêtes SSR sortantes. Ajoutez une ligne à votre root layout (`init` le fait pour vous) :
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // no-op en production sauf si TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+Cela fonctionne sur les runtimes Node **et** Edge. Pour les apps axios, appelez `registerProxyAxios(instance)` sur chaque instance côté serveur à la place ; pour un fetch unique, `createHeadersWithRecordingId(await headers())` est une alternative sans patch. Un `proxy.ts`/`middleware.ts` avec `setNextProxyHeaders` est **optionnel** — il expose seulement l'id, il ne tagge pas les fetches. **Enregistrez contre un build de production** (`next build && next start`), pas `next dev`. Voir l'[intégration Next.js](/fr/docs/integrations/nextjs/) pour les détails. Les apps navigateur uniquement peuvent sauter cette étape.
+
+### 3. Écrivez un test
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -59,7 +82,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 3. Enregistrez
+### 4. Enregistrez
 
 ```bash
 # Terminal 1
@@ -69,7 +92,7 @@ npm run serve:proxy
 npx playwright test
 ```
 
-### 4. Passez en replay et committez
+### 5. Passez en replay et committez
 
 ```bash
 git add e2e/recordings/

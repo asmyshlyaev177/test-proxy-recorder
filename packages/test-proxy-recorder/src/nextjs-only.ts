@@ -11,4 +11,9 @@ export {
   getRecordingId,
   setNextProxyHeaders,
 } from './nextjs/middleware.js';
+export type {
+  ProxyAxiosInstance,
+  ProxyAxiosRequestConfig,
+} from './nextjs/registerProxyAxios.js';
+export { registerProxyAxios } from './nextjs/registerProxyAxios.js';
 export { registerProxyFetch } from './nextjs/registerProxyFetch.js';

@@ -1,15 +1,16 @@
 ---
 name: nextjs-ssr
 description: >
-  Wire the x-test-rcrd-id session header through Next.js so server-side fetches
-  are recorded under the correct Playwright test session. Covers
-  setNextProxyHeaders, createHeadersWithRecordingId, getRecordingId,
-  RECORDING_ID_HEADER, registerProxyFetch (automatic fetch tagging for the Edge
-  runtime), middleware.ts (Next.js 13–15), proxy.ts (Next.js 16),
-  the React cache() memoization pattern for next/headers, and the axios
-  interceptor pattern for SSR requests. Load this skill when setting up
-  test-proxy-recorder in a Next.js app that makes server-side API calls,
-  including Edge-runtime routes.
+  Tag server-side fetches with the x-test-rcrd-id session header so SSR is
+  recorded under the correct Playwright test session. Lead with
+  registerProxyFetch (patch global fetch in the root layout, any runtime) and
+  registerProxyAxios (per-axios-instance interceptor); createHeadersWithRecordingId
+  is the patch-free per-call option. Covers the build+start vs next dev caveat,
+  why the setNextProxyHeaders middleware (proxy.ts / middleware.ts) is optional
+  (it only exposes the id, it does not tag fetches), getRecordingId,
+  RECORDING_ID_HEADER, the React cache() memoization pattern, and the manual
+  axios interceptor. Load this skill when setting up test-proxy-recorder in a
+  Next.js app that makes server-side API calls, including Edge-runtime routes.
 type: framework
 library: test-proxy-recorder
 framework: nextjs
@@ -29,40 +30,91 @@ CLI setup, playwright.config.ts, and fixtures before applying Next.js patterns.
 
 # test-proxy-recorder — Next.js SSR
 
-The proxy correlates SSR fetches to the right test session via
-`x-test-rcrd-id`. Playwright sets this header on the browser page automatically
-via `playwrightProxy.before()`. For server-side fetches (SSR, Server
-Components, Route Handlers), the header must be explicitly forwarded through
-every layer.
+The proxy correlates SSR fetches to the right test session via the
+`x-test-rcrd-id` header. Playwright sets it on **every browser request** (via
+`playwrightProxy.before()`), including the navigation that triggers SSR — so the
+id is already in the server render scope (`next/headers`). The one thing left to
+do is **attach it to outgoing server-side fetches**. A middleware
+(`setNextProxyHeaders`) only *exposes* the id; it does **not** tag fetches, so
+one of the helpers below is required (the middleware itself is optional — see the
+end of Setup).
 
 All helpers from `test-proxy-recorder/nextjs` are **no-ops in production**
 (`NODE_ENV=production`) unless `TEST_PROXY_RECORDER_ENABLED=true` is set.
 
+> **Record against a production build** (`next build && next start`), not
+> `next dev`. The dev server could reset a global `fetch` patch on subsequent
+> requests ([vercel/next.js#47596](https://github.com/vercel/next.js/issues/47596),
+> fixed in newer versions); build+start has no such issue and is faster/less flaky.
+
 ## Setup
 
-### Next.js 13–15 — middleware.ts
+### Recommended — `registerProxyFetch()` in the root layout (any runtime)
+
+One line tags every server-side `fetch` (Server Components, Route Handlers, Node
+**and** Edge runtimes). Call it at the top level of the root layout — not
+`instrumentation.ts` (see Common Mistakes).
 
 ```typescript
-// middleware.ts  (Next.js 13–15 — at project root)
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 
-export function middleware(request: NextRequest) {
-  const response = NextResponse.next();
-  setNextProxyHeaders(request, response); // no-op in production
-  return response;
+registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
 }
-
-export const config = {
-  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
-};
 ```
 
-### Next.js 16 — proxy.ts
+### axios SSR calls — `registerProxyAxios(instance)`
+
+For apps whose server-side requests go through axios, register each server-side
+instance once. It adds a request interceptor that stamps the id, and never
+touches global `fetch`, so it's immune to the dev-mode patch caveat.
 
 ```typescript
-// proxy.ts  (Next.js 16 — at project root, alongside next.config.ts)
+import { registerProxyAxios } from 'test-proxy-recorder/nextjs';
+
+registerProxyAxios(axiosForServer);
+registerProxyAxios(axiosWithAuth);
+```
+
+Replaces the hand-rolled interceptor + `React.cache()` helper (still documented
+below for reference). No-op in production / in the browser; idempotent per
+instance; never overwrites a caller-set id.
+
+### Per-call alternative — `createHeadersWithRecordingId()`
+
+Patch-free and works under `next dev` too (reads the id from `headers()`
+directly). Use it when you'd rather not patch global `fetch`, or for one fetch:
+
+```typescript
+import { headers } from 'next/headers';
+import { createHeadersWithRecordingId } from 'test-proxy-recorder/nextjs';
+
+const res = await fetch('http://localhost:8100/api/data', {
+  cache: 'no-store',
+  headers: createHeadersWithRecordingId(await headers(), {
+    'Content-Type': 'application/json',
+  }),
+});
+```
+
+### Optional — middleware (`setNextProxyHeaders`)
+
+A `proxy.ts` (Next.js 16+, exported `proxy`) / `middleware.ts` (15 and earlier,
+exported `middleware`) calling `setNextProxyHeaders` makes the id available via
+`next/headers`, but **does not tag outgoing fetches** — so it is not required
+when you use a helper above. Reach for it only if you already own a middleware
+for other reasons (auth, etc.); still pair it with a helper above to do the
+actual tagging.
+
+```typescript
+// proxy.ts (Next.js 16+) — exported `proxy`; use middleware.ts / `middleware` on 15 and earlier
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { setNextProxyHeaders } from 'test-proxy-recorder/nextjs';
@@ -101,36 +153,15 @@ export async function GET(request: Request) {
 `createHeadersWithRecordingId` merges the session ID into your headers object.
 It is a no-op when the session ID is absent (browser-only tests, or production).
 
-### Edge runtime — tag every fetch automatically with registerProxyFetch
+### `registerProxyFetch` — detail
 
-For routes on the Edge runtime (`export const runtime = 'edge'`), or to avoid
-threading the header through every fetch by hand, call `registerProxyFetch()` at
-the **top level of the root layout**. It patches the global `fetch` so every
-server-side request carries the current session's `x-test-rcrd-id`.
-
-```typescript
-// app/layout.tsx
-import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
-
-registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}
-```
-
-It reads the id via `next/headers`, so it only acts inside a request scope and
-leaves build-time/non-request fetches untouched. It tags every server-side fetch
-(not just proxy-bound ones): the id is inert anywhere but the proxy and never
+Set up in Setup above. It reads the id via `next/headers`, so it only acts
+inside a request scope and leaves build-time/non-request fetches untouched. It
+tags every server-side fetch (the id is inert anywhere but the proxy and never
 affects replay matching, and during tests everything you record routes through
-the proxy anyway.
-
-Call it from the root layout, **not** `instrumentation.ts` — see Common
-Mistakes. Source: apps/example-nextjs-edge/app/layout.tsx
+the proxy anyway). Works on Node **and** Edge runtimes. Call it from the root
+layout, **not** `instrumentation.ts` (see Common Mistakes).
+Source: apps/example-nextjs-edge/app/layout.tsx
 
 ### Memoize header lookup with React cache() (App Router)
 
@@ -154,10 +185,11 @@ export const getServerRecordingId = cache(async () => {
 });
 ```
 
-### Axios interceptor for SSR requests
+### Axios interceptor for SSR requests (manual)
 
-Use this pattern when your app uses axios for server-side API calls instead of
-native `fetch`.
+**Prefer `registerProxyAxios(instance)` (Setup)** — it does exactly this. Use the
+manual interceptor below only if you need custom logic around it. It also shows
+the `React.cache()` helper (above) in context.
 
 ```typescript
 // lib/axios-server.ts
@@ -272,44 +304,36 @@ Source: apps/example-nextjs-edge/app/layout.tsx; packages/test-proxy-recorder/sr
 
 ---
 
-### HIGH setNextProxyHeaders set but SSR fetches still missing the header
+### HIGH Relying on the middleware alone to tag SSR fetches
 
 Wrong:
 ```typescript
-// middleware.ts — header set on response, but individual fetch calls don't use it
-export function middleware(request) {
+// proxy.ts / middleware.ts only — nothing actually tags the outgoing fetch
+export function proxy(request) {
   const response = NextResponse.next();
   setNextProxyHeaders(request, response);
   return response;
 }
-
-// app/api/data/route.ts — header not forwarded to outgoing fetch
-export async function GET() {
-  const data = await fetch('http://localhost:8100/api/data');
-  return Response.json(await data.json());
-}
+// app/page.tsx — bare SSR fetch, no helper
+const data = await fetch('http://localhost:8100/api/data');
 ```
 
-Correct:
+Correct — add one of the forwarding helpers (Setup):
 ```typescript
-// app/api/data/route.ts — explicitly inject header into each outgoing fetch
-import { headers } from 'next/headers';
-import { createHeadersWithRecordingId } from 'test-proxy-recorder/nextjs';
-
-export async function GET() {
-  const data = await fetch('http://localhost:8100/api/data', {
-    headers: createHeadersWithRecordingId(await headers()),
-  });
-  return Response.json(await data.json());
-}
+// app/layout.tsx — tags every server-side fetch
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+registerProxyFetch();
+// (axios apps: registerProxyAxios(instance); or per-call createHeadersWithRecordingId)
 ```
 
-`setNextProxyHeaders` makes the session ID available to server components via
-`next/headers`. It does **not** automatically inject the header into outgoing
-fetch calls — each server-side fetch must use `createHeadersWithRecordingId()`
-explicitly.
+`setNextProxyHeaders` only *exposes* the id via `next/headers`; it does **not**
+inject it into outgoing fetch/axios calls. With middleware alone, SSR requests go
+out untagged and **parallel replay fails** — the proxy can't tell which session a
+request belongs to (verified: middleware-only → fail; `registerProxyFetch`-only,
+no middleware → pass, on both Node and Edge runtimes). The middleware is optional;
+a forwarding helper is what's required.
 
-Source: README.md — Manual header forwarding; channels/web/app/api
+Source: experiment in repo TODO.md; apps/example-nextjs-edge
 
 ---
 

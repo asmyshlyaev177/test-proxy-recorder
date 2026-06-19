@@ -34,8 +34,11 @@ interface PatchableFetch {
  * Read the recording id off the request currently being rendered. Returns null
  * outside a request scope (e.g. build-time fetches), where `next/headers` is
  * unavailable — those fetches are left untouched.
+ *
+ * Exported for reuse by other server-side taggers (e.g. {@link registerProxyAxios});
+ * not part of the public API surface (it isn't re-exported from the entry point).
  */
-async function currentRecordingId(): Promise<string | null> {
+export async function currentRecordingId(): Promise<string | null> {
   try {
     // Resolved through a variable so bundlers leave it as a runtime import:
     // `next/headers` only exists in the consuming Next.js app, not this package.

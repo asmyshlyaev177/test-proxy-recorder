@@ -43,10 +43,14 @@ pnpm --filter example-auth-mock test:e2e:ci    # record → assert redactions �
 
 ## What's the "real provider" part?
 
-Only two files change per provider:
+This app fetches its protected data **client-side**, so the browser request is
+recorded directly — no Next.js middleware or SSR fetch tagging needed. Only one
+file really changes per provider:
 
-- `proxy.ts` — the mock has no auth middleware, so it's just the recorder. Real
-  providers compose their middleware (`clerkMiddleware`, Auth0, WorkOS) with
-  `setNextProxyHeaders` here.
 - `e2e/setup-auth.ts` — swap the form login for the provider's flow (UI in dev, a
   programmatic token grant in CI).
+
+(If a provider needs its own middleware, add it as usual. Apps that fetch
+protected data **server-side** also add `registerProxyFetch()` to the root layout
+— or `registerProxyAxios(instance)` for axios — to tag SSR requests; see the
+`nextjs-ssr` skill.)

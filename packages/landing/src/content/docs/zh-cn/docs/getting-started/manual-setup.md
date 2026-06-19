@@ -3,11 +3,13 @@ title: 手动配置
 description: 为全栈（SSR + 浏览器）应用，或纯浏览器的 SPA / 扩展手动接入 test-proxy-recorder，然后录制一次并在 CI 中回放。
 ---
 
-更想用一条命令？参见[快速开始](/zh-cn/docs/getting-started/quick-start/)。下面的配置以手动方式完整展示录制 → 回放的循环。
+大多数人应当运行 [`init`](/zh-cn/docs/getting-started/quick-start/) —— 它替你写下下面所有文件。本页是 `init` 所生成内容的参考，便于你手动接线、移除 codegen 或理解每个部分。
 
 ## 全栈（SSR + 浏览器）
 
 适用于 Next.js 等框架，服务端和浏览器都会发起 API 调用。同时使用两种录制机制 —— 参见[工作原理](/zh-cn/docs/getting-started/how-it-works/)。
+
+代理是一个轻量进程，你**在测试运行时把它和你的应用一起启动**（通过下面的脚本，或 Playwright 的 `webServer`）—— 它不是你要部署或维护的基础设施。整套配置就是：在应用旁边启动它，把应用的 API 基础 URL 指向它，从 SSR 传播会话 header，再写一个 fixture。
 
 ### 1. 向 `package.json` 添加脚本
 
@@ -30,13 +32,34 @@ const API_BASE =
     : 'http://localhost:8100'; // 代理地址
 ```
 
-`TEST_PROXY_RECORDER_ENABLED` 由上面的 `dev:proxy` / `serve:proxy` 脚本以及 `init` 生成的脚本设置。请使用你的应用已有的 API 基础 URL 环境变量 —— 同样的条件判断适用。
+`TEST_PROXY_RECORDER_ENABLED` 由上面的 `dev:proxy` / `serve:proxy` 脚本以及 `init` 生成的脚本设置。请使用你的应用已有的 API 基础 URL 环境变量（比如 `API_URL`、`NEXT_PUBLIC_API_URL`）—— 同样的条件判断适用。
 
 :::note[Next.js]
 录制和回放测试时，相较 `dev` 更推荐 `build` + `serve`。Next.js 的开发服务器较慢，可能导致超时或不稳定的录制。
 :::
 
-### 2. 编写测试
+### 2. 给服务端 fetch 打标（Next.js）
+
+服务端 `fetch` 调用需要 recording-session header，这样代理才能知道它们属于哪个测试。Playwright 已经在浏览器导航上设置了这个 header，所以 id 就在 `next/headers` 里 —— 你只需要把它附加到外发的 SSR 请求上。在你的 root layout 中加一行（`init` 会替你做这件事）：
+
+```typescript
+// app/layout.tsx
+import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
+
+registerProxyFetch(); // production 下是 no-op，除非 TEST_PROXY_RECORDER_ENABLED=true
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="en">
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+这在 Node **和** Edge runtime 上都有效。服务端调用用的是 axios？在每个 server-side 实例上调用 `registerProxyAxios(instance)` 替代；对单个 fetch，`createHeadersWithRecordingId(await headers())` 是免 patch 的替代方案。带 `setNextProxyHeaders` 的 `proxy.ts`/`middleware.ts` 是**可选的** —— 它只是暴露 id，并不给 fetch 打标。**请针对 production build 录制**（`next build && next start`），而不是 `next dev`。详见 [Next.js 集成](/zh-cn/docs/integrations/nextjs/)。纯浏览器应用可以跳过这一步。
+
+### 3. 编写测试
 
 ```typescript
 import { test, expect } from '@playwright/test';
@@ -59,7 +82,7 @@ test('homepage loads', async ({ page }) => {
 });
 ```
 
-### 3. 录制
+### 4. 录制
 
 ```bash
 # Terminal 1
@@ -69,7 +92,7 @@ npm run serve:proxy
 npx playwright test
 ```
 
-### 4. 切换到回放并提交
+### 5. 切换到回放并提交
 
 ```bash
 git add e2e/recordings/
