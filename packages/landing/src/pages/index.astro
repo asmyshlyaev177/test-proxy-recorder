@@ -241,7 +241,12 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           Cursor, or any coding agent — it runs <code>init</code> and finishes
           the wiring from the prompt <code>init</code> prints.
         </p>
-        <AiPromptSnippet />
+        <div class="ai-prompt">
+          <AiPromptSnippet />
+          <button class="copy-btn copy-btn--float" type="button" data-copy-pre>
+            <span class="copy-label">Copy</span>
+          </button>
+        </div>
       </div>
 
       <p class="section-sub">Or wire it up by hand:</p>
@@ -536,6 +541,25 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
   .copy-btn.copied {
     background: oklch(0.42 0.1 150);
     border-color: transparent;
+  }
+
+  .ai-prompt {
+    position: relative;
+  }
+
+  /* Floats over the rendered code block (top-right), like a typical
+     copy-to-clipboard affordance on a snippet. */
+  .copy-btn--float {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    z-index: 2;
+  }
+
+  /* EC renders its own copy button, but its icon color resolves to an undefined
+     Starlight var on this page (invisible). Hide it and use our labeled one. */
+  .ai-prompt :global(.copy) {
+    display: none;
   }
 
   /* ------------------------------------------------------------- demo */

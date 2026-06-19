@@ -146,9 +146,17 @@ const jsonLd = {
     </footer>
 
     <script>
-      document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
+      // `data-copy` carries inline text; `data-copy-pre` copies the rendered
+      // code block (<pre>) inside the button's container — `innerText` preserves
+      // the line breaks that `textContent` would collapse.
+      const copyButtons = document.querySelectorAll<HTMLButtonElement>(
+        '[data-copy], [data-copy-pre]',
+      );
+      copyButtons.forEach((btn) => {
         btn.addEventListener('click', async () => {
-          await navigator.clipboard.writeText(btn.dataset.copy ?? '');
+          const pre = btn.parentElement?.querySelector('pre');
+          const text = btn.dataset.copy ?? pre?.innerText ?? '';
+          await navigator.clipboard.writeText(text);
           btn.classList.add('copied');
           const label = btn.querySelector('.copy-label');
           if (label) label.textContent = 'Copied';
