@@ -13,15 +13,19 @@ export interface ProxyAxiosRequestConfig {
 /**
  * Minimal structural shape of an axios instance — just the request-interceptor
  * registration we need. A real `AxiosInstance` satisfies this.
+ *
+ * Generic over the request-config type so a real axios instance — whose
+ * interceptor callback is typed against the stricter `InternalAxiosRequestConfig`
+ * (a required `AxiosHeaders`, not our optional `unknown`) — is accepted: the
+ * concrete config type is inferred at the call site. The default keeps the bare
+ * `ProxyAxiosInstance` usable in tests with a plain config.
  */
-export interface ProxyAxiosInstance {
+export interface ProxyAxiosInstance<
+  Config extends ProxyAxiosRequestConfig = ProxyAxiosRequestConfig,
+> {
   interceptors: {
     request: {
-      use(
-        onFulfilled: (
-          config: ProxyAxiosRequestConfig,
-        ) => ProxyAxiosRequestConfig | Promise<ProxyAxiosRequestConfig>,
-      ): unknown;
+      use(onFulfilled: (config: Config) => Config | Promise<Config>): unknown;
     };
   };
   /** Idempotency marker set after the first registration. */
@@ -95,7 +99,9 @@ function setHeader(
  *
  * @param instance - the axios instance to tag server-side requests on
  */
-export function registerProxyAxios(instance: ProxyAxiosInstance): void {
+export function registerProxyAxios<
+  Config extends ProxyAxiosRequestConfig = ProxyAxiosRequestConfig,
+>(instance: ProxyAxiosInstance<Config>): void {
   if (!isRecorderEnabled()) return;
   if (instance.__testProxyRecorderPatched) return;
 

@@ -541,6 +541,7 @@ describe('renderAgentPrompt', () => {
     expect(out).toContain('http://localhost:4000');
     expect(out).toContain('./rec');
     // No unsubstituted placeholders left.
+    // eslint-disable-next-line sonarjs/slow-regex
     expect(out).not.toMatch(/\{\{.*?\}\}/);
   });
 
