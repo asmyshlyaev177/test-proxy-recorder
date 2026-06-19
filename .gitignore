@@ -25,6 +25,8 @@ apps/example-auth-*/e2e/auth-state.json
 .env.*
 !.env.example
 !.env.template
+# Example app: committed test fixture env so the replay suite runs on a fresh clone.
+!apps/example-nextjs16/.env
 tsconfig.tsbuildinfo
 trace.zip
 test-results

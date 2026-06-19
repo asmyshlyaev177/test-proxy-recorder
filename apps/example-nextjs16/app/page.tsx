@@ -1,10 +1,5 @@
 import TodoApp, { type Todo } from './components/TodoApp';
 
-// Render on the server per request so the SSR fetch below runs in a real request
-// scope — that's where registerProxyFetch() (app/layout.tsx) can read the test's
-// recording-session id off the incoming request and tag the outgoing fetch.
-export const dynamic = 'force-dynamic';
-
 // NOTE: BACKEND_URL controls where SSR fetches go.
 // Dev/test: point to the proxy (http://localhost:8100) so SSR requests are also recorded.
 // Production: point to the real backend URL directly.
@@ -13,6 +8,12 @@ const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:8100';
 export default async function Page() {
   let todos: Todo[] = [];
   try {
+    // A todo list is live data, so the realistic production choice is to always
+    // fetch fresh (no caching) — this is the app's real behaviour, not a
+    // test-only setting. `no-store` also keeps the route dynamic, so each SSR
+    // request runs in a request scope where registerProxyFetch() (app/layout.tsx)
+    // can tag it with the recording id. (See the /isr route for the cached/ISR
+    // counterpart recorded through the proxy.)
     const res = await fetch(`${BACKEND_URL}/todos`, { cache: 'no-store' });
     if (res.ok) todos = await res.json();
   } catch {

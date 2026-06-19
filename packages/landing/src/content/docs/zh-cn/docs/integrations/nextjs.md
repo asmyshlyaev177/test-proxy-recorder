@@ -76,6 +76,49 @@ export const config = {
 
 `test-proxy-recorder/nextjs` 辅助函数的完整签名请参见 [API 参考](/zh-cn/docs/reference/api/readme/)。完整、可运行的 Edge 项目见 [Edge runtime 示例](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge)。
 
+## 缓存与 ISR
+
+不要为了测试而关闭缓存 —— 录制器可以与缓存/ISR 路由共存。但有一条规则决定了整个设计：**要回放一个 SSR fetch，页面必须在请求时真正执行该 fetch。** 一个返回预渲染 HTML 或陈旧缓存渲染的路由根本不会发起 fetch，于是代理没有东西可返回，断言看到的是陈旧内容。
+
+保持确定性的做法是：用 fetch 级别的 `next.revalidate` + `next.tags` 缓存这个 SSR fetch，然后在断言前按需失效：
+
+```tsx
+// app/isr/page.tsx —— 不要 `export const dynamic`，不要 `export const revalidate`
+const res = await fetch(`${BACKEND_URL}/todos`, {
+  next: { revalidate: 30, tags: ['isr-todos'] },
+});
+```
+
+```typescript
+// app/api/revalidate/route.ts
+import { revalidateTag } from 'next/cache';
+revalidateTag('isr-todos', 'max'); // Next.js 16 需要第 2 个 profile 参数
+```
+
+```typescript
+// e2e/isr.spec.ts
+await page.request.post('/api/revalidate'); // 硬清除
+await page.goto('/isr');                     // 一次导航 —— 确定性
+await expect(page.getByTestId('todo-text')).toHaveCount(1);
+```
+
+对 **fetch** 缓存条目执行 `revalidateTag` 是一次*硬清除*：下一次读取会是缓存未命中，它会阻塞并通过代理重新发起 fetch。你必须在回放导航之前清除，因为数据缓存会跨同一个 `next start` 进程的录制 → 回放两个阶段存活 —— 否则回放会返回录制阶段的缓存而永远不会命中代理（假阳性）。
+
+测试期间，被 patch 的 `fetch` 会读取 `headers()`，所以页面会动态渲染并真正执行 fetch。在生产环境（录制器关闭）下没有任何东西读取 `headers()`，页面照常是静态 ISR —— 动态渲染仅限于测试，并且是录制 SSR fetch 所固有的。
+
+:::caution[这种场景请避免 `unstable_cache`]
+`unstable_cache` 是 *stale-while-revalidate*（边返回旧值边重新校验）：`revalidateTag` 把它的条目标记为陈旧，下一次读取返回陈旧值并在**后台**重新生成，所以新值会在你的断言之后才到 —— 不稳定，即使在 `force-dynamic` 页面上、即使加了预热请求也一样。请改用 fetch 级别的 `next.tags`（硬清除）。
+:::
+
+按需重新校验是特权操作（它清除缓存并强制重新生成），所以请用共享密钥保护该路由 —— 未设置时按失败关闭（fail closed）拒绝，用常量时间比较，并在测试中通过 Playwright 的 `use.extraHTTPHeaders` 附加 token，让 spec 本身从不接触密钥。
+
+参见完整、可运行的示例（[Next.js 16 示例](/zh-cn/docs/reference/examples/#nextjs-16)的一部分）：
+
+- [`app/isr/page.tsx`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/isr/page.tsx) —— 被缓存的页面（fetch 级别的 `next.tags`）
+- [`app/api/revalidate/route.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/api/revalidate/route.ts) —— 如何保护 `revalidateTag`：失败关闭 + 常量时间密钥比较
+- [`e2e/isr.spec.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/e2e/isr.spec.ts) —— 先失效，再一次导航；断言重新校验调用成功
+- [`playwright.config.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/playwright.config.ts) —— 加载 `.env` 并通过 `extraHTTPHeaders` 附加密钥
+
 ## package.json 脚本
 
 从脚本启动各服务，而不要从 `playwright.config.ts` 启动：

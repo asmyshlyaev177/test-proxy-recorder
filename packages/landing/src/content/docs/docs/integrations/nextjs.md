@@ -76,6 +76,49 @@ export const config = {
 
 See the [API reference](/docs/reference/api/readme/) for the full signatures of the `test-proxy-recorder/nextjs` helpers. A complete, runnable Edge project lives in the [Edge runtime example](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
 
+## Caching & ISR
+
+Don't disable caching for tests — the recorder works with a cached/ISR route. But there's one rule that decides the whole design: **to replay an SSR fetch, the page must run that fetch at request time.** A route that serves prerendered HTML or a stale cached render never makes the fetch, so the proxy has nothing to serve and the assertion sees stale content.
+
+The way that stays deterministic is to cache the SSR fetch with fetch-level `next.revalidate` + `next.tags`, then invalidate on demand before the assertion:
+
+```tsx
+// app/isr/page.tsx — no `export const dynamic`, no `export const revalidate`
+const res = await fetch(`${BACKEND_URL}/todos`, {
+  next: { revalidate: 30, tags: ['isr-todos'] },
+});
+```
+
+```typescript
+// app/api/revalidate/route.ts
+import { revalidateTag } from 'next/cache';
+revalidateTag('isr-todos', 'max'); // Next.js 16 requires the 2nd profile arg
+```
+
+```typescript
+// e2e/isr.spec.ts
+await page.request.post('/api/revalidate'); // hard purge
+await page.goto('/isr');                     // one navigation — deterministic
+await expect(page.getByTestId('todo-text')).toHaveCount(1);
+```
+
+`revalidateTag` on a **fetch** cache entry is a *hard purge*: the next read is a cache miss that blocks and re-fetches through the proxy. You must purge before the replay navigation because the data cache survives across the record → replay phases of one `next start` process — otherwise replay serves the record-phase cache and never hits the proxy (a false pass).
+
+During tests the patched `fetch` reads `headers()`, so the page renders dynamically and actually runs the fetch. In production (recorder disabled) nothing reads `headers()` and the page is static ISR as usual — the dynamic render is scoped to tests, and is intrinsic to recording an SSR fetch.
+
+:::caution[Avoid `unstable_cache` for this]
+`unstable_cache` is *stale-while-revalidate*: `revalidateTag` marks its entry stale, the next read returns the stale value and regenerates in the **background**, so the fresh value lands after your assertion — flaky, even on a `force-dynamic` page and even with a warm-up request. Use fetch-level `next.tags` (a hard purge) instead.
+:::
+
+On-demand revalidation is privileged (it purges the cache and forces regeneration), so gate the route behind a shared secret — fail closed if it's unset, compare in constant time, and attach the token from the test via Playwright `use.extraHTTPHeaders` so the spec never handles it.
+
+See the full, runnable example (part of the [Next.js 16 example](/docs/reference/examples/#nextjs-16)):
+
+- [`app/isr/page.tsx`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/isr/page.tsx) — the cached page (fetch-level `next.tags`)
+- [`app/api/revalidate/route.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/api/revalidate/route.ts) — how to guard `revalidateTag`: fail-closed + constant-time secret compare
+- [`e2e/isr.spec.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/e2e/isr.spec.ts) — invalidate, then one navigation; asserts the revalidate call succeeded
+- [`playwright.config.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/playwright.config.ts) — loads `.env` and attaches the secret via `extraHTTPHeaders`
+
 ## package.json scripts
 
 Start services from scripts, not from `playwright.config.ts`:
