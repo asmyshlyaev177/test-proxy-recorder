@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.2.0...v1.2.1) (2026-06-19)
+
+
+### Bug Fixes
+
+* ISR example ([94931f2](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/94931f281579310732d5a6868b0274ba39615c03))
+* ISR example ([fbd0f2f](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/fbd0f2fccf837cc5ffdd36bcc7cec934f9ca02c9))
+
 ## [1.2.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.1.1...v1.2.0) (2026-06-19)
 
 
