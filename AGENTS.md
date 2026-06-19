@@ -34,10 +34,14 @@ Package exports: `.` (Playwright/core), `./playwright`, `./nextjs`. CLI bin: `te
 ## Commands (run from repo root)
 
 ```bash
-pnpm build | lint | typecheck | test         # core library
+pnpm build         # core library
+pnpm lint
+pnpm typecheck
+pnpm test
 pnpm example:test:e2e:ci                      # nextjs16 example — record then replay
 pnpm example-edge:test:e2e:ci                 # edge example
-pnpm landing:dev | landing:build              # docs site
+pnpm landing:dev
+pnpm landing:build                            # docs site
 ```
 
 E2e flow: one `next build`, then `next start` serves a record phase (`RECORD_MODE=1`)

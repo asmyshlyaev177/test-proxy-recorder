@@ -85,14 +85,14 @@ export const config = {
 ```tsx
 // app/isr/page.tsx —— 不要 `export const dynamic`，不要 `export const revalidate`
 const res = await fetch(`${BACKEND_URL}/todos`, {
-  next: { revalidate: 30, tags: ['todos'] },
+  next: { revalidate: 30, tags: ['isr-todos'] },
 });
 ```
 
 ```typescript
 // app/api/revalidate/route.ts
 import { revalidateTag } from 'next/cache';
-revalidateTag('todos', 'max'); // Next.js 16 需要第 2 个 profile 参数
+revalidateTag('isr-todos', 'max'); // Next.js 16 需要第 2 个 profile 参数
 ```
 
 ```typescript

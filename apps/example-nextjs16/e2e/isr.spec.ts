@@ -5,12 +5,14 @@ const mode = process.env.RECORD_MODE ? 'record' : 'replay';
 const BACKEND_URL = 'http://localhost:3002';
 
 async function seed(text: string) {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
-  await fetch(`${BACKEND_URL}/todos`, {
+  const del = await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
+  if (!del.ok) throw new Error(`seed DELETE failed: ${del.status} ${del.statusText}`);
+  const post = await fetch(`${BACKEND_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
   });
+  if (!post.ok) throw new Error(`seed POST failed: ${post.status} ${post.statusText}`);
 }
 
 test.beforeEach(async ({ page }, testInfo) => {

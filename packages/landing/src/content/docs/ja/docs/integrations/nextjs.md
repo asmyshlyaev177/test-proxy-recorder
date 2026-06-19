@@ -85,14 +85,14 @@ export const config = {
 ```tsx
 // app/isr/page.tsx — `export const dynamic` なし、`export const revalidate` なし
 const res = await fetch(`${BACKEND_URL}/todos`, {
-  next: { revalidate: 30, tags: ['todos'] },
+  next: { revalidate: 30, tags: ['isr-todos'] },
 });
 ```
 
 ```typescript
 // app/api/revalidate/route.ts
 import { revalidateTag } from 'next/cache';
-revalidateTag('todos', 'max'); // Next.js 16 は第 2 引数（プロファイル）が必要
+revalidateTag('isr-todos', 'max'); // Next.js 16 は第 2 引数（プロファイル）が必要
 ```
 
 ```typescript

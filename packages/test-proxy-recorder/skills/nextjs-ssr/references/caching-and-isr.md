@@ -27,13 +27,13 @@ demand with `revalidateTag` before the assertion.
 ```tsx
 // app/isr/page.tsx — NO `export const dynamic`, NO `export const revalidate`
 const res = await fetch(`${BACKEND_URL}/todos`, {
-  next: { revalidate: 30, tags: ['todos'] },
+  next: { revalidate: 30, tags: ['isr-todos'] },
 });
 ```
 
 ```ts
 // app/api/revalidate/route.ts (authenticated — see below)
-revalidateTag('todos', 'max'); // Next 16 requires the 2nd profile arg
+revalidateTag('isr-todos', 'max'); // Next 16 requires the 2nd profile arg
 ```
 
 ```ts

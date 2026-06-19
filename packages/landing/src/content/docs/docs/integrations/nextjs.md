@@ -85,14 +85,14 @@ The way that stays deterministic is to cache the SSR fetch with fetch-level `nex
 ```tsx
 // app/isr/page.tsx — no `export const dynamic`, no `export const revalidate`
 const res = await fetch(`${BACKEND_URL}/todos`, {
-  next: { revalidate: 30, tags: ['todos'] },
+  next: { revalidate: 30, tags: ['isr-todos'] },
 });
 ```
 
 ```typescript
 // app/api/revalidate/route.ts
 import { revalidateTag } from 'next/cache';
-revalidateTag('todos', 'max'); // Next.js 16 requires the 2nd profile arg
+revalidateTag('isr-todos', 'max'); // Next.js 16 requires the 2nd profile arg
 ```
 
 ```typescript
