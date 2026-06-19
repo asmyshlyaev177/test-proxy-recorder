@@ -163,6 +163,23 @@ the proxy anyway). Works on Node **and** Edge runtimes. Call it from the root
 layout, **not** `instrumentation.ts` (see Common Mistakes).
 Source: apps/example-nextjs-edge/app/layout.tsx
 
+### Testing a cached / ISR route
+
+**Don't disable caching for tests** — record/replay works with ISR, but only one
+design is deterministic. The rule: replaying an SSR fetch needs the page to run
+that fetch at request time, so cache it with fetch-level `next.revalidate` +
+`next.tags` (a hard purge on `revalidateTag`), **not** `unstable_cache` (which is
+stale-while-revalidate and flakes). Before the replay navigation, `revalidateTag`
+to drop the cache left from the record phase; one navigation is then enough — no
+polling. During tests the patched fetch reads `headers()`, so the page renders
+dynamically and runs the fetch; in production it's still static ISR. Gate the
+revalidate route behind a secret (privileged, DoS-able) supplied via Playwright
+`extraHTTPHeaders`.
+
+Full rationale, the flaky approaches to avoid, and the auth pattern are in
+[references/caching-and-isr.md](references/caching-and-isr.md).
+Source: apps/example-nextjs16/app/isr/page.tsx, app/api/revalidate/route.ts, e2e/isr.spec.ts
+
 ### Memoize header lookup with React cache() (App Router)
 
 Avoid calling `headers()` in every individual fetch helper. Wrap it once with

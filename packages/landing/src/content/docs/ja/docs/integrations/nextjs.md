@@ -76,6 +76,49 @@ export const config = {
 
 `test-proxy-recorder/nextjs` ヘルパーの完全なシグネチャは [API リファレンス](/ja/docs/reference/api/readme/)を参照してください。完全に実行可能な Edge プロジェクトは [Edge ランタイムの例](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge)にあります。
 
+## キャッシュと ISR
+
+テストのためにキャッシュを無効化しないでください — レコーダーはキャッシュ／ISR ルートでも動作します。ただし設計全体を決める 1 つのルールがあります：**SSR フェッチを再生するには、ページがそのフェッチをリクエスト時に実行しなければなりません。** プリレンダリングされた HTML や古いキャッシュ済みレンダーを返すルートはフェッチを行わないため、プロキシには返すものがなく、アサーションは古い内容を見ます。
+
+決定的なままにする方法は、SSR フェッチをフェッチレベルの `next.revalidate` + `next.tags` でキャッシュし、アサーションの前にオンデマンドで無効化することです：
+
+```tsx
+// app/isr/page.tsx — `export const dynamic` なし、`export const revalidate` なし
+const res = await fetch(`${BACKEND_URL}/todos`, {
+  next: { revalidate: 30, tags: ['todos'] },
+});
+```
+
+```typescript
+// app/api/revalidate/route.ts
+import { revalidateTag } from 'next/cache';
+revalidateTag('todos', 'max'); // Next.js 16 は第 2 引数（プロファイル）が必要
+```
+
+```typescript
+// e2e/isr.spec.ts
+await page.request.post('/api/revalidate'); // ハードパージ
+await page.goto('/isr');                     // 1 回のナビゲーション — 決定的
+await expect(page.getByTestId('todo-text')).toHaveCount(1);
+```
+
+**フェッチ**キャッシュエントリに対する `revalidateTag` は*ハードパージ*です：次の読み取りはキャッシュミスとなり、ブロックしてプロキシ経由でフェッチし直します。再生ナビゲーションの前にパージしなければなりません。データキャッシュは同一の `next start` プロセスの記録 → 再生フェーズをまたいで残るため、そうしないと再生は記録フェーズのキャッシュを返してプロキシに到達せず（偽の成功）になります。
+
+テスト中はパッチされた `fetch` が `headers()` を読むため、ページは動的にレンダリングされ、実際にフェッチを実行します。本番（レコーダー無効）では `headers()` を読むものがなく、ページは通常どおり静的 ISR です — 動的レンダリングはテストに限定され、SSR フェッチの記録に本質的に伴うものです。
+
+:::caution[これには `unstable_cache` を避ける]
+`unstable_cache` は *stale-while-revalidate* です：`revalidateTag` はそのエントリを古いとマークし、次の読み取りは古い値を返して**バックグラウンド**で再生成するため、新しい値はアサーションの後に届きます — `force-dynamic` なページでも、ウォームアップリクエストを入れても不安定です。代わりにフェッチレベルの `next.tags`（ハードパージ）を使ってください。
+:::
+
+オンデマンドの再検証は特権的（キャッシュをパージし再生成を強制する）なので、ルートを共有シークレットで保護してください — 未設定ならフェイルクローズ（拒否）し、定数時間で比較し、テストからは Playwright の `use.extraHTTPHeaders` 経由でトークンを付与して、spec がシークレットを一切扱わないようにします。
+
+完全に実行可能な例（[Next.js 16 の例](/ja/docs/reference/examples/#nextjs-16)の一部）を参照してください：
+
+- [`app/isr/page.tsx`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/isr/page.tsx) — キャッシュされたページ（フェッチレベルの `next.tags`）
+- [`app/api/revalidate/route.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/api/revalidate/route.ts) — `revalidateTag` をガードする方法：フェイルクローズ + 定数時間のシークレット比較
+- [`e2e/isr.spec.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/e2e/isr.spec.ts) — 無効化してから 1 回ナビゲーション；再検証の呼び出しが成功したことをアサート
+- [`playwright.config.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/playwright.config.ts) — `.env` を読み込み、`extraHTTPHeaders` でシークレットを付与
+
 ## package.json スクリプト
 
 サービスは `playwright.config.ts` からではなくスクリプトから起動してください:

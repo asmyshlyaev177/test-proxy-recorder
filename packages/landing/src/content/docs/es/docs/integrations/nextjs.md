@@ -76,6 +76,49 @@ export const config = {
 
 Mira la [referencia de la API](/es/docs/reference/api/readme/) para las firmas completas de los helpers de `test-proxy-recorder/nextjs`. Un proyecto Edge completo y ejecutable vive en el [ejemplo de runtime Edge](https://github.com/asmyshylaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
 
+## Caché e ISR
+
+No deshabilites el cacheo para las pruebas — el grabador funciona con una ruta cacheada/ISR. Pero hay una regla que define todo el diseño: **para reproducir un fetch SSR, la página debe ejecutar ese fetch en el momento de la petición.** Una ruta que sirve HTML prerenderizado o un render cacheado obsoleto nunca hace el fetch, así que el proxy no tiene nada que servir y la aserción ve contenido obsoleto.
+
+La forma que se mantiene determinista es cachear el fetch SSR con `next.revalidate` + `next.tags` a nivel de fetch, y luego invalidar bajo demanda antes de la aserción:
+
+```tsx
+// app/isr/page.tsx — sin `export const dynamic`, sin `export const revalidate`
+const res = await fetch(`${BACKEND_URL}/todos`, {
+  next: { revalidate: 30, tags: ['todos'] },
+});
+```
+
+```typescript
+// app/api/revalidate/route.ts
+import { revalidateTag } from 'next/cache';
+revalidateTag('todos', 'max'); // Next.js 16 requiere el 2º argumento de perfil
+```
+
+```typescript
+// e2e/isr.spec.ts
+await page.request.post('/api/revalidate'); // purga dura
+await page.goto('/isr');                     // una navegación — determinista
+await expect(page.getByTestId('todo-text')).toHaveCount(1);
+```
+
+`revalidateTag` sobre una entrada de caché de **fetch** es una *purga dura*: la siguiente lectura es un fallo de caché que se bloquea y vuelve a hacer el fetch a través del proxy. Debes purgar antes de la navegación de reproducción porque la caché de datos sobrevive entre las fases de grabación → reproducción de un mismo proceso `next start` — de lo contrario la reproducción sirve la caché de la fase de grabación y nunca llega al proxy (un falso positivo).
+
+Durante las pruebas el `fetch` parcheado lee `headers()`, así que la página se renderiza dinámicamente y realmente ejecuta el fetch. En producción (grabador deshabilitado) nada lee `headers()` y la página es ISR estática como siempre — el render dinámico está acotado a las pruebas, y es intrínseco a grabar un fetch SSR.
+
+:::caution[Evita `unstable_cache` para esto]
+`unstable_cache` es *stale-while-revalidate*: `revalidateTag` marca su entrada como obsoleta, la siguiente lectura devuelve el valor obsoleto y regenera en **segundo plano**, así que el valor fresco llega después de tu aserción — inestable, incluso en una página `force-dynamic` e incluso con una petición de calentamiento. Usa `next.tags` a nivel de fetch (una purga dura) en su lugar.
+:::
+
+La revalidación bajo demanda es privilegiada (purga la caché y fuerza la regeneración), así que protege la ruta con un secreto compartido — falla en cerrado si no está definido, compara en tiempo constante, y adjunta el token desde la prueba vía `use.extraHTTPHeaders` de Playwright para que el spec nunca lo maneje.
+
+Mira el ejemplo completo y ejecutable (parte del [ejemplo de Next.js 16](/es/docs/reference/examples/#nextjs-16)):
+
+- [`app/isr/page.tsx`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/isr/page.tsx) — la página cacheada (`next.tags` a nivel de fetch)
+- [`app/api/revalidate/route.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/api/revalidate/route.ts) — cómo proteger `revalidateTag`: falla en cerrado + comparación del secreto en tiempo constante
+- [`e2e/isr.spec.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/e2e/isr.spec.ts) — invalida, luego una navegación; comprueba que la llamada de revalidación tuvo éxito
+- [`playwright.config.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/playwright.config.ts) — carga `.env` y adjunta el secreto vía `extraHTTPHeaders`
+
 ## Scripts de package.json
 
 Inicia los servicios desde scripts, no desde `playwright.config.ts`:

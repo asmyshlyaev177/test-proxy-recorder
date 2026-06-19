@@ -76,6 +76,49 @@ export const config = {
 
 Полные сигнатуры хелперов `test-proxy-recorder/nextjs` см. в [справочнике API](/ru/docs/reference/api/readme/). Полный, готовый к запуску Edge-проект находится в [примере Edge-runtime](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
 
+## Кеширование и ISR
+
+Не отключайте кеширование ради тестов — рекордер работает с кешируемым/ISR-роутом. Но есть одно правило, определяющее весь дизайн: **чтобы воспроизвести SSR-fetch, страница должна выполнить этот fetch в момент запроса.** Роут, отдающий пререндеренный HTML или устаревший закешированный рендер, fetch не делает, поэтому прокси нечего отдавать, и проверка видит устаревший контент.
+
+Детерминированным остаётся такой подход: кешировать SSR-fetch на уровне fetch через `next.revalidate` + `next.tags`, а затем инвалидировать по требованию перед проверкой:
+
+```tsx
+// app/isr/page.tsx — без `export const dynamic`, без `export const revalidate`
+const res = await fetch(`${BACKEND_URL}/todos`, {
+  next: { revalidate: 30, tags: ['todos'] },
+});
+```
+
+```typescript
+// app/api/revalidate/route.ts
+import { revalidateTag } from 'next/cache';
+revalidateTag('todos', 'max'); // Next.js 16 требует 2-й аргумент-профиль
+```
+
+```typescript
+// e2e/isr.spec.ts
+await page.request.post('/api/revalidate'); // жёсткая очистка
+await page.goto('/isr');                     // одна навигация — детерминированно
+await expect(page.getByTestId('todo-text')).toHaveCount(1);
+```
+
+`revalidateTag` для записи кеша **fetch** — это *жёсткая очистка*: следующее чтение становится промахом кеша, который блокируется и заново делает fetch через прокси. Очищать нужно до навигации воспроизведения, потому что кеш данных переживает фазы запись → воспроизведение одного процесса `next start` — иначе воспроизведение отдаст кеш фазы записи и никогда не попадёт в прокси (ложный успех).
+
+Во время тестов пропатченный `fetch` читает `headers()`, поэтому страница рендерится динамически и реально выполняет fetch. В продакшене (рекордер выключен) `headers()` никто не читает, и страница остаётся статической ISR как обычно — динамический рендер ограничен тестами и является неотъемлемой частью записи SSR-fetch.
+
+:::caution[Избегайте `unstable_cache` для этого]
+`unstable_cache` работает по схеме *stale-while-revalidate*: `revalidateTag` помечает его запись как устаревшую, следующее чтение возвращает устаревшее значение и регенерирует в **фоне**, поэтому свежее значение приходит уже после вашей проверки — нестабильно, даже на странице `force-dynamic` и даже с прогревочным запросом. Используйте вместо этого `next.tags` на уровне fetch (жёсткую очистку).
+:::
+
+Ревалидация по требованию привилегированна (очищает кеш и форсирует регенерацию), поэтому защитите роут общим секретом — отказывайте по умолчанию, если он не задан, сравнивайте за константное время и прикрепляйте токен из теста через `use.extraHTTPHeaders` Playwright, чтобы spec никогда не работал с секретом напрямую.
+
+Смотрите полный, готовый к запуску пример (часть [примера Next.js 16](/ru/docs/reference/examples/#nextjs-16)):
+
+- [`app/isr/page.tsx`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/isr/page.tsx) — кешируемая страница (`next.tags` на уровне fetch)
+- [`app/api/revalidate/route.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/app/api/revalidate/route.ts) — как защитить `revalidateTag`: отказ по умолчанию + сравнение секрета за константное время
+- [`e2e/isr.spec.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/e2e/isr.spec.ts) — инвалидируем, затем одна навигация; проверяем, что вызов ревалидации успешен
+- [`playwright.config.ts`](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/playwright.config.ts) — загружает `.env` и прикрепляет секрет через `extraHTTPHeaders`
+
 ## Скрипты package.json
 
 Запускайте сервисы из скриптов, а не из `playwright.config.ts`:
