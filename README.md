@@ -53,8 +53,8 @@ See the [full comparison in the docs](https://test-proxy-recorder.dev/docs/#comp
 
 ```text
 Set up test-proxy-recorder for end-to-end tests in this project, then follow the instructions that `init` prints. Run these commands:
-  npx @tanstack/intent@latest install
   npm install --save-dev test-proxy-recorder
+  npx @tanstack/intent@latest install
   npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recordings
 Then complete the steps init prints: point the app's API base URL at the proxy in dev/test only, tag server-side fetches (Next.js), add a smoke test, and verify record → replay.
 ```
@@ -114,7 +114,17 @@ This is built and maintained in the open by one person, and every bit of feedbac
 - **Want to contribute?** PRs welcome. 
 
 ## AI skill
-The agent skills live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
+
+Using an AI coding agent (Claude Code, Cursor, Copilot, …)? The library ships [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent) skills so the agent generates correct setup code. Install the package, then write the agent guidance:
+
+```bash
+npm install --save-dev test-proxy-recorder
+npx @tanstack/intent@latest install
+```
+
+`install` adds skill-discovery guidance to your agent config (`CLAUDE.md`, `.cursorrules`, …); the agent loads the `proxy-setup` and `nextjs-ssr` skills on demand. List or load them directly with `npx @tanstack/intent@latest list` and `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Full guide: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+
+The skill sources live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
 ## License
 

@@ -11,8 +11,8 @@ Copy this and paste it into your AI coding agent (Claude Code, Cursor, …):
 Set up test-proxy-recorder for end-to-end tests in this project, then follow the
 instructions that `init` prints. Run these commands:
 
-  npx @tanstack/intent@latest install
   npm install --save-dev test-proxy-recorder
+  npx @tanstack/intent@latest install
 
 Then run init, passing this project's backend API base URL as the target — find
 it yourself from the app's env/config (the URL the app calls in dev); don't
