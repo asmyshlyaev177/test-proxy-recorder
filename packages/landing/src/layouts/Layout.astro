@@ -141,6 +141,29 @@ const jsonLd = {
     <footer class="site-footer">
       <div class="container footer-row">
         <p>MIT licensed. Built by <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>.</p>
+        <a
+          class="open-launch-badge"
+          href="https://open-launch.com/projects/test-proxy-recorder"
+          target="_blank"
+          rel="noopener"
+        >
+          <img
+            class="badge-light"
+            src="https://open-launch.com/api/badge/0b7dbb08-7e6b-48c9-b705-961b2aeb0436/featured-light.svg"
+            alt="Featured on Open-Launch"
+            width="200"
+            height="50"
+            loading="lazy"
+          />
+          <img
+            class="badge-dark"
+            src="https://open-launch.com/api/badge/0b7dbb08-7e6b-48c9-b705-961b2aeb0436/featured-dark.svg"
+            alt="Featured on Open-Launch"
+            width="200"
+            height="50"
+            loading="lazy"
+          />
+        </a>
         <p class="footer-meta">Node ≥ 20 · @playwright/test ≥ 1.0</p>
       </div>
     </footer>
@@ -244,6 +267,29 @@ const jsonLd = {
       .footer-meta {
         font-family: var(--font-mono);
         font-size: 0.8rem;
+      }
+
+      .open-launch-badge {
+        display: inline-flex;
+        line-height: 0;
+      }
+
+      .open-launch-badge img {
+        height: 50px;
+        width: auto;
+      }
+
+      /* Show the badge variant that matches the active theme. */
+      .badge-dark {
+        display: none;
+      }
+
+      :global([data-theme='dark']) .badge-light {
+        display: none;
+      }
+
+      :global([data-theme='dark']) .badge-dark {
+        display: inline-block;
       }
 
       @media (max-width: 640px) {
