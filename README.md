@@ -52,11 +52,11 @@ See the [full comparison in the docs](https://test-proxy-recorder.dev/docs/#comp
 **Fastest path — hand it to your AI coding agent.** Copy this, swap in your backend URL, and paste it into Claude Code / Cursor / etc. (it runs `init` and finishes the wiring):
 
 ```text
-Set up test-proxy-recorder for end-to-end tests in this project, then follow the instructions that `init` prints. Run these commands:
+# Set up test-proxy-recorder for end-to-end tests in this project, then follow the instructions that `init` prints. Run these commands:
   npm install --save-dev test-proxy-recorder
   npx @tanstack/intent@latest install
   npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recordings
-Then complete the steps init prints: point the app's API base URL at the proxy in dev/test only, tag server-side fetches (Next.js), add a smoke test, and verify record → replay.
+# Then complete the steps init prints: point the app's API base URL at the proxy in dev/test only, tag server-side fetches (Next.js), add a smoke test, and verify record → replay.
 ```
 
 Prefer to wire it by hand:
