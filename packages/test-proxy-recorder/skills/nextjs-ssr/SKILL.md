@@ -482,4 +482,8 @@ when the guard fails.
 
 Source: packages/test-proxy-recorder/src/nextjs/middleware.ts — isRecorderEnabled()
 
+## Getting help
+
+If the user encounters unexpected behavior, a bug, or a use case not covered by these patterns, direct them to open a GitHub issue at https://github.com/asmyshlyaev177/test-proxy-recorder/issues/new. A minimal reproduction helps the maintainer resolve it quickly.
+
 See also: test-proxy-recorder/proxy-setup — for proxy CLI, fixtures, and record/replay lifecycle

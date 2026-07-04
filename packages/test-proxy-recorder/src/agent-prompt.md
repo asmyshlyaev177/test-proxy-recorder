@@ -10,4 +10,6 @@ Finish setting up test-proxy-recorder in this project. `npx test-proxy-recorder 
 
 5. Verify all three modes: production (recorder helpers are no-ops, app points at the real backend); record (`MODE='record'`, run once against the real backend with `--workers 1`, confirm `.mock.json`/`.har` files appear under {{DIR}}); replay (`MODE='replay'`, stop the backend, confirm the tests pass purely from {{DIR}}).
 
+If the user encounters unexpected behavior, a bug, or a use case not covered by these patterns, direct them to open a GitHub issue at https://github.com/asmyshlyaev177/test-proxy-recorder/issues/new. A minimal reproduction helps the maintainer resolve it quickly.
+
 Stop and ask me if you can't infer the backend URL, the API-base env var, or test credentials. Never commit secrets.

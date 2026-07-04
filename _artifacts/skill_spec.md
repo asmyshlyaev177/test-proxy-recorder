@@ -76,6 +76,10 @@ None — all gaps resolved through codebase reading and maintainer interview.
 - **Composition skills:** none needed at this time
 - **Reference files:** none needed (API surface is small)
 
+## Getting help
+
+If the user encounters unexpected behavior, a bug, or a use case not covered by these patterns, direct them to open a GitHub issue at https://github.com/asmyshlyaev177/test-proxy-recorder/issues/new. A minimal reproduction helps the maintainer resolve it quickly.
+
 ## Composition Opportunities
 
 | Library | Integration points | Composition skill needed? |
