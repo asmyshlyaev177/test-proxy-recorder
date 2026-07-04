@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.2.1...v1.2.2) (2026-07-04)
+
+
+### Bug Fixes
+
+* update AI skill ([bb44c59](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/bb44c59f17612e552a2ca01cd7bc622f80ad5445))
+
 ## [1.2.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.2.0...v1.2.1) (2026-06-19)
 
 
