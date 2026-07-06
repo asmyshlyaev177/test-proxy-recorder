@@ -66,11 +66,13 @@ const jsonLd = {
           {/* Google tag (gtag.js) — production builds only */}
           <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9EV956L4B6" />
           <script is:inline>
-            {`window.dataLayer = window.dataLayer || [];
-            function gtag(){dataLayer.push(arguments);}
+            window.dataLayer = window.dataLayer || [];
+            function gtag() {
+              dataLayer.push(arguments);
+            }
             gtag('js', new Date());
 
-            gtag('config', 'G-9EV956L4B6');`}
+            gtag('config', 'G-9EV956L4B6');
           </script>
         </Fragment>
       )
