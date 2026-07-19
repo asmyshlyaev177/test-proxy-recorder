@@ -102,6 +102,17 @@ describe('tanstack-start registerProxyFetch', () => {
 
       expect(globalThis.fetch).not.toBe(original);
     });
+
+    it('does not patch fetch on the client, before reading process.env', () => {
+      process.env.NODE_ENV = 'development'; // would otherwise enable the recorder
+      (globalThis as { window?: unknown }).window = {};
+      try {
+        registerProxyFetch();
+        expect(globalThis.fetch).toBe(original);
+      } finally {
+        delete (globalThis as { window?: unknown }).window;
+      }
+    });
   });
 
   describe('tagging', () => {

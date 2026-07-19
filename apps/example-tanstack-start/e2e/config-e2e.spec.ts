@@ -70,10 +70,22 @@ async function waitForHttp(url: string, label: string, timeoutMs = 30_000): Prom
 }
 
 async function stop(child: ChildProcess | undefined): Promise<void> {
-  if (child && child.exitCode === null) {
+  if (!child || child.exitCode !== null || child.killed) return;
+  await new Promise<void>((resolve) => {
+    // Subscribe before killing so we can't miss the 'exit' event, and cap the
+    // wait so a process that ignores SIGTERM (or already died) can't hang the
+    // suite — SIGKILL then move on.
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+    const timer = setTimeout(() => {
+      child.kill('SIGKILL');
+      done();
+    }, 5000);
+    child.once('exit', done);
     child.kill('SIGTERM');
-    await new Promise((r) => child.once('exit', r));
-  }
+  });
 }
 
 // Serial: the tests share one spawned stack and step a single proxy through

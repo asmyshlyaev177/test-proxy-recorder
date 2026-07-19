@@ -11,7 +11,7 @@ import path from 'node:path';
 
 const RECORDINGS_DIR = path.join(process.cwd(), 'e2e', 'recordings');
 
-// The literal secrets used by app/secret/page.tsx and mock-backend/server.mjs.
+// The literal secrets used by src/lib/api.ts (fetchSecret) and mock-backend/server.mjs.
 const FORBIDDEN = [
   'super-secret-har-jwt', // Authorization token (request header)
   'har-key-secret', // x-api-key (request header)

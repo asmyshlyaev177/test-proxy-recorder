@@ -25,9 +25,13 @@ import { currentRecordingId } from './requestContext.js';
  * read). No-op in production unless `TEST_PROXY_RECORDER_ENABLED` is set.
  */
 export function registerProxyFetch(): void {
-  if (!isRecorderEnabled()) return;
-  // Client has no server request context to read; nothing to tag.
+  // Bail on the client first, before touching `process.env`. This module is
+  // imported by `src/router.tsx`, which also runs in the browser; a bundler that
+  // doesn't shim `process` would otherwise throw `process is not defined` from
+  // `isRecorderEnabled()` at module load. The client has no server request
+  // context to read anyway, so there is nothing to tag.
   if ((globalThis as { window?: unknown }).window !== undefined) return;
+  if (!isRecorderEnabled()) return;
 
   patchGlobalFetch(currentRecordingId);
 }

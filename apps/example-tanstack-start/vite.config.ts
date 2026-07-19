@@ -7,9 +7,8 @@ export default defineConfig({
   server: {
     port: 3000,
   },
-  resolve: {
-    tsconfigPaths: true,
-  },
+  // The `~/*` path alias (tsconfig.json `paths`) is resolved by the tanstackStart
+  // plugin, which reads the project's tsconfig — no extra Vite config needed.
   plugins: [
     tanstackStart({
       srcDirectory: 'src',
