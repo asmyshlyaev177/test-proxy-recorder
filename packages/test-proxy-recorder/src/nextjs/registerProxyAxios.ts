@@ -1,5 +1,5 @@
 import { RECORDING_ID_HEADER } from '../constants.js';
-import { isRecorderEnabled } from './middleware.js';
+import { isRecorderEnabled } from '../recorderEnabled.js';
 import { currentRecordingId } from './registerProxyFetch.js';
 
 /**

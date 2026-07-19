@@ -20,6 +20,11 @@
       "require": "./dist/nextjs/index.cjs",
       "types": "./dist/nextjs/index.d.ts",
       "default": "./dist/nextjs/index.mjs"
+    },
+    "./tanstack-start": {
+      "require": "./dist/tanstack-start/index.cjs",
+      "types": "./dist/tanstack-start/index.d.ts",
+      "default": "./dist/tanstack-start/index.mjs"
     }
   },
   "bin": {

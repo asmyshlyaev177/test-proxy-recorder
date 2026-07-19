@@ -114,7 +114,7 @@ export default defineConfig({
           items: [
             { label: 'Playwright', slug: 'docs/integrations/playwright' },
             { label: 'Next.js', slug: 'docs/integrations/nextjs' },
-            { label: 'TanStack Start', slug: 'docs/integrations/tanstack-start', badge: 'Soon' },
+            { label: 'TanStack Start', slug: 'docs/integrations/tanstack-start' },
             { label: 'React Router / Remix', slug: 'docs/integrations/react-router', badge: 'Soon' },
           ],
         },

@@ -29,6 +29,8 @@
     "example:test:e2e:ci": "pnpm --filter example-nextjs16 test:e2e:ci",
     "example-edge:test:e2e": "pnpm --filter example-nextjs-edge test:e2e",
     "example-edge:test:e2e:ci": "pnpm --filter example-nextjs-edge test:e2e:ci",
+    "example-tanstack:test:e2e": "pnpm --filter example-tanstack-start test:e2e",
+    "example-tanstack:test:e2e:ci": "pnpm --filter example-tanstack-start test:e2e:ci",
     "auth:mock:test:e2e": "pnpm --filter example-auth-mock test:e2e",
     "auth:mock:test:e2e:ci": "pnpm --filter example-auth-mock test:e2e:ci",
     "auth:cognito:record": "pnpm --filter example-auth-cognito record",

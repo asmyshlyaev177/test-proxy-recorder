@@ -1,0 +1,95 @@
+import { expect, test } from '@playwright/test';
+import { playwrightProxy } from 'test-proxy-recorder';
+
+type Mode = 'replay' | 'record';
+
+const mode = process.env.RECORD_MODE ? 'record' : 'replay';
+// const mode = 'record' as Mode;
+const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
+
+// Matches client-side fetch calls from the browser to the proxy (port 8100)
+// These are recorded via Playwright's HAR mechanism alongside the server-side .mock.json
+const CLIENT_SIDE_URL = /localhost:8100/;
+
+async function resetData() {
+  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' }).catch((_err) => false);
+}
+
+test.beforeEach(async ({ page }, testInfo) => {
+  if (mode === 'record') {
+    await resetData();
+  }
+  await playwrightProxy.before(page, testInfo, mode as 'record' | 'replay', { url: CLIENT_SIDE_URL });
+});
+
+
+test('creates a new todo', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('new-todo-input').fill('Buy groceries');
+  await page.getByTestId('add-btn').click();
+
+  await expect(page.getByTestId('todo-text').first()).toHaveText('Buy groceries');
+
+});
+
+test('filters todos by text', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('new-todo-input').fill('Buy groceries');
+  // Wait for response could be needed for fast sequential requests to the same api
+  const res1 = page.waitForResponse(/\/todos/);
+  await page.getByTestId('add-btn').click();
+  await res1;
+
+  await page.getByTestId('new-todo-input').fill('Read a book');
+  const res2 = page.waitForResponse(/\/todos/);
+  await page.getByTestId('add-btn').click();
+  await res2;
+
+  await page.getByTestId('filter-input').fill('buy');
+
+  const items = page.getByTestId('todo-item');
+  await expect(items).toHaveCount(1);
+  await expect(items.first().getByTestId('todo-text')).toHaveText('Buy groceries');
+
+});
+
+test('toggles a todo as completed', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('new-todo-input').fill('Write tests');
+  await page.getByTestId('add-btn').click();
+
+  await page.getByTestId('todo-checkbox').first().click();
+
+  await expect(page.getByTestId('todo-text').first()).toHaveClass(/completed/);
+
+});
+
+test('edits a todo', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('new-todo-input').fill('Old text');
+  await page.getByTestId('add-btn').click();
+
+  await page.getByTestId('edit-btn').first().click();
+  await page.getByTestId('edit-input').fill('New text');
+  await page.getByTestId('save-btn').click();
+
+  await expect(page.getByTestId('todo-text').first()).toHaveText('New text');
+
+});
+
+test('deletes a todo', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByTestId('new-todo-input').fill('To be deleted');
+  await page.getByTestId('add-btn').click();
+  await expect(page.getByTestId('todo-item')).toHaveCount(1);
+
+  await page.getByTestId('delete-btn').first().click();
+
+  await expect(page.getByTestId('todo-item')).toHaveCount(0);
+
+});
