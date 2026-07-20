@@ -25,10 +25,15 @@ const FORBIDDEN = [
 const JWT_RE = /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+/;
 // The Cognito login must run in transparent mode and never produce a recording.
 const FORBIDDEN_PREFIXES = ['setup-auth', 'authenticate'];
-// Only require the authenticated recording when the Cognito suite actually ran
-// (creds present). Without creds the `auth` project is skipped — see playwright.config.ts.
+// Only require the authenticated recording when the Cognito suite actually ran.
+// This MUST match the `hasCognito` gate in playwright.config.ts (test user AND
+// public pool config), or a partial config would skip the suite here yet still
+// demand an auth__*.har. Without all four the `auth` project is skipped.
 const authExpected = !!(
-  process.env.COGNITO_TEST_EMAIL && process.env.COGNITO_TEST_PASSWORD
+  process.env.COGNITO_TEST_EMAIL &&
+  process.env.COGNITO_TEST_PASSWORD &&
+  process.env.VITE_COGNITO_REGION &&
+  process.env.VITE_COGNITO_CLIENT_ID
 );
 
 let failed = false;

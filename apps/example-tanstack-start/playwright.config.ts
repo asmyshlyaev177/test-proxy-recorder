@@ -19,18 +19,31 @@ try {
 // vars (CI secrets) take precedence.
 try {
   process.loadEnvFile('.env.local');
-} catch {
-  // No .env.local — the Cognito auth suite is simply skipped (see below).
+} catch (err) {
+  // A missing .env.local is the normal case — the Cognito auth suite is simply
+  // skipped (see below). Surface anything else (a malformed file, a permission
+  // error, or `process.loadEnvFile` being unavailable on Node < 20.12) so it
+  // isn't silently swallowed and mistaken for "no credentials".
+  if ((err as NodeJS.ErrnoException | undefined)?.code !== 'ENOENT') {
+    console.warn(
+      `[playwright.config] Could not load .env.local: ${err instanceof Error ? err.message : String(err)}`,
+    );
+  }
 }
 
 const revalidateToken = process.env.REVALIDATE_SECRET ?? '';
 
-// The Cognito auth suite (setup-auth.ts + auth.spec.ts) needs a real test user.
-// Without credentials it's skipped entirely, so a fresh clone still replays every
-// other spec offline. With creds (`.env.local` or CI secrets) it records/replays
-// the authenticated dashboard. Forks without secrets get the rest of the suite green.
+// The Cognito auth suite (setup-auth.ts + auth.spec.ts) needs a real test user
+// AND the public pool config (VITE_COGNITO_*), which is baked into the app at
+// build time and read by the login page. We require BOTH: with the test user but
+// no pool config, the login can't configure Cognito and setup-auth would time out
+// on the /dashboard redirect — better to skip cleanly. Without either, a fresh
+// clone (and forks without secrets) still replays every other spec offline.
 const hasCognito = !!(
-  process.env.COGNITO_TEST_EMAIL && process.env.COGNITO_TEST_PASSWORD
+  process.env.COGNITO_TEST_EMAIL &&
+  process.env.COGNITO_TEST_PASSWORD &&
+  process.env.VITE_COGNITO_REGION &&
+  process.env.VITE_COGNITO_CLIENT_ID
 );
 
 export default defineConfig({

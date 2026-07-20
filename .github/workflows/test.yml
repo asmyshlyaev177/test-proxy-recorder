@@ -64,12 +64,15 @@ jobs:
     container:
       image: mcr.microsoft.com/playwright:v1.59.1-noble
       options: --user root
-    # Cognito creds come from repo secrets. NEXT_PUBLIC_* are baked at build time
-    # (not secret); COGNITO_TEST_* are the test-user credentials. When the secrets
-    # are absent (e.g. forks), the Cognito step below skips itself.
+    # Cognito creds come from repo secrets. NEXT_PUBLIC_* (Next.js example) and
+    # VITE_* (TanStack Start example) are the same public pool config, baked at
+    # build time (not secret); COGNITO_TEST_* are the test-user credentials. When
+    # the secrets are absent (e.g. forks), the Cognito suites skip themselves.
     env:
       NEXT_PUBLIC_COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
       NEXT_PUBLIC_COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
+      VITE_COGNITO_REGION: ${{ secrets.COGNITO_REGION }}
+      VITE_COGNITO_CLIENT_ID: ${{ secrets.COGNITO_CLIENT_ID }}
       COGNITO_TEST_EMAIL: ${{ secrets.COGNITO_TEST_EMAIL }}
       COGNITO_TEST_PASSWORD: ${{ secrets.COGNITO_TEST_PASSWORD }}
     steps:

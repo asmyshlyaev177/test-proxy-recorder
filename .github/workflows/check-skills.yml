@@ -76,10 +76,12 @@ jobs:
         if: steps.stale.outputs.has_review == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
-          VERSION="${{ github.event.release.tag_name || 'manual' }}"
+          VERSION="${RELEASE_TAG:-manual}"
           BRANCH="skills/review-${VERSION}"
-          BASE_BRANCH="${{ github.event.repository.default_branch }}"
+          BASE_BRANCH="$DEFAULT_BRANCH"
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
