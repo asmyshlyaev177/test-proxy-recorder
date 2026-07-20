@@ -40,6 +40,16 @@ const res = await fetch('http://localhost:8100/todos', {
 
 In dev/test, point your backend base URLs at the proxy so **both** origins are recorded — the server-side base (read by loaders/server functions, e.g. `BACKEND_URL`) and the browser-side base baked in at build (`VITE_API_URL`). In production, point them at the real backend. Browser-side requests are handled by `playwrightProxy.before()`'s HAR mechanism, exactly as in the [manual setup](/docs/getting-started/manual-setup/).
 
+## Authenticated apps
+
+The recorder [works with your real auth provider](/docs/getting-started/how-it-works/) (AWS Cognito, Auth0, Clerk, …), and it composes with the SSR tagging above. The pattern:
+
+- **Log in for real, in `transparent` mode.** A Playwright `setup` project signs in once with the proxy passed through, so the login is **never recorded**, and saves the session (`storageState`) that the authenticated specs reuse.
+- **Protected requests carry the token and are recorded.** Each authenticated request sends an `Authorization: Bearer …` header; the recorder [redacts](/docs/guides/secret-redaction/) it, so no token reaches the committed recordings.
+- **Where the token lives decides the mechanism.** A token in `localStorage` can't be read on the server, so the protected fetch runs in the browser and is recorded via HAR — no SSR prefetch. A cookie-based session, by contrast, can be forwarded into a loader with `createHeadersWithRecordingId()` and recorded server-side.
+
+The [`example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) app includes a runnable `/login` → `/dashboard` AWS Cognito flow (`e2e/setup-auth.ts` + `e2e/auth.spec.ts`) demonstrating exactly this.
+
 ## Full example
 
-A complete, runnable app — built with **TanStack Query** (SSR prefetch + `useMutation`), covering todos (browser + SSR), a cache-header ISR route, a redaction case, and WebSocket chat, all recorded and replayed — lives in [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). It shows the recorder is transparent to your data layer: `registerProxyFetch()` tags Query's `queryFn` fetches during SSR with no Query-specific code.
+A complete, runnable app — built with **TanStack Query** (SSR prefetch + `useMutation`), covering todos (browser + SSR), a cache-header ISR route, a redaction case, WebSocket chat, and a real AWS Cognito login (transparent-mode auth + a recorded, token-redacted protected API), all recorded and replayed — lives in [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). It shows the recorder is transparent to your data layer: `registerProxyFetch()` tags Query's `queryFn` fetches during SSR with no Query-specific code.

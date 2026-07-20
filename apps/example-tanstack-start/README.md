@@ -127,6 +127,61 @@ captured by two different mechanisms, keyed to the same test:
 | [`.env.example`](.env.example) | Env template — proxy URLs for dev/test, real backend for production. |
 | `e2e/recordings/` | Recorded `.mock.json` / `.har` traffic. **Not committed** — record your own. |
 
+## Authenticated dashboard (AWS Cognito)
+
+The `/login` → `/dashboard` routes add a **real auth provider** on top of the same
+recorder setup, mirroring [`example-auth-cognito`](../example-auth-cognito) but in
+TanStack Start idioms. An authenticated app has two kinds of traffic that need
+opposite treatment:
+
+| Traffic | Mode | Why |
+| ------- | ---- | --- |
+| **Login** (credentials → Cognito JWT) | `transparent` | Must never land in a committed recording. |
+| **Protected app data** (`/protected/todos`) | `record` / `replay` | This is what we want to test offline. |
+
+The flow:
+
+1. A Playwright **`setup` project** ([`e2e/setup-auth.ts`](e2e/setup-auth.ts)) logs
+   in **once** with the proxy in `transparent` mode and saves `storageState` (the
+   Cognito access token in `localStorage`) to a gitignored `e2e/auth-state.json`.
+   The login hits real Cognito on a different host than the proxy, so it's never recorded.
+2. The **`auth` project** ([`e2e/auth.spec.ts`](e2e/auth.spec.ts)) loads that
+   `storageState` and starts already authenticated. Its protected requests carry
+   the JWT as a Bearer header and run in `record`/`replay`.
+3. The recorder **redacts** the `Authorization` header, so no token reaches the
+   recordings. [`e2e/assert-redactions.mjs`](e2e/assert-redactions.mjs) enforces
+   this — it fails if any JWT survives, or if the login flow produced a recording.
+
+Because the Cognito token lives in the browser's `localStorage`, the protected list
+is **not** SSR-prefetched (unlike the public home page): the fetch runs client-side
+and is recorded via HAR — the same mechanism as [`/secret`](src/routes/secret.tsx).
+
+### Running it
+
+The auth suite needs a real Cognito user pool, so it's **opt-in**. Nothing about
+the pool is committed — put it all in the gitignored `.env.local`:
+
+```bash
+cp .env.example .env.local     # then fill the four VITE_COGNITO_* / COGNITO_TEST_* vars
+pnpm test:e2e:ci               # records (real Cognito + backend) then replays
+```
+
+`.env.local` holds both the public pool config (`VITE_COGNITO_REGION` /
+`VITE_COGNITO_CLIENT_ID`, baked into the client bundle at build time) and the secret
+test-user credentials — kept out of git so the demo isn't tied to a real pool.
+Without them the `setup` and `auth` projects are **skipped** and every other spec
+still records/replays exactly as before — so a fresh clone (and forks without
+secrets) stay green. In CI, supply all four as Actions secrets.
+
+| File | Purpose |
+| ---- | ------- |
+| [`src/lib/auth.ts`](src/lib/auth.ts) | Cognito `InitiateAuth` sign-in + `localStorage` token plumbing. |
+| [`src/routes/login.tsx`](src/routes/login.tsx) | Sign-in form; stores the token and redirects to the dashboard. |
+| [`src/routes/dashboard.tsx`](src/routes/dashboard.tsx) | Protected route; reads the token (client-only), bounces to `/login` if absent. |
+| [`src/components/ProtectedTodoApp.tsx`](src/components/ProtectedTodoApp.tsx) | TanStack Query UI for the protected list — `useQuery` + `useMutation`, Bearer header. |
+| [`e2e/setup-auth.ts`](e2e/setup-auth.ts) | Logs in once (transparent mode), saves `storageState`. |
+| [`e2e/auth.spec.ts`](e2e/auth.spec.ts) | Pre-authenticated dashboard specs (record/replay). |
+
 ## Adapting this to your own app
 
 - **Point the app at the proxy in dev/test** — set `BACKEND_URL` (SSR) and

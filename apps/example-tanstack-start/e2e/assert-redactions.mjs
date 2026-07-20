@@ -19,6 +19,18 @@ const FORBIDDEN = [
   'sk_live_HARSECRET123', // token in the response body
 ];
 
+// The Cognito access token (auth.spec.ts) is dynamic — a fresh JWT per login — so
+// instead of a fixed string we assert that NO JWT survives in any recording. A
+// Cognito token is three base64url segments; a leak means Authorization redaction failed.
+const JWT_RE = /eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+/;
+// The Cognito login must run in transparent mode and never produce a recording.
+const FORBIDDEN_PREFIXES = ['setup-auth', 'authenticate'];
+// Only require the authenticated recording when the Cognito suite actually ran
+// (creds present). Without creds the `auth` project is skipped — see playwright.config.ts.
+const authExpected = !!(
+  process.env.COGNITO_TEST_EMAIL && process.env.COGNITO_TEST_PASSWORD
+);
+
 let failed = false;
 const fail = (msg) => {
   failed = true;
@@ -34,6 +46,31 @@ for (const file of files) {
   const leaks = FORBIDDEN.filter((secret) => raw.includes(secret));
   if (leaks.length > 0) {
     fail(`${file} leaks: ${leaks.join(', ')}`);
+  }
+  const jwt = raw.match(JWT_RE);
+  if (jwt) fail(`${file} leaks a JWT: ${jwt[0].slice(0, 16)}…`);
+}
+
+for (const prefix of FORBIDDEN_PREFIXES) {
+  const leaked = files.find((f) => f.startsWith(prefix));
+  if (leaked) {
+    fail(
+      `${leaked} should not exist — the Cognito login must run in transparent mode and never be recorded`,
+    );
+  }
+}
+
+if (authExpected) {
+  const authHar = files.find(
+    (f) => f.startsWith('auth__') && f.endsWith('.har'),
+  );
+  if (!authHar) {
+    fail('no auth__*.har found — did the authenticated test run in record mode?');
+  } else {
+    const raw = await readFile(path.join(RECORDINGS_DIR, authHar), 'utf8');
+    if (!raw.includes('[REDACTED]')) {
+      fail(`${authHar} has no [REDACTED] markers — HAR redaction did not run`);
+    }
   }
 }
 

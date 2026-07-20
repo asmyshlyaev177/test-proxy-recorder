@@ -45,6 +45,7 @@ function RootDocument({ children }: { children: ReactNode }) {
           <Link to="/isr">ISR</Link>
           <Link to="/secret">Secret</Link>
           <Link to="/websocket">WebSocket</Link>
+          <Link to="/dashboard">Dashboard</Link>
         </nav>
         {children}
         <Scripts />

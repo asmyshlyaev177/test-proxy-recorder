@@ -40,6 +40,16 @@ const res = await fetch('http://localhost:8100/todos', {
 
 在开发/测试中，把你的后端基础 URL 指向代理，从而**两个**来源都被录制 —— 服务端基础 URL（由 loader / server functions 读取，例如 `BACKEND_URL`）和在构建时注入的浏览器端基础 URL（`VITE_API_URL`）。在生产中，把它们指向真实后端。浏览器端请求由 `playwrightProxy.before()` 的 HAR 机制处理，与[手动配置](/zh-cn/docs/getting-started/manual-setup/)完全一样。
 
+## 带认证的应用
+
+录制器[能与你真实的认证提供方协作](/zh-cn/docs/getting-started/how-it-works/)（AWS Cognito、Auth0、Clerk 等），并可与上面的 SSR 标记组合使用。模式如下：
+
+- **以 `transparent` 模式真实登录。** 一个 Playwright 的 `setup` 项目在代理透传（pass-through）下登录一次，因此登录**永不被录制**，并保存会话（`storageState`）供已认证的用例复用。
+- **受保护的请求携带 token 且会被录制。** 每个已认证请求都会发送 `Authorization: Bearer …` header；录制器会将其[脱敏](/zh-cn/docs/guides/secret-redaction/)，因此不会有任何 token 进入提交的录制文件。
+- **token 存放的位置决定采用哪种机制。** 存放在 `localStorage` 的 token 无法在服务端读取，所以受保护的 fetch 在浏览器中执行，并通过 HAR 录制 —— 没有 SSR 预取。而基于 cookie 的会话则可以用 `createHeadersWithRecordingId()` 转发进 loader，在服务端录制。
+
+[`example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) 应用中就包含一个可运行的 `/login` → `/dashboard` AWS Cognito 流程（`e2e/setup-auth.ts` + `e2e/auth.spec.ts`），演示的正是这一点。
+
 ## 完整示例
 
-一个完整、可运行的应用 —— 基于 **TanStack Query** 构建（SSR 预取 + `useMutation`），涵盖 todos（浏览器 + SSR）、一个基于缓存 header 的 ISR 路由、一个脱敏用例，以及 WebSocket 聊天，全部可录制并回放 —— 位于 [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start)。它表明录制器对你的数据层是透明的：`registerProxyFetch()` 会在 SSR 期间标记 Query 的 `queryFn` fetch，无需任何 Query 专属代码。
+一个完整、可运行的应用 —— 基于 **TanStack Query** 构建（SSR 预取 + `useMutation`），涵盖 todos（浏览器 + SSR）、一个基于缓存 header 的 ISR 路由、一个脱敏用例、WebSocket 聊天，以及一次真实的 AWS Cognito 登录（transparent 模式认证 + 一个已录制且 token 已脱敏的受保护 API），全部可录制并回放 —— 位于 [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start)。它表明录制器对你的数据层是透明的：`registerProxyFetch()` 会在 SSR 期间标记 Query 的 `queryFn` fetch，无需任何 Query 专属代码。

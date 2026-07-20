@@ -40,6 +40,16 @@ const res = await fetch('http://localhost:8100/todos', {
 
 開発 / テストでは、バックエンドのベース URL をプロキシに向けて **両方** のオリジンが記録されるようにします —— サーバーサイドのベース（loader / server functions が読み取る、例：`BACKEND_URL`）と、ビルド時に埋め込まれるブラウザーサイドのベース（`VITE_API_URL`）です。本番では実際のバックエンドに向けます。ブラウザーサイドのリクエストは、[手動セットアップ](/ja/docs/getting-started/manual-setup/) とまったく同じく `playwrightProxy.before()` の HAR メカニズムで処理されます。
 
+## 認証付きアプリ
+
+記録器は [実際の認証プロバイダーと連携し](/ja/docs/getting-started/how-it-works/)（AWS Cognito、Auth0、Clerk、…）、上記の SSR タグ付けと組み合わせられます。パターンは次のとおりです：
+
+- **`transparent` モードで、本物のログインを行う。** Playwright の `setup` プロジェクトがプロキシをパススルーにして一度だけログインするので、ログインは **記録されず**、認証済みのスペックが再利用するセッション（`storageState`）を保存します。
+- **保護されたリクエストはトークンを運び、記録される。** 認証済みの各リクエストは `Authorization: Bearer …` ヘッダーを送り、記録器がそれを [秘匿する](/ja/docs/guides/secret-redaction/) ため、トークンはコミットされる記録に残りません。
+- **トークンの置き場所がメカニズムを決める。** `localStorage` のトークンはサーバーで読めないため、保護された fetch はブラウザーで実行され、HAR で記録されます —— SSR プリフェッチはありません。一方、cookie ベースのセッションは `createHeadersWithRecordingId()` で loader に転送し、サーバーサイドで記録できます。
+
+[`example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) アプリには、まさにこれを示す実行可能な `/login` → `/dashboard` の AWS Cognito フロー（`e2e/setup-auth.ts` + `e2e/auth.spec.ts`）が含まれています。
+
 ## 完全な例
 
-完全で実行可能なアプリ —— **TanStack Query**（SSR プリフェッチ + `useMutation`）で構築され、todos（ブラウザー + SSR）、キャッシュヘッダーベースの ISR ルート、レダクション（秘匿）のケース、そして WebSocket チャットを網羅し、これらすべてを記録・再生できます —— は [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) にあります。これは記録器がデータ層に対して透過的であることを示します：`registerProxyFetch()` が SSR 中に Query の `queryFn` の fetch にタグを付け、Query 固有のコードは不要です。
+完全で実行可能なアプリ —— **TanStack Query**（SSR プリフェッチ + `useMutation`）で構築され、todos（ブラウザー + SSR）、キャッシュヘッダーベースの ISR ルート、レダクション（秘匿）のケース、WebSocket チャット、そして本物の AWS Cognito ログイン（transparent モードの認証 + トークンを秘匿して記録された保護 API）を網羅し、これらすべてを記録・再生できます —— は [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) にあります。これは記録器がデータ層に対して透過的であることを示します：`registerProxyFetch()` が SSR 中に Query の `queryFn` の fetch にタグを付け、Query 固有のコードは不要です。

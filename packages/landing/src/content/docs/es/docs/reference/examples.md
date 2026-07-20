@@ -1,6 +1,6 @@
 ---
 title: Apps de ejemplo
-description: Ejemplos completos y funcionales de test-proxy-recorder — SSR de Next.js, una extensión de Chrome, un ticker por WebSocket de terceros y una app autenticada reproducida sin backend.
+description: Ejemplos completos y funcionales de test-proxy-recorder — SSR de Next.js y TanStack Start, una extensión de Chrome, un ticker por WebSocket de terceros y una app autenticada reproducida sin backend.
 ---
 
 Ejemplos completos y funcionales viven en [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — uno por mecanismo de grabación. Cada uno tiene su propio README con la configuración completa y el flujo de grabar/reproducir.
@@ -8,6 +8,10 @@ Ejemplos completos y funcionales viven en [`apps/`](https://github.com/asmyshlya
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — una app de tareas de Next.js 16 con un backend mock, proxy y pruebas e2e de Playwright. Graba tanto fetches SSR (`.mock.json`) como fetches del navegador (`.har`), e incluye un chat por WebSocket contra el backend local. Mira su [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+
+## TanStack Start {#tanstack-start}
+
+[`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) — una app de TanStack Start (Vite + Nitro) construida con **TanStack Query**. Graba tanto los fetch de SSR (`.mock.json`, marcados mediante `registerProxyFetch()` en `src/router.tsx`) como los del navegador (`.har`), cubriendo una lista de todos en vivo, una ruta ISR basada en cabeceras de caché, un chat WebSocket y un inicio de sesión real con **AWS Cognito** (autenticación en modo transparente + una API protegida con el token ocultado). Consulta su [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-tanstack-start/README.md).
 
 ## Extensión de Chrome {#chrome-extension}
 

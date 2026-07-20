@@ -40,6 +40,16 @@ const res = await fetch('http://localhost:8100/todos', {
 
 En dev/test, pointez vos URLs de base backend vers le proxy pour que **les deux** origines soient enregistrées — la base côté serveur (lue par les loaders / server functions, p. ex. `BACKEND_URL`) et la base côté navigateur intégrée au build (`VITE_API_URL`). En production, pointez-les vers le vrai backend. Les requêtes côté navigateur sont gérées par le mécanisme HAR de `playwrightProxy.before()`, exactement comme dans la [configuration manuelle](/fr/docs/getting-started/manual-setup/).
 
+## Applications authentifiées
+
+L'enregistreur [fonctionne avec votre vrai fournisseur d'authentification](/fr/docs/getting-started/how-it-works/) (AWS Cognito, Auth0, Clerk, …), et il se combine avec le marquage SSR ci-dessus. Le principe :
+
+- **Connectez-vous pour de vrai, en mode `transparent`.** Un projet `setup` de Playwright se connecte une seule fois avec le proxy en pass-through, donc la connexion n'est **jamais enregistrée**, et sauvegarde la session (`storageState`) que les specs authentifiées réutilisent.
+- **Les requêtes protégées portent le token et sont enregistrées.** Chaque requête authentifiée envoie un en-tête `Authorization: Bearer …` ; l'enregistreur le [masque](/fr/docs/guides/secret-redaction/), donc aucun token n'atteint les enregistrements commités.
+- **L'endroit où vit le token détermine le mécanisme.** Un token dans `localStorage` ne peut pas être lu côté serveur, donc le fetch protégé s'exécute dans le navigateur et est enregistré via HAR — sans préchargement SSR. Une session basée sur un cookie, en revanche, peut être transmise dans un loader avec `createHeadersWithRecordingId()` et enregistrée côté serveur.
+
+L'application [`example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) inclut un flux AWS Cognito exécutable `/login` → `/dashboard` (`e2e/setup-auth.ts` + `e2e/auth.spec.ts`) qui démontre exactement cela.
+
 ## Exemple complet
 
-Une application complète et exécutable — construite avec **TanStack Query** (préchargement SSR + `useMutation`), couvrant les todos (navigateur + SSR), une route ISR basée sur les en-têtes de cache, un cas de rédaction (masquage) et un chat WebSocket, le tout enregistré et rejoué — se trouve dans [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Elle montre que l'enregistreur est transparent pour votre couche de données : `registerProxyFetch()` marque les fetch du `queryFn` de Query pendant le SSR, sans code spécifique à Query.
+Une application complète et exécutable — construite avec **TanStack Query** (préchargement SSR + `useMutation`), couvrant les todos (navigateur + SSR), une route ISR basée sur les en-têtes de cache, un cas de rédaction (masquage), un chat WebSocket et une vraie connexion AWS Cognito (authentification en mode transparent + une API protégée enregistrée avec token masqué), le tout enregistré et rejoué — se trouve dans [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Elle montre que l'enregistreur est transparent pour votre couche de données : `registerProxyFetch()` marque les fetch du `queryFn` de Query pendant le SSR, sans code spécifique à Query.
