@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.2.2...v1.3.0) (2026-07-20)
+
+
+### Features
+
+* tanstack integration ([79d9382](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/79d9382cc37da443867e346e0d92b98c4323cd6f))
+* tanstack integration ([135a4fe](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/135a4fe47661399abdc85bce7cbefa7c871e67ba))
+
+
+### Documentation
+
+* cognito route for tanstack ([f0a3888](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/f0a3888197c4fdb2d51f8cdc54f5b62c68e8eb69))
+
 ## [1.2.2](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.2.1...v1.2.2) (2026-07-04)
 
 

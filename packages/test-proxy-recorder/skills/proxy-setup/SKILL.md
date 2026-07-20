@@ -36,7 +36,7 @@ sources:
 metadata:
   type: core
   library: test-proxy-recorder
-  library_version: "1.2.2" # x-release-please-version
+  library_version: "1.3.0" # x-release-please-version
 ---
 
 # test-proxy-recorder — Proxy Setup
