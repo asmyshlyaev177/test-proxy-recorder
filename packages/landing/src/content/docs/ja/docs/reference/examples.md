@@ -1,6 +1,6 @@
 ---
 title: サンプルアプリ
-description: test-proxy-recorder の完全に動作するサンプル — Next.js SSR、Chrome 拡張、サードパーティの WebSocket ティッカー、そしてバックエンドなしで再生される認証済みアプリ。
+description: test-proxy-recorder の完全に動作するサンプル — Next.js と TanStack Start の SSR、Chrome 拡張、サードパーティの WebSocket ティッカー、そしてバックエンドなしで再生される認証済みアプリ。
 ---
 
 完全に動作するサンプルは [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) にあります — 記録メカニズムごとに 1 つ。それぞれ、完全なセットアップと記録/再生のワークフローを記した独自の README を備えています。
@@ -8,6 +8,10 @@ description: test-proxy-recorder の完全に動作するサンプル — Next.j
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — モックバックエンド、プロキシ、Playwright の e2e テストを備えた Next.js 16 の ToDo アプリ。SSR フェッチ（`.mock.json`）とブラウザフェッチ（`.har`）の両方を記録し、ローカルバックエンドに対する WebSocket チャットを含みます。[README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md) を参照。
+
+## TanStack Start {#tanstack-start}
+
+[`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) — **TanStack Query** で構築された TanStack Start（Vite + Nitro）アプリ。SSR の fetch（`.mock.json`、`src/router.tsx` の `registerProxyFetch()` でタグ付け）とブラウザーの fetch（`.har`）の両方を記録し、ライブの todo リスト、キャッシュヘッダーベースの ISR ルート、WebSocket チャット、そして本物の **AWS Cognito** ログイン（transparent モードの認証 + トークンを秘匿した保護 API）を網羅します。[README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-tanstack-start/README.md) を参照してください。
 
 ## Chrome 拡張 {#chrome-extension}
 

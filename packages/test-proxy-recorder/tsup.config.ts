@@ -7,6 +7,7 @@ export default defineConfig([
       index: 'src/index.ts',
       'playwright/index': 'src/playwright/index.ts',
       'nextjs/index': 'src/nextjs-only.ts',
+      'tanstack-start/index': 'src/tanstack-start-only.ts',
     },
     format: ['esm', 'cjs'],
     dts: true,

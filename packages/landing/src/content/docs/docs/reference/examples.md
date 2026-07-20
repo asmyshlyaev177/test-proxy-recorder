@@ -1,6 +1,6 @@
 ---
 title: Example apps
-description: Full working examples of test-proxy-recorder — Next.js SSR, a Chrome extension, a third-party WebSocket ticker, and an authenticated app replayed with no backend.
+description: Full working examples of test-proxy-recorder — Next.js and TanStack Start SSR, a Chrome extension, a third-party WebSocket ticker, and an authenticated app replayed with no backend.
 ---
 
 Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — one per recording mechanism. Each has its own README with the full setup and record/replay workflow.
@@ -12,6 +12,10 @@ Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-p
 ## Next.js Edge runtime {#nextjs-edge}
 
 [`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — a Next.js 16 app whose page renders on the **Edge runtime** (`export const runtime = 'edge'`). Its SSR `fetch` is tagged with the recording-session id via `registerProxyFetch()` (called from the root layout), so concurrent replay sessions stay distinct where `instrumentation.ts` can't reach. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
+
+## TanStack Start {#tanstack-start}
+
+[`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) — a TanStack Start (Vite + Nitro) app built with **TanStack Query**. Records both SSR fetches (`.mock.json`, tagged via `registerProxyFetch()` in `src/router.tsx`) and browser fetches (`.har`), covering a live todo list, a cache-header ISR route, WebSocket chat, and a real **AWS Cognito** login (transparent-mode auth + a token-redacted protected API). See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-tanstack-start/README.md).
 
 ## Chrome extension {#chrome-extension}
 

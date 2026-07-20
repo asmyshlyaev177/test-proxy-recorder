@@ -1,7 +1,7 @@
 # skills/_artifacts/skill_tree.yaml
 library:
   name: 'test-proxy-recorder'
-  version: '1.0.1'
+  version: '1.2.2'
   repository: 'https://github.com/asmyshlyaev177/test-proxy-recorder'
   description: 'Records real API responses through an HTTP proxy and replays them in Playwright tests — no backend required on CI.'
 generated_from:
@@ -9,7 +9,7 @@ generated_from:
   skill_spec: '_artifacts/skill_spec.md'
 generated_at: '2026-05-28'
 
-# Minimal library fast path: 2 skills, flat structure, no router/overview skill.
+# Minimal library fast path: 3 skills, flat structure, no router/overview skill.
 # Skills are standalone — no parent registry needed.
 
 skills:
@@ -72,3 +72,33 @@ skills:
       - 'Next.js 16 (proxy.ts)'
       - 'Edge runtime (registerProxyFetch from root layout)'
     references: []
+
+  - name: 'tanstack-start'
+    slug: 'tanstack-start'
+    type: 'framework'
+    domain: 'ssr-headers'
+    path: 'skills/tanstack-start/SKILL.md'
+    package: 'packages/test-proxy-recorder'
+    description: >
+      Wire x-test-rcrd-id through a TanStack Start (Vite + Nitro) app so
+      server-side fetches (route loaders, server functions, server routes) are
+      recorded under the correct test session. Covers registerProxyFetch (patch
+      global fetch in src/router.tsx), createHeadersWithRecordingId / getRecordingId
+      (async, patch-free), the vite build + node .output/server/index.mjs vs
+      vite dev caveat, the server BACKEND_URL vs browser import.meta.env.VITE_API_URL
+      split, TanStack Query SSR prefetch, and the real-auth pattern (transparent
+      login, Bearer redaction, localStorage-token vs cookie session).
+    requires:
+      - 'proxy-setup'
+    sources:
+      - 'asmyshlyaev177/test-proxy-recorder:README.md'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/tanstack-start/registerProxyFetch.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/tanstack-start/requestContext.ts'
+      - 'asmyshlyaev177/test-proxy-recorder:apps/example-tanstack-start'
+      - 'asmyshlyaev177/test-proxy-recorder:packages/landing/src/content/docs/docs/integrations/tanstack-start.md'
+    subsystems:
+      - 'SSR (registerProxyFetch in src/router.tsx)'
+      - 'TanStack Query prefetch (ensureQueryData / useSuspenseQuery)'
+      - 'authenticated apps (transparent login, Bearer redaction)'
+    references:
+      - 'references/auth-and-isr.md'

@@ -18,6 +18,9 @@ packages/
       reset.ts            # reset proxy mode
       nextjs/             # SSR helpers: registerProxyFetch / registerProxyAxios
                           #   / setNextProxyHeaders (middleware) / createHeadersWithRecordingId
+      tanstack-start/     # TanStack Start SSR helpers: registerProxyFetch /
+                          #   getRecordingId / createHeadersWithRecordingId
+      recorderEnabled.ts  # shared isRecorderEnabled() gate for the adapters
       playwright/         # playwrightProxy fixture (before()/teardown())
       utils/              # redact, recordingId, cors, fileUtils, httpHelpers
     skills/               # AI agent skills (intent-managed; 500-line SKILL.md cap,
@@ -25,11 +28,11 @@ packages/
   landing/               # Astro Starlight docs site (the documentation site)
     src/content/docs/docs/  # English source of truth; other locales are translations
 apps/                    # runnable examples + e2e suites (the proof the lib works)
-  example-nextjs16, example-nextjs-edge, example-websocket,
-  example-auth-*, example-extension, example-init
+  example-nextjs16, example-nextjs-edge, example-tanstack-start,
+  example-websocket, example-auth-*, example-extension, example-init
 ```
 
-Package exports: `.` (Playwright/core), `./playwright`, `./nextjs`. CLI bin: `test-proxy-recorder`.
+Package exports: `.` (Playwright/core), `./playwright`, `./nextjs`, `./tanstack-start`. CLI bin: `test-proxy-recorder`.
 
 ## Commands (run from repo root)
 
@@ -40,6 +43,7 @@ pnpm typecheck
 pnpm test
 pnpm example:test:e2e:ci                      # nextjs16 example — record then replay
 pnpm example-edge:test:e2e:ci                 # edge example
+pnpm example-tanstack:test:e2e:ci             # TanStack Start example
 pnpm landing:dev
 pnpm landing:build                            # docs site
 ```

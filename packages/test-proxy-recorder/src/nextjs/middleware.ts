@@ -1,4 +1,5 @@
 import { RECORDING_ID_HEADER } from '../constants.js';
+import { isRecorderEnabled } from '../recorderEnabled.js';
 
 /**
  * Minimal type for Next.js Request - compatible with next/server's NextRequest
@@ -14,22 +15,6 @@ export interface NextJSRequest {
  */
 export interface NextJSResponse {
   headers: Headers;
-}
-
-/**
- * Check if the test proxy recorder is enabled based on environment variables
- * Automatically enabled in non-production environments
- * Can be explicitly enabled in production with TEST_PROXY_RECORDER_ENABLED
- *
- * @returns true if the recorder should be active, false otherwise
- */
-export function isRecorderEnabled(): boolean {
-  const isProduction = process.env.NODE_ENV === 'production';
-  const isExplicitlyEnabled =
-    process.env.TEST_PROXY_RECORDER_ENABLED === 'true' ||
-    Number.parseInt(process.env.TEST_PROXY_RECORDER_ENABLED || '') === 1;
-
-  return !isProduction || isExplicitlyEnabled;
 }
 
 /**

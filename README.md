@@ -1,6 +1,6 @@
 # test-proxy-recorder
 
-> **VCR for Playwright** — record real API responses once, replay them deterministically on CI. Covers Next.js SSR, browser, and WebSocket traffic. No backend, no hand-written mocks.
+> **VCR for Playwright** — record real API responses once, replay them deterministically on CI. Covers Next.js & TanStack Start SSR, browser, and WebSocket traffic. No backend, no hand-written mocks.
 
 [![GitHub stars](https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=social)](https://github.com/asmyshlyaev177/test-proxy-recorder/stargazers)
 [![npm](https://img.shields.io/npm/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
@@ -90,13 +90,14 @@ Full working apps in [`apps/`](https://github.com/asmyshlyaev177/test-proxy-reco
 
 - [Next.js 16](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — SSR + browser + WebSocket chat
 - [Next.js Edge runtime](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — `registerProxyFetch` for concurrent replay
+- [TanStack Start](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) — SSR + browser, TanStack Query, ISR, WebSocket, and a real Cognito login
 - [Chrome extension](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-extension) — browser-only, replayed offline
 - [Crypto ticker](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-websocket) — third-party WebSocket feed
 - [Authenticated app](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — real Cognito login, protected API replayed
 
 ## Docs
 
-Everything else lives at [test-proxy-recorder.dev/docs](https://test-proxy-recorder.dev/docs/): [how it works](https://test-proxy-recorder.dev/docs/getting-started/how-it-works/), [CLI](https://test-proxy-recorder.dev/docs/guides/cli/), [config](https://test-proxy-recorder.dev/docs/guides/config/), [secret redaction](https://test-proxy-recorder.dev/docs/guides/secret-redaction/), [Next.js integration](https://test-proxy-recorder.dev/docs/integrations/nextjs/), [API reference](https://test-proxy-recorder.dev/docs/reference/api/readme/), [FAQ](https://test-proxy-recorder.dev/docs/reference/faq/).
+Everything else lives at [test-proxy-recorder.dev/docs](https://test-proxy-recorder.dev/docs/): [how it works](https://test-proxy-recorder.dev/docs/getting-started/how-it-works/), [CLI](https://test-proxy-recorder.dev/docs/guides/cli/), [config](https://test-proxy-recorder.dev/docs/guides/config/), [secret redaction](https://test-proxy-recorder.dev/docs/guides/secret-redaction/), [Next.js integration](https://test-proxy-recorder.dev/docs/integrations/nextjs/), [TanStack Start integration](https://test-proxy-recorder.dev/docs/integrations/tanstack-start/), [API reference](https://test-proxy-recorder.dev/docs/reference/api/readme/), [FAQ](https://test-proxy-recorder.dev/docs/reference/faq/).
 
 Using an AI coding agent? `npx @tanstack/intent@latest install` adds skills so it generates correct setup code. See the [AI agent skills guide](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
@@ -122,7 +123,7 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install` adds skill-discovery guidance to your agent config (`CLAUDE.md`, `.cursorrules`, …); the agent loads the `proxy-setup` and `nextjs-ssr` skills on demand. List or load them directly with `npx @tanstack/intent@latest list` and `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Full guide: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+`install` adds skill-discovery guidance to your agent config (`CLAUDE.md`, `.cursorrules`, …); the agent loads the `proxy-setup`, `nextjs-ssr`, and `tanstack-start` skills on demand. List or load them directly with `npx @tanstack/intent@latest list` and `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Full guide: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 The skill sources live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 

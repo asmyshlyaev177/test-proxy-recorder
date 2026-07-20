@@ -8,9 +8,18 @@
     "packages/test-proxy-recorder": {
       "release-type": "node",
       "package-name": "test-proxy-recorder",
-      "changelog-path": "CHANGELOG.md"
+      "changelog-path": "CHANGELOG.md",
+      "extra-files": [
+        { "type": "generic", "path": "skills/nextjs-ssr/SKILL.md" },
+        { "type": "generic", "path": "skills/proxy-setup/SKILL.md" },
+        { "type": "generic", "path": "skills/tanstack-start/SKILL.md" }
+      ]
     }
   },
+  "extra-files": [
+    { "type": "yaml", "path": "_artifacts/skill_tree.yaml", "jsonpath": "$.library.version" },
+    { "type": "yaml", "path": "_artifacts/domain_map.yaml", "jsonpath": "$.library.version" }
+  ],
   "changelog-sections": [
     { "type": "feat", "section": "Features" },
     { "type": "fix", "section": "Bug Fixes" },

@@ -75,8 +75,8 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           </a>
         </div>
         <p class="hero-fine">
-          MIT · TypeScript · works with Next.js SSR, SPAs &amp; Chrome extensions ·
-          WebSocket support
+          MIT · TypeScript · works with Next.js &amp; TanStack Start SSR, SPAs &amp;
+          Chrome extensions · WebSocket support
         </p>
       </div>
       <RecorderScene />
@@ -125,7 +125,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
             <h3>Proxy</h3>
             <code class="mech-ext">.mock.json</code>
           </header>
-          <p class="mech-flow">Next.js SSR → proxy → real API</p>
+          <p class="mech-flow">Next.js / TanStack Start SSR → proxy → real API</p>
           <p>
             Sits between your server and the API. Records server-side requests —
             SSR fetches, route handlers, anything your backend-for-frontend calls.
@@ -133,6 +133,13 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           <p class="mech-when">For full-stack apps where the server calls the API.</p>
           <a class="mech-example" href={`${repo}/tree/master/apps/example-nextjs16`}>
             View Next.js example →
+          </a>
+          <a
+            class="mech-example"
+            href={`${repo}/tree/master/apps/example-tanstack-start`}
+            style="margin-left: 1rem;"
+          >
+            View TanStack Start example →
           </a>
         </article>
         <article class="mech">
@@ -228,6 +235,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
       </div>
       <p class="auth-links">
         <a href={`${repo}/tree/master/apps/example-auth-cognito`}>AWS Cognito example →</a>
+        <a href={`${repo}/tree/master/apps/example-tanstack-start`}>Cognito on TanStack Start →</a>
         <a href={`${repo}/tree/master/apps/example-auth-mock`}>Mock auth (no cloud account) →</a>
       </p>
     </div>

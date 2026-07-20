@@ -20,6 +20,11 @@
       "require": "./dist/nextjs/index.cjs",
       "types": "./dist/nextjs/index.d.ts",
       "default": "./dist/nextjs/index.mjs"
+    },
+    "./tanstack-start": {
+      "require": "./dist/tanstack-start/index.cjs",
+      "types": "./dist/tanstack-start/index.d.ts",
+      "default": "./dist/tanstack-start/index.mjs"
     }
   },
   "bin": {
@@ -98,7 +103,7 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.59.1",
-    "@tanstack/intent": "^0.0.41",
+    "@tanstack/intent": "^0.3.6",
     "@types/http-proxy": "^1.17.15",
     "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",

@@ -4,25 +4,29 @@ description: >
   Tag server-side fetches with the x-test-rcrd-id session header so SSR is
   recorded under the correct Playwright test session. Lead with
   registerProxyFetch (patch global fetch in the root layout, any runtime) and
-  registerProxyAxios (per-axios-instance interceptor); createHeadersWithRecordingId
-  is the patch-free per-call option. Covers the build+start vs next dev caveat,
-  why the setNextProxyHeaders middleware (proxy.ts / middleware.ts) is optional
-  (it only exposes the id, it does not tag fetches), getRecordingId,
-  RECORDING_ID_HEADER, the React cache() memoization pattern, and the manual
-  axios interceptor. Load this skill when setting up test-proxy-recorder in a
-  Next.js app that makes server-side API calls, including Edge-runtime routes.
-type: framework
-library: test-proxy-recorder
-framework: nextjs
-library_version: "1.0.1"
+  registerProxyAxios (per-axios-instance interceptor);
+  createHeadersWithRecordingId is the patch-free per-call option. Covers the
+  build+start vs next dev caveat, why the setNextProxyHeaders middleware
+  (proxy.ts / middleware.ts) is optional (it only exposes the id, it does not
+  tag fetches), getRecordingId, RECORDING_ID_HEADER, the React cache()
+  memoization pattern, and the manual axios interceptor. Load this skill when
+  setting up test-proxy-recorder in a Next.js app that makes server-side API
+  calls, including Edge-runtime routes.
 requires:
   - test-proxy-recorder/proxy-setup
 sources:
   - "asmyshlyaev177/test-proxy-recorder:README.md"
-  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/middleware.ts"
-  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs/registerProxyFetch.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs\
+    /middleware.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/nextjs\
+    /registerProxyFetch.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs-edge"
+metadata:
+  type: framework
+  library: test-proxy-recorder
+  library_version: "1.2.2" # x-release-please-version
+  framework: nextjs
 ---
 
 This skill builds on test-proxy-recorder/proxy-setup. Read it first for proxy

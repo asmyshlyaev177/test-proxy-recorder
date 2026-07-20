@@ -1,6 +1,6 @@
 ---
 title: Примеры приложений
-description: Полностью рабочие примеры test-proxy-recorder — SSR Next.js, расширение Chrome, сторонний WebSocket-тикер и аутентифицированное приложение, воспроизводимое без бэкенда.
+description: Полностью рабочие примеры test-proxy-recorder — SSR Next.js и TanStack Start, расширение Chrome, сторонний WebSocket-тикер и аутентифицированное приложение, воспроизводимое без бэкенда.
 ---
 
 Полностью рабочие примеры находятся в [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — по одному на каждый механизм записи. У каждого свой README с полной настройкой и рабочим процессом записи/воспроизведения.
@@ -8,6 +8,10 @@ description: Полностью рабочие примеры test-proxy-recorde
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — приложение списка задач на Next.js 16 с мок-бэкендом, прокси и e2e-тестами Playwright. Записывает и SSR-фетчи (`.mock.json`), и браузерные фетчи (`.har`), а также включает WebSocket-чат против локального бэкенда. См. его [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+
+## TanStack Start {#tanstack-start}
+
+[`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) — приложение на TanStack Start (Vite + Nitro), построенное на **TanStack Query**. Записывает и SSR-запросы (`.mock.json`, помеченные через `registerProxyFetch()` в `src/router.tsx`), и браузерные запросы (`.har`), охватывая живой список todo, маршрут ISR на основе заголовков кэша, WebSocket-чат и настоящий вход через **AWS Cognito** (аутентификация в прозрачном режиме + защищённый API со скрытым токеном). См. его [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-tanstack-start/README.md).
 
 ## Расширение Chrome {#chrome-extension}
 

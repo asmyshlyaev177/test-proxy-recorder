@@ -3,9 +3,9 @@ name: proxy-setup
 description: >
   Set up test-proxy-recorder for any Playwright project. Covers the proxy CLI
   (test-proxy-recorder <target> --port --dir), package.json scripts for the
-  three-service architecture (UI app → proxy → backend API), playwright.config.ts
-  webServer block pointing to /__control, per-test fixtures using
-  playwrightProxy.before(page, testInfo, mode, { url }), HAR browser-side
+  three-service architecture (UI app → proxy → backend API),
+  playwright.config.ts webServer block pointing to /__control, per-test fixtures
+  using playwrightProxy.before(page, testInfo, mode, { url }), HAR browser-side
   recording via url pattern, .mock.json server-side recording, record/replay/
   transparent modes, the record-once→commit→CI-replay lifecycle, automatic
   secret redaction of Authorization/Cookie/Set-Cookie headers (--no-redact,
@@ -14,22 +14,29 @@ description: >
   config precedence, and parallel test execution with fullyParallel. Load this
   skill when installing test-proxy-recorder, writing Playwright fixtures, or
   configuring record/replay.
-type: core
-library: test-proxy-recorder
-library_version: "1.0.1"
 sources:
   - "asmyshlyaev177/test-proxy-recorder:README.md"
-  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwright/index.ts"
-  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/types.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwr\
+    ight/index.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/types.\
+    ts"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/cli.ts"
-  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/config.ts"
-  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/utils/redact.ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/config\
+    .ts"
+  - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/utils/\
+    redact.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-nextjs16/package.json"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/e2e/fixtures.ts"
-  - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/playwright.config.ts"
+  - "asmyshlyaev177/test-proxy-recorder:apps/example-extension/playwright.confi\
+    g.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/package.json"
-  - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/e2e/setup-auth.ts"
+  - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-cognito/e2e/setup-aut\
+    h.ts"
   - "asmyshlyaev177/test-proxy-recorder:apps/example-auth-mock/package.json"
+metadata:
+  type: core
+  library: test-proxy-recorder
+  library_version: "1.2.2" # x-release-please-version
 ---
 
 # test-proxy-recorder — Proxy Setup

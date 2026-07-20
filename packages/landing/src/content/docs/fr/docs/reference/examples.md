@@ -1,6 +1,6 @@
 ---
 title: Apps d'exemple
-description: Exemples complets et fonctionnels de test-proxy-recorder — SSR Next.js, une extension Chrome, un ticker WebSocket tiers et une app authentifiée rejouée sans backend.
+description: Exemples complets et fonctionnels de test-proxy-recorder — SSR Next.js et TanStack Start, une extension Chrome, un ticker WebSocket tiers et une app authentifiée rejouée sans backend.
 ---
 
 Des exemples complets et fonctionnels se trouvent dans [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — un par mécanisme d'enregistrement. Chacun a son propre README avec la configuration complète et le flux enregistrer/rejouer.
@@ -8,6 +8,10 @@ Des exemples complets et fonctionnels se trouvent dans [`apps/`](https://github.
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — une app de tâches Next.js 16 avec un backend mock, un proxy et des tests e2e Playwright. Enregistre à la fois les fetches SSR (`.mock.json`) et les fetches navigateur (`.har`), et inclut un chat WebSocket contre le backend local. Voir son [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+
+## TanStack Start {#tanstack-start}
+
+[`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) — une app TanStack Start (Vite + Nitro) construite avec **TanStack Query**. Enregistre à la fois les fetch SSR (`.mock.json`, marqués via `registerProxyFetch()` dans `src/router.tsx`) et les fetch navigateur (`.har`), couvrant une liste de todos en direct, une route ISR basée sur les en-têtes de cache, un chat WebSocket et une vraie connexion **AWS Cognito** (authentification en mode transparent + une API protégée dont le token est masqué). Voir son [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-tanstack-start/README.md).
 
 ## Extension Chrome {#chrome-extension}
 
