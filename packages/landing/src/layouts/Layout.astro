@@ -85,6 +85,12 @@ const jsonLd = {
     <meta name="author" content="asmyshlyaev177" />
     <link rel="canonical" href={canonical.href} />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <link
+      rel="alternate"
+      type="text/markdown"
+      title="LLM-friendly reference (llms.txt)"
+      href="/llms.txt"
+    />
 
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
@@ -142,7 +148,11 @@ const jsonLd = {
 
     <footer class="site-footer">
       <div class="container footer-row">
-        <p>MIT licensed. Built by <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>.</p>
+        <p>
+          MIT licensed. Built by <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>. <a
+            href="/llms.txt">llms.txt</a
+          >
+        </p>
         <a
           class="open-launch-badge"
           href="https://open-launch.com/projects/test-proxy-recorder"

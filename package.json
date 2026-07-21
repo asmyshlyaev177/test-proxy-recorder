@@ -25,6 +25,7 @@
     "test:coverage": "pnpm --filter test-proxy-recorder test:coverage",
     "landing:dev": "pnpm --filter landing dev",
     "landing:build": "pnpm --filter landing build",
+    "landing:serve": "pnpm --filter landing preview",
     "example:test:e2e": "pnpm --filter example-nextjs16 test:e2e",
     "example:test:e2e:ci": "pnpm --filter example-nextjs16 test:e2e:ci",
     "example-edge:test:e2e": "pnpm --filter example-nextjs-edge test:e2e",

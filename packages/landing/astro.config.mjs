@@ -55,6 +55,21 @@ export default defineConfig({
       description:
         'VCR for Playwright — record real API responses once, replay them deterministically on CI. SSR proxy, browser HAR, and WebSockets.',
       logo: { src: './public/favicon.svg', alt: 'test-proxy-recorder' },
+      // Advertise the machine-readable reference on every docs page so AI
+      // agents can discover it. The homepage (src/pages/index.astro) adds the
+      // same link via Layout.astro and additionally serves the Markdown inline
+      // through Accept-header content negotiation (src/middleware.ts).
+      head: [
+        {
+          tag: 'link',
+          attrs: {
+            rel: 'alternate',
+            type: 'text/markdown',
+            title: 'LLM-friendly reference (llms.txt)',
+            href: '/llms.txt',
+          },
+        },
+      ],
       // English is the source locale (served unprefixed); translations live
       // under src/content/docs/<lang>/docs/. Starlight localizes the sidebar
       // slugs automatically and falls back to English for any untranslated

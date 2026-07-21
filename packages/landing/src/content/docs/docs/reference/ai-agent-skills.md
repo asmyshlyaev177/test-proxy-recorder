@@ -23,10 +23,11 @@ The agent will then know the correct proxy/fixture setup, the record vs. replay 
 
 ## The skills
 
-`test-proxy-recorder` ships two skills:
+`test-proxy-recorder` ships these skills:
 
 - **`proxy-setup`** — the proxy CLI, `package.json` scripts, `playwright.config.ts` `webServer`, per-test fixtures, record/replay/transparent modes, secret redaction, and the record-once → commit → CI-replay lifecycle.
 - **`nextjs-ssr`** — tagging server-side fetches with `registerProxyFetch` / `registerProxyAxios` / `createHeadersWithRecordingId`, the build-and-start vs `next dev` caveat, and why the middleware is optional.
+- **`tanstack-start`** — tagging TanStack Start loaders, server functions, and server routes, the build vs `vite dev` caveat, the server-vs-browser API-URL split, TanStack Query SSR prefetch, and the real-auth pattern.
 
 List what's available from your installed packages, or load one directly:
 
@@ -34,6 +35,7 @@ List what's available from your installed packages, or load one directly:
 npx @tanstack/intent@latest list                          # show discoverable skills
 npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup
 npx @tanstack/intent@latest load test-proxy-recorder#nextjs-ssr
+npx @tanstack/intent@latest load test-proxy-recorder#tanstack-start
 ```
 
 ## Maintaining the skills (for contributors)

@@ -14,6 +14,20 @@ import { Content as AuthSetupSnippet } from '../snippets/auth-setup.md';
 import Layout from '../layouts/Layout.astro';
 import RecorderScene from '../components/RecorderScene.astro';
 
+// Rendered on-demand (not prerendered) so src/middleware.ts can intercept the
+// request and serve the Markdown reference to AI agents that send
+// `Accept: text/markdown`. On Cloudflare, prerendered routes are served as
+// static assets and bypass the Worker/middleware entirely, so `/` must be a
+// Worker route for the content negotiation to run. The code snippets still
+// highlight at build time (they are compiled Markdown partials, not a
+// render-time highlighter), so nothing changes about how they render.
+export const prerender = false;
+
+// Edge/browser caching for the HTML response; `Vary: Accept` keeps it distinct
+// from the Markdown variant middleware serves for the same URL.
+Astro.response.headers.set('Cache-Control', 'public, max-age=3600');
+Astro.response.headers.set('Vary', 'Accept');
+
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 
 const installCmd = 'npm i -D test-proxy-recorder';
