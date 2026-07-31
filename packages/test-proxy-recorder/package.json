@@ -79,7 +79,11 @@
     "network-recording",
     "tanstack-intent"
   ],
-  "author": "asmyshlyaev177",
+  "author": {
+    "name": "Aleksandr Smyshliaev",
+    "email": "asmyshlyaev177@gmail.com",
+    "url": "https://asmyshlyaev177.dev"
+  },
   "license": "MIT",
   "repository": {
     "type": "git",

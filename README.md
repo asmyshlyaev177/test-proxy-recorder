@@ -8,6 +8,7 @@
 [![node](https://img.shields.io/node/v/test-proxy-recorder.svg)](https://www.npmjs.com/package/test-proxy-recorder)
 [![license](https://img.shields.io/github/license/asmyshlyaev177/test-proxy-recorder.svg?style=flat-square)](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/LICENSE)
 [![Discord](https://img.shields.io/badge/Discord-Join-5865F2?logo=discord&logoColor=white)](https://discord.gg/w7rgYbY5zz)
+[![Available for hire](https://img.shields.io/badge/available%20for%20hire-senior%20react%20engineer-2ea44f?style=flat-square)](https://asmyshlyaev177.dev)
 
 <p align="center">
   <img src="./assets/demo-sm.gif" alt="Recording real API responses, then replaying them on CI with the backend turned off" width="800">
@@ -126,6 +127,29 @@ npx @tanstack/intent@latest install
 `install` adds skill-discovery guidance to your agent config (`CLAUDE.md`, `.cursorrules`, …); the agent loads the `proxy-setup`, `nextjs-ssr`, and `tanstack-start` skills on demand. List or load them directly with `npx @tanstack/intent@latest list` and `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Full guide: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 The skill sources live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
+
+## Hire me
+
+I'm **Aleksandr Smyshliaev** — author and maintainer of this tool. Senior
+frontend engineer (React / Next.js / TypeScript, 8+ years), and **available for
+full-time remote work right now**.
+
+This project exists because I spent years fixing other people's flaky test
+suites. That's the kind of work I'm best at: the boring infrastructure that
+decides whether a codebase is still pleasant six months in.
+
+- **Best at** — component libraries, state management, and test suites that
+  survive a refactor.
+- **Also mine** —
+  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
+  (~84k weekly installs),
+  [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (typed URL
+  state), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
+- **Where** — Tbilisi, Georgia (GMT+4), full CET overlap. Registered contractor
+  entity, so B2B engagement needs no employer-of-record setup.
+- **Reach me** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
+  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
+  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## License
 
