@@ -1,6 +1,6 @@
 import type { APIRoute } from 'astro';
 
-import MARKDOWN_CONTENT from '../llms.txt.md?raw';
+import { LLMS_TXT as MARKDOWN_CONTENT } from '../lib/llms-txt';
 
 // The hand-written /llms.txt (source: src/llms.txt.md). Served on-demand so the
 // response keeps its `text/markdown` content type rather than the static `.txt`

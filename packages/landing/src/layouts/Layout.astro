@@ -4,6 +4,9 @@ import splineItalicUrl from '@fontsource-variable/spline-sans-mono/files/spline-
 import splineUrl from '@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-wght-normal.woff2?url';
 import '../styles/global.css';
 import ThemeToggle from '../components/ThemeToggle.astro';
+// Read from the package being documented so `softwareVersion` in the JSON-LD
+// can't drift from what npm actually serves.
+import { version as pkgVersion } from '../../../test-proxy-recorder/package.json';
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 const npmUrl = 'https://www.npmjs.com/package/test-proxy-recorder';
@@ -17,6 +20,17 @@ const description =
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('og.png', Astro.site);
+
+// When the content last changed (HEAD commit) — see scripts/build-date.mjs.
+// Drives `dateModified` in the JSON-LD and the "Updated" line in the footer.
+const lastModified = new Date(__CONTENT_LAST_MODIFIED__);
+const lastModifiedLabel = lastModified.toLocaleDateString('en-GB', {
+  day: 'numeric',
+  month: 'long',
+  year: 'numeric',
+  timeZone: 'UTC',
+});
+const copyrightYear = lastModified.getUTCFullYear();
 
 // Latin-only @font-face, declared here so the hashed font URLs can be
 // preloaded. font-display: optional + preload = no visible font swap:
@@ -39,8 +53,14 @@ const jsonLd = {
   applicationCategory: 'DeveloperApplication',
   applicationSubCategory: 'Testing tool',
   operatingSystem: 'Node.js >= 20',
+  softwareVersion: pkgVersion,
+  dateModified: lastModified.toISOString().slice(0, 10),
+  isAccessibleForFree: true,
   offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
   license: `${repo}/blob/master/LICENSE`,
+  softwareHelp: `${new URL('docs/', Astro.site).href}`,
+  releaseNotes: `${repo}/releases`,
+  discussionUrl: `${repo}/issues`,
   downloadUrl: npmUrl,
   installUrl: npmUrl,
   sameAs: [repo, npmUrl],
@@ -85,11 +105,18 @@ const jsonLd = {
     <meta name="author" content="asmyshlyaev177" />
     <link rel="canonical" href={canonical.href} />
     <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta name="last-modified" content={lastModified.toISOString()} />
     <link
       rel="alternate"
       type="text/markdown"
       title="LLM-friendly reference (llms.txt)"
       href="/llms.txt"
+    />
+    <link
+      rel="alternate"
+      type="text/markdown"
+      title="Full documentation as Markdown (llms-full.txt)"
+      href="/llms-full.txt"
     />
 
     <meta property="og:title" content={title} />
@@ -149,9 +176,9 @@ const jsonLd = {
     <footer class="site-footer">
       <div class="container footer-row">
         <p>
-          MIT licensed. Built by <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>. <a
-            href="/llms.txt">llms.txt</a
-          >
+          © {copyrightYear} <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>. MIT
+          licensed. Updated <time datetime={lastModified.toISOString()}>{lastModifiedLabel}</time
+          >. <a href="/llms.txt">llms.txt</a>
         </p>
         <a
           class="open-launch-badge"

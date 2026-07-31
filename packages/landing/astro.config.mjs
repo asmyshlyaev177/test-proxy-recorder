@@ -5,7 +5,18 @@ import starlight from '@astrojs/starlight';
 import { defineConfig, sessionDrivers } from 'astro/config';
 import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
+import { createLastmodResolver, getContentLastModified } from './scripts/build-date.mjs';
+
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
+
+// When the content last changed (HEAD commit). Baked in at build time and
+// exposed as __CONTENT_LAST_MODIFIED__ so schema.org `dateModified`, the
+// visible "Updated" line, and the /llms.txt header all agree and stay fixed
+// for the life of a deploy.
+const contentLastModified = getContentLastModified();
+
+// Per-URL <lastmod> for the sitemap, from each page's own newest commit.
+const lastmodFor = createLastmodResolver();
 
 /**
  * Support `## Heading {#custom-id}` syntax in markdown. Astro/Starlight don't
@@ -43,8 +54,39 @@ export default defineConfig({
   site: 'https://test-proxy-recorder.dev',
   adapter: cloudflare(),
   markdown: { remarkPlugins: [remarkCustomHeadingIds] },
+  vite: {
+    define: {
+      __CONTENT_LAST_MODIFIED__: JSON.stringify(contentLastModified),
+    },
+  },
   integrations: [
-    sitemap(),
+    sitemap({
+      // Emit <lastmod> per URL, from the newest commit touching that page's
+      // source. Without it all ~265 URLs are dateless and search engines get
+      // no signal about what changed.
+      serialize(item) {
+        item.lastmod = lastmodFor(new URL(item.url).pathname);
+        return item;
+      },
+      // Group each page with its translations via <xhtml:link hreflang>. The
+      // docs are published in six languages at the same paths under a locale
+      // prefix; without this the translated pages look like unrelated
+      // near-duplicates of the English ones rather than alternates of them.
+      // English is the root locale and is served unprefixed, which the
+      // integration handles: a first segment that isn't a known locale falls
+      // through to `defaultLocale`.
+      i18n: {
+        defaultLocale: 'en',
+        locales: {
+          en: 'en',
+          es: 'es',
+          fr: 'fr',
+          ja: 'ja',
+          'zh-cn': 'zh-CN',
+          ru: 'ru',
+        },
+      },
+    }),
     // Docs site. The hand-built marketing page owns `/` (src/pages/index.astro);
     // Starlight owns everything under `/docs/`, so docs content lives in the
     // nested `src/content/docs/docs/` directory (Starlight's documented way to

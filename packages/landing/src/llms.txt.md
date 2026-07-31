@@ -1,6 +1,8 @@
 # test-proxy-recorder
 
-VCR for Playwright — record real HTTP + WebSocket traffic once, replay it deterministically on CI with the backend turned off. No hand-written mocks. Covers Next.js & TanStack Start SSR, browser, and WebSocket traffic. Node >= 20, MIT.
+> VCR for Playwright — record real HTTP + WebSocket traffic once, replay it deterministically on CI with the backend turned off. No hand-written mocks. Covers Next.js & TanStack Start SSR, browser, and WebSocket traffic. Node >= 20, MIT.
+
+Last updated: {{LAST_UPDATED}}. Canonical: <https://test-proxy-recorder.dev/llms.txt>.
 
 ## For AI coding agents — preferred path
 
@@ -166,3 +168,19 @@ Load with `--config`. CLI flags override config values.
 - Integrations: Playwright, Next.js, TanStack Start — https://test-proxy-recorder.dev/docs/integrations/playwright/
 - AI agent skills: https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/
 - API reference (generated from TypeScript + JSDoc): https://test-proxy-recorder.dev/docs/reference/api/
+
+## Contact
+
+- Issues and bug reports: https://github.com/asmyshlyaev177/test-proxy-recorder/issues
+- Discord (support): https://discord.gg/w7rgYbY5zz
+- Maintainer: Aleksandr Smyshliaev (asmyshlyaev177) — https://asmyshlyaev177.dev
+
+## AI Discovery Files
+
+- ai.txt (what AI systems may and may not do with this content): https://test-proxy-recorder.dev/ai.txt
+- ai.json (the same policy, machine-parseable): https://test-proxy-recorder.dev/ai.json
+- identity.json (canonical project identity): https://test-proxy-recorder.dev/identity.json
+- brand.txt (correct naming and terminology): https://test-proxy-recorder.dev/brand.txt
+- faq-ai.txt (direct answers to common questions): https://test-proxy-recorder.dev/faq-ai.txt
+- developer-ai.txt (stack, exports, CLI, security posture): https://test-proxy-recorder.dev/developer-ai.txt
+- robots-ai.txt (AI crawler directives): https://test-proxy-recorder.dev/robots-ai.txt

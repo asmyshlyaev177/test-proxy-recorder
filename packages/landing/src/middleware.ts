@@ -6,7 +6,7 @@ import { defineMiddleware } from 'astro:middleware';
 // normal HTML render. `/` is on-demand (see src/pages/index.astro) so this
 // runs at request time in the Cloudflare Worker; every other route is
 // prerendered and is short-circuited before any request header is read.
-import MARKDOWN_CONTENT from './llms.txt.md?raw';
+import { LLMS_TXT as MARKDOWN_CONTENT } from './lib/llms-txt';
 
 export const onRequest = defineMiddleware((context, next) => {
   const { request, url } = context;

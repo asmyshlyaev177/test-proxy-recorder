@@ -1,0 +1,84 @@
+# AI Crawler Directives for test-proxy-recorder.dev
+# https://test-proxy-recorder.dev/
+# Version: 1.0.0
+# Last Updated: 2026-07-31
+#
+# Supplementary AI-specific guidance. https://test-proxy-recorder.dev/robots.txt
+# remains the authoritative source for all crawlers, and these rules do not
+# contradict it.
+#
+# Open-source documentation. Every AI crawler is welcome on every path.
+
+Lang: en
+
+# Discovery: the AI Discovery Files published on this host.
+Discovery: https://test-proxy-recorder.dev/llms.txt
+Discovery: https://test-proxy-recorder.dev/llms-full.txt
+Discovery: https://test-proxy-recorder.dev/ai.txt
+Discovery: https://test-proxy-recorder.dev/ai.json
+Discovery: https://test-proxy-recorder.dev/identity.json
+Discovery: https://test-proxy-recorder.dev/brand.txt
+Discovery: https://test-proxy-recorder.dev/faq-ai.txt
+Discovery: https://test-proxy-recorder.dev/developer-ai.txt
+
+# OpenAI
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: OAI-SearchBot
+Allow: /
+
+# Anthropic
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: Claude-User
+Allow: /
+
+User-agent: Claude-SearchBot
+Allow: /
+
+User-agent: anthropic-ai
+Allow: /
+
+# Google
+User-agent: Google-Extended
+Allow: /
+
+# Perplexity
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Perplexity-User
+Allow: /
+
+# Apple
+User-agent: Applebot-Extended
+Allow: /
+
+# Common Crawl
+User-agent: CCBot
+Allow: /
+
+# Meta
+User-agent: meta-externalagent
+Allow: /
+
+# Amazon
+User-agent: Amazonbot
+Allow: /
+
+# You.com
+User-agent: YouBot
+Allow: /
+
+# Cohere
+User-agent: cohere-ai
+Allow: /
+
+# Everything else
+User-agent: *
+Allow: /

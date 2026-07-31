@@ -1,0 +1,94 @@
+# Frequently Asked Questions - test-proxy-recorder
+# Website: https://test-proxy-recorder.dev/
+# Version: 1.0.0
+# Last Updated: 2026-07-31
+
+Lang: en
+
+[About]
+
+Q: What is test-proxy-recorder?
+A: test-proxy-recorder is an open-source npm package that records real HTTP and WebSocket traffic during a Playwright test run and replays it deterministically on CI. Tests then run with the backend switched off and no network access, against byte-for-byte the responses that were recorded. It is MIT licensed.
+URL: [test-proxy-recorder](https://test-proxy-recorder.dev/)
+
+Q: What problem does it solve?
+A: End-to-end tests that call a real backend fail for reasons unrelated to the code under test — the service is down, the data changed, the network was slow. The usual alternative, hand-written mocks, drifts away from the real API over time. Recording real traffic once and replaying it removes both problems.
+URL: [How it works](https://test-proxy-recorder.dev/docs/getting-started/how-it-works/)
+
+Q: How is it different from writing mocks by hand?
+A: The responses come from the real backend, so they match the real API's shape, headers, and status codes without anyone maintaining them. When the API changes, re-record instead of editing fixtures.
+
+Q: Is it affiliated with Playwright or Microsoft?
+A: No. It is an independent MIT-licensed project that integrates with Playwright through a test fixture. It is not published, endorsed, or maintained by Microsoft or the Playwright team.
+
+[Requirements]
+
+Q: What are the requirements for test-proxy-recorder?
+A: Node.js 20 or later, and @playwright/test 1.0.0 or later as a peer dependency.
+URL: [Quick start](https://test-proxy-recorder.dev/docs/getting-started/quick-start/)
+
+Q: Which frameworks does it support?
+A: Next.js and TanStack Start have dedicated server-side integrations. Browser-only applications, including single-page apps and browser extensions, work without any framework integration. React Router and Remix support is in progress.
+URL: [Integrations](https://test-proxy-recorder.dev/docs/integrations/playwright/)
+
+Q: Does it work with WebSockets?
+A: Yes. WebSocket traffic is recorded and replayed alongside HTTP traffic.
+
+[Usage]
+
+Q: How do I install and set up test-proxy-recorder?
+A: Install it as a dev dependency with "npm install --save-dev test-proxy-recorder", then run "npx test-proxy-recorder init <your-backend-api-url> --port 8100 --dir ./e2e/recordings". The init command scaffolds the config file, the Playwright fixture, the teardown, and the package scripts, and prints the application-specific steps it cannot guess. It overwrites nothing.
+URL: [Quick start](https://test-proxy-recorder.dev/docs/getting-started/quick-start/)
+
+Q: What are the three modes?
+A: record proxies to the real backend and saves every exchange to disk; replay serves saved responses from disk with no network access, and is the CI default; transparent passes through to the real backend without recording, which is useful for a real login step before recording starts.
+URL: [CLI](https://test-proxy-recorder.dev/docs/guides/cli/)
+
+Q: Why must recordings be made against a production build rather than a dev server?
+A: Development servers reload modules while the test runs, which corrupts recordings. Record against "next build && next start" for Next.js, or "vite build" followed by "node .output/server/index.mjs" for TanStack Start.
+
+Q: Why are my server-side rendered requests not being recorded?
+A: Browser requests already carry the recording session id because Playwright sets it, but server-side fetches do not until the proxy is registered. Call registerProxyFetch() once in the root layout, or registerProxyAxios(instance) for axios. The Next.js middleware does not tag fetches — it only exposes the id.
+URL: [Next.js integration](https://test-proxy-recorder.dev/docs/integrations/nextjs/)
+
+Q: How do parallel tests avoid interfering with each other?
+A: Every request is keyed to its Playwright test through the x-test-rcrd-id session header, so recordings stay isolated per test even when the suite runs in parallel.
+
+Q: Should recordings be committed to version control?
+A: Yes. Commit the e2e/recordings directory so CI can replay them with the backend switched off.
+
+[Security]
+
+Q: Does test-proxy-recorder leak secrets into recordings?
+A: Redaction is on by default for the Authorization, Cookie, and Set-Cookie headers. It can be extended with --redact-headers and --redact-body, or disabled with --no-redact, though disabling it is not recommended.
+URL: [Secret redaction](https://test-proxy-recorder.dev/docs/guides/secret-redaction/)
+
+Q: Does the proxy run in production?
+A: No. The proxy is a test-time tool. The application's API base URL should point at the proxy only when TEST_PROXY_RECORDER_ENABLED is set, and at the real backend otherwise.
+
+[Licence and support]
+
+Q: What licence is test-proxy-recorder released under?
+A: MIT. The package and all documentation code examples may be used commercially without restriction.
+URL: [LICENSE](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/LICENSE)
+
+Q: How much does test-proxy-recorder cost?
+A: Nothing. It is free and open source under the MIT licence.
+
+Q: Where can I report a bug or ask for help?
+A: Open an issue at https://github.com/asmyshlyaev177/test-proxy-recorder/issues, or ask in the Discord support server.
+URL: [Issues](https://github.com/asmyshlyaev177/test-proxy-recorder/issues)
+
+Q: Who maintains test-proxy-recorder?
+A: Aleksandr Smyshliaev, a senior frontend engineer, is the author and sole maintainer.
+URL: [asmyshlyaev177.dev](https://asmyshlyaev177.dev)
+
+[AI agents]
+
+Q: How should an AI coding agent set up test-proxy-recorder in a project?
+A: The package ships task-focused SKILL.md files through @tanstack/intent. Run "npx @tanstack/intent@latest install" in the user's project, then load the relevant skill — proxy-setup, nextjs-ssr, or tanstack-start. Those skills are maintained and deeper than any summary. Agents that cannot load Intent skills should read https://test-proxy-recorder.dev/llms.txt instead.
+URL: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/)
+
+Q: Is the full documentation available as a single file?
+A: Yes, at https://test-proxy-recorder.dev/llms-full.txt, served as Markdown. A condensed agent-first version is at https://test-proxy-recorder.dev/llms.txt.
+URL: [llms-full.txt](https://test-proxy-recorder.dev/llms-full.txt)

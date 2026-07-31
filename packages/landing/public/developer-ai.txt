@@ -1,0 +1,109 @@
+# Technical Context for test-proxy-recorder
+
+Website: [https://test-proxy-recorder.dev](https://test-proxy-recorder.dev)
+Last Updated: 2026-07-31
+
+## Overview
+
+test-proxy-recorder is an npm package, not a hosted service. It runs entirely on the developer's machine and in CI. During a Playwright test run it sits between the application and the real backend: in `record` mode it proxies to the backend and persists every exchange to disk as `.mock.json` (server-side traffic) or HAR (browser traffic); in `replay` mode it serves those saved responses with no network access at all.
+
+Requests are keyed per Playwright test through the `x-test-rcrd-id` session header, so a parallel suite stays isolated.
+
+Requires Node.js >= 20 and `@playwright/test` >= 1.0.0 as a peer dependency. MIT licensed.
+
+This website is the documentation for that package. It is a static Astro site — the marketing homepage at `/` and a Starlight documentation site under `/docs/`.
+
+## API Information
+
+status: not-available
+
+There is no hosted HTTP API and no account system. The website is static and the package is installed from npm and run locally.
+
+The package does expose two local interfaces during a test run:
+
+- **Control endpoint** — `POST /__control` on the proxy's own port (default 8100). Flips the proxy between `record`, `replay`, and `transparent` at runtime, and is what Playwright's `webServer` health check points at. Bound to localhost, test-time only.
+- **Programmatic API** — the TypeScript exports listed below, used from a Playwright fixture.
+
+## Public Areas
+
+Everything on this site is public and requires no authentication:
+
+- `/` — marketing homepage, with a quick-start section
+- `/docs/` — documentation: getting started, guides, integrations, reference
+- `/docs/reference/api/` — API reference generated from the package's TypeScript and JSDoc, so it cannot drift from the exported signatures
+- `/es/`, `/fr/`, `/ja/`, `/zh-cn/`, `/ru/` — translated documentation; untranslated pages fall back to English
+- `/llms.txt`, `/llms-full.txt` — the documentation in Markdown
+
+## Package Exports
+
+| Import path | Contents |
+|---|---|
+| `test-proxy-recorder` | `ProxyServer`, `defineConfig`, shared types |
+| `test-proxy-recorder/playwright` | the `playwrightProxy` fixture — `before(page, testInfo, mode, { url })` and teardown |
+| `test-proxy-recorder/nextjs` | `registerProxyFetch`, `registerProxyAxios`, `createHeadersWithRecordingId`, `setNextProxyHeaders`, `getRecordingId`, `RECORDING_ID_HEADER` |
+| `test-proxy-recorder/tanstack-start` | `registerProxyFetch`, `createHeadersWithRecordingId`, `getRecordingId` |
+
+## CLI
+
+```bash
+test-proxy-recorder <target> --port 8100 --dir ./e2e/recordings   # run the proxy
+test-proxy-recorder init <target> [--port] [--dir] [--config]      # scaffold into a project
+test-proxy-recorder reset                                          # reset proxy mode
+```
+
+Flags: `--port`, `--dir`, `--config`, `--no-redact`, `--redact-headers`, `--redact-body`. CLI flags override the config file.
+
+## Authentication
+
+None, at any layer. The website is public and static; the proxy binds to localhost for the duration of a test run.
+
+For applications that require a real login before recording, use `transparent` mode for the login step and switch to `record` afterwards.
+
+## Security
+
+Secret redaction is enabled by default and strips the `Authorization`, `Cookie`, and `Set-Cookie` headers before anything is written to disk. Extend it with `--redact-headers` and `--redact-body`. Recordings are committed to the user's repository, so redaction is the difference between a fixture and a leaked token.
+
+Report security issues through [GitHub issues](https://github.com/asmyshlyaev177/test-proxy-recorder/issues).
+
+## SDKs
+
+The package is TypeScript-first and ships its own type definitions. There are no separate SDKs.
+
+## Sandbox
+
+The repository contains runnable example applications used both as documentation and as the project's own end-to-end fixtures: Next.js App Router, Next.js on the edge runtime, TanStack Start, a browser extension, a WebSocket app, and two authentication examples (mock and AWS Cognito).
+
+- [Example apps](https://test-proxy-recorder.dev/docs/reference/examples/)
+
+## Documentation
+
+- [Quick start](https://test-proxy-recorder.dev/docs/getting-started/quick-start/)
+- [How it works](https://test-proxy-recorder.dev/docs/getting-started/how-it-works/)
+- [CLI reference](https://test-proxy-recorder.dev/docs/guides/cli/)
+- [Config file](https://test-proxy-recorder.dev/docs/guides/config/)
+- [Secret redaction](https://test-proxy-recorder.dev/docs/guides/secret-redaction/)
+- [Control endpoint](https://test-proxy-recorder.dev/docs/guides/control-endpoint/)
+- [API reference](https://test-proxy-recorder.dev/docs/reference/api/)
+- [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/)
+- [FAQ](https://test-proxy-recorder.dev/docs/reference/faq/)
+
+## Technology Stack
+
+The package is TypeScript on Node.js, with no runtime framework dependency. The documentation site is Astro with Starlight, built statically and served from Cloudflare Workers; the API reference is generated at build time with TypeDoc from the package source.
+
+## Technical Contact
+
+- GitHub issues: [test-proxy-recorder/issues](https://github.com/asmyshlyaev177/test-proxy-recorder/issues)
+- Discord: [support server](https://discord.gg/w7rgYbY5zz)
+- Maintainer: [asmyshlyaev177](https://asmyshlyaev177.dev)
+
+## AI Discovery Files
+
+- [llms.txt](https://test-proxy-recorder.dev/llms.txt)
+- [llms-full.txt](https://test-proxy-recorder.dev/llms-full.txt)
+- [ai.txt](https://test-proxy-recorder.dev/ai.txt)
+- [ai.json](https://test-proxy-recorder.dev/ai.json)
+- [identity.json](https://test-proxy-recorder.dev/identity.json)
+- [brand.txt](https://test-proxy-recorder.dev/brand.txt)
+- [faq-ai.txt](https://test-proxy-recorder.dev/faq-ai.txt)
+- [robots-ai.txt](https://test-proxy-recorder.dev/robots-ai.txt)

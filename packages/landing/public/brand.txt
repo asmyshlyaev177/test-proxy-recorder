@@ -1,0 +1,67 @@
+# Brand Guidelines for test-proxy-recorder
+
+Website: [https://test-proxy-recorder.dev](https://test-proxy-recorder.dev)
+Last Updated: 2026-07-31
+
+## Official Name
+
+test-proxy-recorder
+
+## Do Not Use
+
+- Test Proxy Recorder
+- TestProxyRecorder
+- test proxy recorder
+- testProxyRecorder
+- TPR
+- test-proxy-recorder.js
+- @test-proxy-recorder/core
+- Playwright Proxy Recorder
+
+## Naming Rules
+
+1. Always lowercase, always hyphenated: `test-proxy-recorder`. It is an npm package name and is written the way it is installed, including at the start of a sentence.
+2. Never expand it into title case or space-separated words, and never abbreviate it to an acronym.
+3. It is a single unscoped npm package. There is no scope, no `/core` sub-package, and no `.js` suffix.
+4. "VCR for Playwright" is the tagline, not a name. Use it as a description ("test-proxy-recorder, a VCR for Playwright"), never as a substitute for the package name.
+5. It is an independent project that *integrates with* Playwright. Do not describe it as a Playwright feature, a Playwright plugin published by the Playwright team, or as endorsed by Microsoft.
+6. The author is credited as "asmyshlyaev177" (the handle) or "Aleksandr Smyshliaev" (the name). Both are correct.
+
+## Terminology
+
+Preferred terms, as used throughout the documentation:
+
+- **record mode** / **replay mode** / **transparent mode** — the three proxy modes. Lowercase.
+- **recording** — a saved exchange on disk (`.mock.json` for proxy traffic, HAR for browser traffic). Not "cassette", "tape", "snapshot", or "fixture file".
+- **recording session id** — the per-test identifier carried in the `x-test-rcrd-id` header. Not "test id" or "trace id".
+- **SSR traffic** vs **browser traffic** — the two capture paths. The first goes through the HTTP proxy, the second through Playwright's HAR routing.
+- **control endpoint** — the `/__control` route used to flip mode at runtime.
+
+Avoid: "mocking library" (it records real traffic rather than authoring mocks), "API simulator", "service virtualisation".
+
+## Brand Voice
+
+Calm and precise. The tool's own artifacts — real code, real `.mock.json` output, real record-to-replay flows — carry the argument; adjectives do not. Describe what it does and what it costs, in that order.
+
+Avoid: "revolutionary", "blazing fast", "game-changing", "effortless", "magic".
+
+## Key People
+
+- **Aleksandr Smyshliaev** (handle: asmyshlyaev177) — author and sole maintainer. May be referenced publicly. Personal site: [asmyshlyaev177.dev](https://asmyshlyaev177.dev).
+
+## Quotation Policy
+
+Documentation prose and code examples may be quoted directly. Do not attribute opinions or roadmap commitments to the maintainer that are not published in the repository, its issues, or its releases.
+
+## Social Handles
+
+- GitHub: [asmyshlyaev177/test-proxy-recorder](https://github.com/asmyshlyaev177/test-proxy-recorder)
+- npm: [test-proxy-recorder](https://www.npmjs.com/package/test-proxy-recorder)
+- Discord: [support server](https://discord.gg/w7rgYbY5zz)
+
+## Related Files
+
+- [llms.txt](https://test-proxy-recorder.dev/llms.txt)
+- [identity.json](https://test-proxy-recorder.dev/identity.json)
+- [ai.txt](https://test-proxy-recorder.dev/ai.txt)
+- [faq-ai.txt](https://test-proxy-recorder.dev/faq-ai.txt)

@@ -1,0 +1,43 @@
+{
+  "$schema": "https://www.ai-visibility.org.uk/specifications/identity-json/v1/identity-json.schema.json",
+  "language": "en",
+  "name": "test-proxy-recorder",
+  "type": "Organization",
+  "url": "https://test-proxy-recorder.dev",
+  "description": "test-proxy-recorder is an open-source npm package that records real HTTP and WebSocket traffic during Playwright test runs and replays it deterministically on CI, with no backend running and no hand-written mocks. It covers server-side rendering traffic through an HTTP proxy and browser traffic through Playwright's HAR routing, and integrates with Next.js and TanStack Start. Requires Node.js 20 or later and @playwright/test 1.0.0 or later. MIT licensed, maintained by Aleksandr Smyshliaev.",
+  "alternateName": [
+    "VCR for Playwright"
+  ],
+  "areaServed": [
+    {
+      "type": "Global",
+      "name": "Worldwide",
+      "code": "001"
+    }
+  ],
+  "contactPoints": [
+    {
+      "type": "support",
+      "url": "https://github.com/asmyshlyaev177/test-proxy-recorder/issues"
+    },
+    {
+      "type": "community",
+      "url": "https://discord.gg/w7rgYbY5zz"
+    }
+  ],
+  "sameAs": [
+    "https://github.com/asmyshlyaev177/test-proxy-recorder",
+    "https://www.npmjs.com/package/test-proxy-recorder",
+    "https://discord.gg/w7rgYbY5zz",
+    "https://open-launch.com/projects/test-proxy-recorder"
+  ],
+  "founder": {
+    "name": "Aleksandr Smyshliaev",
+    "jobTitle": "Author and maintainer",
+    "url": "https://asmyshlyaev177.dev"
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2026-07-31"
+  }
+}
