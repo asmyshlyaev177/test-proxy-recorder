@@ -79,12 +79,16 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           </span>
           <a class="btn btn-ghost btn-star" href={`${repo}/stargazers`}>
             <span class="star-glyph" aria-hidden="true">★</span> Star on GitHub
+            {/* width/height reserve the box before the badge arrives — it is
+                a third-party image in the hero, so without them it lands at
+                0px wide and shifts the row. Not `loading="lazy"`: above the
+                fold that only delays the request, and the shift with it. */}
             <img
               class="star-count"
               src="https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=flat&label=&color=%23eab308"
               alt="GitHub star count"
+              width="23"
               height="20"
-              loading="lazy"
             />
           </a>
         </div>
@@ -114,7 +118,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
           playsinline
           preload="metadata"
           controls
-          poster="/demo-poster.jpg"
+          poster="/demo-poster.webp"
           aria-label="Screen recording: recording real API responses with test-proxy-recorder, then replaying them with the backend turned off."
         >
           <source src="/demo.webm" type="video/webm" />
@@ -433,7 +437,7 @@ const markText = { y: 'Yes', n: 'No', p: 'Partial' } as const;
   }
 
   .compare-table thead th.is-self {
-    color: var(--primary-strong);
+    color: var(--primary-on-soft);
     box-shadow: inset 0 3px 0 var(--primary);
   }
 

@@ -83,8 +83,10 @@ const jsonLd = {
     {
       import.meta.env.PROD && (
         <Fragment>
-          {/* Google tag (gtag.js) — production builds only */}
-          <script is:inline async src="https://www.googletagmanager.com/gtag/js?id=G-9EV956L4B6" />
+          {/* Google tag (gtag.js) — production builds only. Fetched at idle
+              rather than as an early <script async>: as a plain async tag it
+              went out ahead of the render-blocking CSS, and it blocks nothing
+              that matters. The queued calls replay when it lands. */}
           <script is:inline>
             window.dataLayer = window.dataLayer || [];
             function gtag() {
@@ -93,6 +95,18 @@ const jsonLd = {
             gtag('js', new Date());
 
             gtag('config', 'G-9EV956L4B6');
+
+            addEventListener('load', function () {
+              var load = function () {
+                var s = document.createElement('script');
+                s.async = true;
+                s.src = 'https://www.googletagmanager.com/gtag/js?id=G-9EV956L4B6';
+                document.head.appendChild(s);
+              };
+              'requestIdleCallback' in window
+                ? requestIdleCallback(load, { timeout: 4000 })
+                : setTimeout(load, 2000);
+            });
           </script>
         </Fragment>
       )

@@ -12,6 +12,9 @@
   --primary: oklch(0.45 0.15 262);
   --primary-strong: oklch(0.385 0.145 262);
   --primary-soft: oklch(0.945 0.022 262);
+  /* Accent text on --primary-soft. Separate from --primary-strong, which is a
+     background and needs the opposite lightness in dark. */
+  --primary-on-soft: oklch(0.385 0.145 262);
   --on-primary: oklch(1 0 0);
   --link: oklch(0.45 0.15 262);
 
@@ -65,6 +68,8 @@
   --primary: oklch(0.52 0.165 262);
   --primary-strong: oklch(0.58 0.165 262);
   --primary-soft: oklch(0.235 0.05 262);
+  /* Climbs rather than darkens here: 0.58 on --primary-soft was 3.8:1. */
+  --primary-on-soft: oklch(0.72 0.15 262);
   --on-primary: oklch(1 0 0);
   --link: oklch(0.74 0.115 262);
 
