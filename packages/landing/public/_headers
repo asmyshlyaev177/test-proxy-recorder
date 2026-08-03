@@ -1,0 +1,28 @@
+# public/ keeps its filenames across deploys, so none of this can be
+# `immutable` the way the content-hashed /_astro/* assets are — a re-cut demo
+# has to be able to reach people still holding the old one. A week fresh, a
+# month of stale-while-revalidate behind it.
+#
+# One path per rule rather than `/*.webm`: a `*` spans path segments, so an
+# extension glob would also match /_astro/ and collide with the adapter's rule.
+
+/demo.webm
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/demo.mp4
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/demo-poster.webp
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/og.png
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/logo-512.png
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/logo-512.jpg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+/favicon.svg
+  Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
