@@ -46,8 +46,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # `--filter landing`, not a bare `pnpm exec`: `@playwright/test` is a
+      # dependency of the landing package, not of the workspace root, so the
+      # binary is only on the path inside that package.
       - name: Install Playwright chromium
-        run: pnpm exec playwright install --with-deps chromium
+        run: pnpm --filter landing exec playwright install --with-deps chromium
 
       # Builds the site and audits one page per template against the preview
       # server — seven pages, ~1m on top of the build. The build is part of the
