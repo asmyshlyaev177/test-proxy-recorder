@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.3.0...v1.3.1) (2026-08-05)
+
+
+### Bug Fixes
+
+* hire badge ([69d6445](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/69d6445a151cfe16a450ba57fff615f4c15d2cc7))
+
 ## [1.3.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.2.2...v1.3.0) (2026-07-20)
 
 
