@@ -46,7 +46,34 @@ pnpm example-edge:test:e2e:ci                 # edge example
 pnpm example-tanstack:test:e2e:ci             # TanStack Start example
 pnpm landing:dev
 pnpm landing:build                            # docs site
+pnpm landing:lighthouse                       # Lighthouse audits of the built docs site
 ```
+
+## Lighthouse (docs site)
+
+`pnpm landing:lighthouse` → `packages/landing/tests/lighthouse.spec.ts`, driven by
+`packages/landing/playwright.lighthouse.config.ts`. Everything lives in the landing
+package, including the ~100 MB `lighthouse` dependency, because nothing else in the
+repo has a use for it. `.github/workflows/lighthouse.yml` runs it on changes under
+`packages/landing/**` and nowhere else.
+
+It audits the **production build**, never `astro dev`: the `webServer` block runs
+`pnpm run build && astro preview --port 4331`. Port 4331 is deliberately not 4321 —
+both `astro dev` and `astro preview` default to that, and a dev server left running
+would otherwise be silently accepted in place of the build.
+
+**Seven pages, one per template, not one per route.** The build emits **265**
+documents (44 docs pages × 6 locales, plus the marketing page and the 404) and
+Starlight renders nearly all of them from one template, so auditing everything
+would spend twenty minutes re-measuring three layouts. Each entry in `PAGES`
+covers a shape the others don't: the marketing page, the Starlight index, a prose
+guide, a page of expressive-code blocks, a TypeDoc-generated API page, a CJK
+locale, and the 404. Add one when a genuinely new template lands — not when a new
+page uses an existing one.
+
+Desktop config, four categories, **100 on each** — measured August 2026, all seven
+pages. Mobile is not what runs; it applies a 4× CPU slowdown that turns the
+performance score into a measurement of the runner.
 
 E2e flow: one `next build`, then `next start` serves a record phase (`RECORD_MODE=1`)
 then a replay phase in one process. Record against `next start`, never `next dev`.

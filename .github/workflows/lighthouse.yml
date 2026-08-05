@@ -1,0 +1,73 @@
+name: Lighthouse
+
+# Only when the docs site changes. It is a separate workflow rather than a job
+# in test.yml because the two have nothing in common: this one builds
+# `packages/landing/`, which no change to the proxy can affect, and pulls in
+# ~100 MB of `lighthouse` that the proxy's own suites have no use for. Keeping
+# it apart means a change to `packages/test-proxy-recorder/` pays for neither.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'packages/landing/**'
+      - '.github/workflows/lighthouse.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'packages/landing/**'
+      - '.github/workflows/lighthouse.yml'
+  workflow_dispatch:
+
+jobs:
+  lighthouse:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Actions are pinned to a commit SHA with the tag in the trailing comment,
+      # as everywhere else in this repo. Resolve a tag with:
+      #   gh api repos/actions/checkout/commits/v7.0.1 --jq .sha
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
+
+      # `cache: pnpm` needs pnpm already on PATH, which is why the step above
+      # comes first. setup-node v6 limited *automatic* caching to npm; passing
+      # `cache` explicitly is unaffected and pnpm is still a supported value.
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: '.nvmrc'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # Builds the site and audits one page per template against the preview
+      # server — seven pages, ~1m on top of the build. The build is part of the
+      # suite's webServer block, so there is no separate build step here.
+      #
+      # Performance is a timing measurement and this runner is shared. The
+      # audits run serially for that reason; if the score starts flaking here
+      # while holding locally, lower that one threshold in the spec rather than
+      # dropping the assertion — the other three categories are deterministic
+      # and are the reason this job exists.
+      - name: Lighthouse audits
+        run: pnpm run landing:lighthouse
+
+      # Playwright leaves an error context per failure. For a score that only
+      # drops on the runner, that is the only record of which audit gave way.
+      - name: Upload Lighthouse results
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lighthouse-results
+          path: packages/landing/test-results/
+          retention-days: 7
+          if-no-files-found: ignore
