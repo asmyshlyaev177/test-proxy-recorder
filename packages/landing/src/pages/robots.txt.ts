@@ -1,60 +1,20 @@
 import type { APIRoute } from 'astro';
 
 const getRobotsTxt = (site: URL, sitemapURL: URL, llmsURL: URL) => `\
+# Content Signals — https://contentsignals.org/
+#   search   = indexing this site and showing links plus short excerpts
+#   ai-train = training or fine-tuning a model
+#   ai-input = grounding a generative answer at request time (RAG)
+# All three are granted. This is documentation: being quoted back to someone
+# debugging a recorded proxy fixture at 2am is the job. Allow/Disallow govern
+# fetching, these govern what may be done with what was fetched.
+#
+# The AI crawlers used to get one named group each. RFC 9309 §2.2.1 says
+# a crawler obeys only its most specific matching group and ignores every
+# other, so those groups hid this directive from exactly the crawlers it is
+# addressed to. One group for everyone is correct.
 User-agent: *
-Allow: /
-
-# AI / LLM crawlers — explicit allow so this docs site is usable in
-# ChatGPT, Claude, Perplexity, Google AI Overviews, etc.
-User-agent: GPTBot
-Allow: /
-
-User-agent: OAI-SearchBot
-Allow: /
-
-User-agent: ChatGPT-User
-Allow: /
-
-User-agent: ClaudeBot
-Allow: /
-
-User-agent: Claude-Web
-Allow: /
-
-User-agent: anthropic-ai
-Allow: /
-
-User-agent: PerplexityBot
-Allow: /
-
-User-agent: Perplexity-User
-Allow: /
-
-User-agent: Google-Extended
-Allow: /
-
-User-agent: Applebot-Extended
-Allow: /
-
-User-agent: CCBot
-Allow: /
-
-User-agent: Claude-User
-Allow: /
-
-User-agent: Claude-SearchBot
-Allow: /
-
-User-agent: meta-externalagent
-Allow: /
-
-User-agent: Amazonbot
-Allow: /
-
-User-agent: cohere-ai
-Allow: /
-
-User-agent: YouBot
+Content-Signal: search=yes, ai-train=yes, ai-input=yes
 Allow: /
 
 # Machine-readable reference for LLMs: ${llmsURL.href}
