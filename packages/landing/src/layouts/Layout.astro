@@ -221,6 +221,14 @@ const jsonLd = {
       </div>
     </footer>
 
+    {/* Shared across my sites — one implementation, served from the portfolio.
+        It shows itself only while the GitHub "Available for hire" toggle is on,
+        reads <html data-theme> for its palette, and renders nothing otherwise.
+        Loaded async so it stays off the critical path. */}
+    <for-hire-badge></for-hire-badge>
+    <script is:inline async src="https://asmyshlyaev177.dev/for-hire-badge.js"
+    ></script>
+
     <script>
       // `data-copy` carries inline text; `data-copy-pre` copies the rendered
       // code block (<pre>) inside the button's container — `innerText` preserves

@@ -285,3 +285,17 @@ dd > code {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ------------------------------------------------------------ for-hire */
+
+/* <for-hire-badge> is a custom element served from asmyshlyaev177.dev (see
+   Layout.astro). Its own styles live in its shadow root; these tokens drop it
+   into this page's palette, and they re-resolve with the theme switch because
+   the values they point at do. */
+for-hire-badge {
+  --fhb-bg: var(--surface);
+  --fhb-border: var(--line);
+  --fhb-ink: var(--ink);
+  --fhb-muted: var(--muted);
+  --fhb-font: var(--font-sans);
+}
