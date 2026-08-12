@@ -26,3 +26,13 @@
 
 /favicon.svg
   Cache-Control: public, max-age=604800, stale-while-revalidate=2592000
+
+# Point AI clients at the Markdown reference from the response itself, not
+# only from <head> — a `Link:` header survives a HEAD request and reaches
+# clients that never parse the markup. `/` is on-demand and sets this in
+# src/middleware.ts; these are the prerendered docs, in every locale.
+/docs/*
+  Link: </llms.txt>; rel="alternate"; type="text/markdown"; title="LLM-friendly reference (llms.txt)"
+
+/:locale/docs/*
+  Link: </llms.txt>; rel="alternate"; type="text/markdown"; title="LLM-friendly reference (llms.txt)"

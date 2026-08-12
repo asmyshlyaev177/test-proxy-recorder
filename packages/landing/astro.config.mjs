@@ -97,6 +97,9 @@ export default defineConfig({
       description:
         'VCR for Playwright — record real API responses once, replay them deterministically on CI. SSR proxy, browser HAR, and WebSockets.',
       logo: { src: './public/favicon.svg', alt: 'test-proxy-recorder' },
+      // Adds a per-page <link> to that page's own `.md` mirror, ahead of the
+      // site-wide llms.txt link below. See the component for why.
+      components: { Head: './src/components/starlight/Head.astro' },
       // Advertise the machine-readable reference on every docs page so AI
       // agents can discover it. The homepage (src/pages/index.astro) adds the
       // same link via Layout.astro and additionally serves the Markdown inline

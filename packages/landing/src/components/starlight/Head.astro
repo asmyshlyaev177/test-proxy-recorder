@@ -1,0 +1,26 @@
+---
+import Default from '@astrojs/starlight/components/Head.astro';
+
+/**
+ * Starlight's <head>, plus a pointer to this page's own Markdown mirror
+ * (src/pages/[...slug].md.ts).
+ *
+ * Appending `.md` to a URL is the convention agents converged on, but not one
+ * they reliably discover unaided — this link is how the page tells them it is
+ * there. Emitted before Starlight's global llms.txt link (astro.config.mjs)
+ * so a client taking the first `rel="alternate" type="text/markdown"` it finds
+ * gets this page rather than the site summary.
+ *
+ * Derived from the request path rather than the entry id so it always matches
+ * the canonical URL, trailing slash and locale prefix included.
+ */
+const mirror = `${Astro.url.pathname.replace(/\/$/, '')}.md`;
+---
+
+<link
+  rel="alternate"
+  type="text/markdown"
+  title="This page as Markdown"
+  href={mirror}
+/>
+<Default><slot /></Default>
