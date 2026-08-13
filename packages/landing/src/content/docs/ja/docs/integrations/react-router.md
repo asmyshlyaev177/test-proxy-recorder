@@ -1,6 +1,8 @@
 ---
 title: React Router / Remix
 description: React Router 7（framework mode）と Remix の第一級の統合はロードマップにあります。それまでは、loader と action から記録セッションのヘッダーを手動で転送してください。
+i18nSource: docs/integrations/react-router.md
+i18nSourceBlob: 84a70df0fa049d7fe27235ed2884156c7bb75cfa
 ---
 
 :::caution[ロードマップにあります]

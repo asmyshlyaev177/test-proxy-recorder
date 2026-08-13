@@ -1,6 +1,8 @@
 ---
 title: CLI
 description: test-proxy-recorder 的命令行界面 —— 选项、WebSocket 回放节奏，以及如何重置卡住的代理。
+i18nSource: docs/guides/cli.md
+i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
 ---
 
 ```bash

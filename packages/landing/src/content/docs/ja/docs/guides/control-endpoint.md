@@ -1,6 +1,8 @@
 ---
 title: コントロールエンドポイント
 description: プロキシは /__control を公開し、transparent・record・replay のモードをプログラムから切り替えられます。
+i18nSource: docs/guides/control-endpoint.md
+i18nSourceBlob: 17fac3de2790301f1ba96f8b4db21a5f01c05d79
 ---
 
 プロキシはプログラムからモードを切り替えるために `/__control` を公開しています。

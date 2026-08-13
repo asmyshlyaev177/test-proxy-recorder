@@ -44,7 +44,7 @@ export default defineConfig({
     command: 'pnpm run build && pnpm run preview:lighthouse',
     url: PREVIEW_URL,
     reuseExistingServer: !process.env.CI,
-    // The build renders 265 pages, runs TypeDoc and indexes with Pagefind, and
+    // The build renders 405 pages, runs TypeDoc and indexes with Pagefind, and
     // `astro preview` on the Cloudflare adapter boots wrangler on top of that.
     timeout: 300_000,
   },

@@ -1,6 +1,8 @@
 ---
 title: Configuration manuelle
 description: Branchez test-proxy-recorder à la main dans une app full-stack (SSR + navigateur) ou une SPA/extension navigateur uniquement, puis enregistrez une fois et rejouez en CI.
+i18nSource: docs/getting-started/manual-setup.md
+i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 ---
 
 La plupart des gens devraient lancer [`init`](/fr/docs/getting-started/quick-start/) — il écrit pour vous chaque fichier ci-dessous. Cette page est la référence de ce que `init` génère, pour pouvoir tout brancher à la main, déposer du codegen, ou comprendre chaque pièce.
@@ -32,7 +34,7 @@ const API_BASE =
     : 'http://localhost:8100'; // adresse du proxy
 ```
 
-`TEST_PROXY_RECORDER_ENABLED` est défini par les scripts `dev:proxy` / `serve:proxy` ci-dessus, et par les scripts générés par `init`. Utilisez la variable d'environnement que votre app utilise déjà pour l'URL de base de l'API — la même condition s'applique.
+`TEST_PROXY_RECORDER_ENABLED` est défini par les scripts `dev:proxy` / `serve:proxy` ci-dessus, et par les scripts générés par `init`. Utilisez la variable d'environnement que votre app utilise déjà pour l'URL de base de l'API (par exemple `API_URL`, `NEXT_PUBLIC_API_URL`) — la même condition s'applique.
 
 :::note[Next.js]
 Préférez `build` + `serve` à `dev` pour enregistrer et rejouer les tests. Le serveur de développement de Next.js est lent et peut provoquer des timeouts ou des enregistrements instables.

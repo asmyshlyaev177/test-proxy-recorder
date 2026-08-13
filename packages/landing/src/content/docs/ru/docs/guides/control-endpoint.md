@@ -1,6 +1,8 @@
 ---
 title: Эндпоинт управления
 description: Прокси предоставляет /__control для программного переключения режимов между transparent, record и replay.
+i18nSource: docs/guides/control-endpoint.md
+i18nSourceBlob: 17fac3de2790301f1ba96f8b4db21a5f01c05d79
 ---
 
 Прокси предоставляет `/__control` для программного переключения режимов.

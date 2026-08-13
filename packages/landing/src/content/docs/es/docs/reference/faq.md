@@ -1,6 +1,8 @@
 ---
 title: Preguntas frecuentes
 description: Preguntas comunes sobre test-proxy-recorder — reproducción en paralelo, commit de grabaciones a git, el destino del proxy para grabación HAR, el servidor de desarrollo de Next.js y actualización de grabaciones.
+i18nSource: docs/reference/faq.md
+i18nSourceBlob: 35d6fcf35338b9b64fd4c7988beea62f0a7219d3
 ---
 
 ## Mis pruebas de reproducción en paralelo a veces llaman al backend real — ¿por qué? {#parallel-replay}

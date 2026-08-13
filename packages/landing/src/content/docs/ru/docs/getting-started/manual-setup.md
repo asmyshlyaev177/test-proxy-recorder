@@ -1,6 +1,8 @@
 ---
 title: Ручная настройка
 description: Подключите test-proxy-recorder вручную в full-stack (SSR + браузер) приложение или в SPA/расширение только для браузера, затем запишите один раз и воспроизводите в CI.
+i18nSource: docs/getting-started/manual-setup.md
+i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 ---
 
 Большинство людей должно запустить [`init`](/ru/docs/getting-started/quick-start/) — он записывает все файлы ниже за вас. Эта страница — справочник того, что генерирует `init`, чтобы вы могли подключить всё вручную, убрать codegen или понимать каждую часть.

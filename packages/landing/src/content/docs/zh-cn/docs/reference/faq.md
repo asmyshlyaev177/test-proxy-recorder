@@ -1,6 +1,8 @@
 ---
 title: 常见问题
 description: 关于 test-proxy-recorder 的常见问题 —— 并行回放、把录制提交到 git、HAR 录制的代理目标、Next.js 开发服务器，以及如何更新录制。
+i18nSource: docs/reference/faq.md
+i18nSourceBlob: 35d6fcf35338b9b64fd4c7988beea62f0a7219d3
 ---
 
 ## 我的并行回放测试有时会访问真实后端 —— 为什么？{#parallel-replay}

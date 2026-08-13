@@ -1,6 +1,8 @@
 ---
 title: Playwright
 description: Utilisez test-proxy-recorder depuis les tests Playwright — le hook de session before(), le teardown global recommandé et l'emplacement des fichiers d'enregistrement.
+i18nSource: docs/integrations/playwright.md
+i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -44,7 +46,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` réinitialise le proxy à `transparent` et exécute la passe de [rédaction](/fr/docs/guides/secret-redaction/) des HAR. Ne l'appelez pas dans un hook `afterAll` par test sous `fullyParallel` — voir la [FAQ](/fr/docs/reference/faq/#parallel-replay) pour comprendre pourquoi cela casse le replay en parallèle.
+`teardown()` réinitialise le proxy à `transparent` et exécute la passe de [masquage](/fr/docs/guides/secret-redaction/) des HAR. Ne l'appelez pas dans un hook `afterAll` par test sous `fullyParallel` — voir la [FAQ](/fr/docs/reference/faq/#parallel-replay) pour comprendre pourquoi cela casse le replay en parallèle.
 
 ## Fichiers d'enregistrement
 

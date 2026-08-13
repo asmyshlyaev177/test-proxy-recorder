@@ -1,6 +1,8 @@
 ---
 title: 手动配置
 description: 为全栈（SSR + 浏览器）应用，或纯浏览器的 SPA / 扩展手动接入 test-proxy-recorder，然后录制一次并在 CI 中回放。
+i18nSource: docs/getting-started/manual-setup.md
+i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 ---
 
 大多数人应当运行 [`init`](/zh-cn/docs/getting-started/quick-start/) —— 它替你写下下面所有文件。本页是 `init` 所生成内容的参考，便于你手动接线、移除 codegen 或理解每个部分。

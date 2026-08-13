@@ -1,6 +1,8 @@
 ---
 title: 仕組み
 description: test-proxy-recorder は 2 つのメカニズムでトラフィックを記録します — サーバーサイドのリクエスト用のプロキシと、ブラウザサイドのリクエスト用の HAR。併用も単独使用も可能です。
+i18nSource: docs/getting-started/how-it-works.md
+i18nSourceBlob: c82c75cbf1d14fc641da1da4d85b7713c5e612db
 ---
 
 test-proxy-recorder は、リクエストの発生場所に応じて 2 つの記録メカニズムをサポートします。両方を併用することも、独立して使うこともできます。

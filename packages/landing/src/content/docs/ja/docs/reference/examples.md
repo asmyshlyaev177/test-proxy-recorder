@@ -1,6 +1,8 @@
 ---
 title: サンプルアプリ
 description: test-proxy-recorder の完全に動作するサンプル — Next.js と TanStack Start の SSR、Chrome 拡張、サードパーティの WebSocket ティッカー、そしてバックエンドなしで再生される認証済みアプリ。
+i18nSource: docs/reference/examples.md
+i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
 ---
 
 完全に動作するサンプルは [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) にあります — 記録メカニズムごとに 1 つ。それぞれ、完全なセットアップと記録/再生のワークフローを記した独自の README を備えています。
@@ -8,6 +10,10 @@ description: test-proxy-recorder の完全に動作するサンプル — Next.j
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — モックバックエンド、プロキシ、Playwright の e2e テストを備えた Next.js 16 の ToDo アプリ。SSR フェッチ（`.mock.json`）とブラウザフェッチ（`.har`）の両方を記録し、ローカルバックエンドに対する WebSocket チャットを含みます。[README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md) を参照。
+
+## Next.js Edge runtime {#nextjs-edge}
+
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — ページが **Edge runtime**（`export const runtime = 'edge'`）でレンダリングされる Next.js 16 アプリ。SSR の `fetch` は、`registerProxyFetch()`（ルートレイアウトから呼び出し）によって記録セッションの id でタグ付けされるため、`instrumentation.ts` が届かない場所でも並行する再生セッションが区別されたままになります。[README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md) を参照してください。
 
 ## TanStack Start {#tanstack-start}
 
@@ -23,4 +29,4 @@ description: test-proxy-recorder の完全に動作するサンプル — Next.j
 
 ## 認証済みアプリ {#authenticated-app}
 
-[`apps/example-auth-cognito`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — **実際の AWS Cognito** ユーザープールにログインし、保護された API を記録/再生する Next.js アプリ。ログインは毎回ライブのまま（記録されません）で、保護データはバックエンドをオフにして再生され、認証トークンは記録から編集されます。統合はごく少数のファイルだけです — [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-auth-cognito/README.md) を参照。**クラウドアカウント不要**の同じパターンは [`apps/example-auth-mock`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-mock) を参照してください。
+[`apps/example-auth-cognito`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — **実際の AWS Cognito** ユーザープールにログインし、保護された API を記録/再生する Next.js アプリ。ログインは毎回ライブのまま（記録されません）で、保護データはバックエンドをオフにして再生され、認証トークンは記録からマスキングされます。統合はごく少数のファイルだけです — [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-auth-cognito/README.md) を参照。**クラウドアカウント不要**の同じパターンは [`apps/example-auth-mock`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-mock) を参照してください。

@@ -1,0 +1,69 @@
+---
+title: test-proxy-recorder
+description: Playwright용 VCR — 실제 API 응답을 한 번 기록하고 CI에서 결정적으로 재생합니다. Next.js SSR, 브라우저, WebSocket 트래픽을 지원하며, 백엔드도 직접 작성한 목(mock)도 없습니다.
+i18nSource: docs/index.mdx
+i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**Playwright용 VCR.** 실제 API 응답을 한 번 기록하고 CI에서 결정적으로 재생합니다. Next.js SSR, 브라우저, WebSocket 트래픽을 지원합니다. 백엔드도, 직접 작성한 목(mock)도 없습니다.
+
+프록시는 테스트 실행 중에 실제 API 응답을 기록한 다음 CI에서 재생합니다. 테스트는 빠르고 결정적으로 유지되며, 목(mock) 픽스처를 직접 관리할 일이 없습니다.
+
+차지하는 공간은 작습니다. 개발 의존성 하나와 **테스트 실행 동안 앱 옆에서** 실행되는 가벼운 프록시뿐이며, 배포하거나 운영할 서비스가 아닙니다. 앱의 API 기본 URL을 한 번 연결하고, 실제 백엔드를 대상으로 기록한 뒤 CI에서 디스크로부터 재생합니다.
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## 이유
+
+- **CI에서 백엔드 불필요** — 실제 API를 대상으로 한 번 기록하고, 모든 CI 실행에서 재생합니다.
+- **수동 목(mock) 불필요** — 픽스처를 직접 작성하는 대신 실제 상호작용을 캡처합니다.
+- **SSR 지원** — Next.js 및 유사 프레임워크의 서버 측 요청을 기록합니다.
+- **브라우저 측 지원** — 브라우저 `fetch` 호출, Chrome 확장 프로그램 API 호출, 분석 등을 기록합니다.
+- **결정적** — 네트워크 불안정 없이 매번 동일한 응답을 제공합니다.
+- **WebSocket 지원** — WebSocket 연결을 기록하고 재생합니다.
+
+## 비교
+
+목킹 도구들은 각자 다른 작업에 뛰어납니다. test-proxy-recorder는 직접 작성한 목(mock) 없이 SSR, 브라우저, WebSocket 전반에서 **실제** 트래픽을 기록하는 유일한 도구입니다. 바로 이 조합이 다른 도구들이 남겨 둔 공백입니다.
+
+| 기능 | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| 실제 트래픽 기록 | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| 서버 측(SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| 브라우저 측 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Playwright 네이티브 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| 유지 관리됨 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js는 Node HTTP를 가로채므로 앱 프로세스 내부에서 SSR 모킹이 가능하지만, Playwright 실행의 일부로는 불가능합니다. MSW와 Mocky Balboa도 실제 응답을 재생하지만, 기록하는 대신 목(mock)을 직접 작성해야 합니다.
+
+### 다른 도구를 선택해야 하는 경우
+
+- **모든 트래픽이 브라우저 측인 경우** — Playwright에 내장된 `routeFromHAR`는 의존성이 전혀 없습니다. 여기서 시작하고, SSR이 등장할 때 이 도구를 추가하세요.
+- **응답을 직접 만들거나 오류/엣지 케이스를 강제하고 싶은 경우** — MSW의 작성된 핸들러와 큰 생태계가 더 잘 맞으며, Playwright를 훨씬 넘어서도 동작합니다.
+- **SSR 없이 가벼운 브라우저 전용 캐싱** — [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache)가 설정 부담을 줄여 그 역할을 합니다.
+
+Polly.js는 이 접근 방식(HTTP 기록/재생, "JS용 VCR")의 영감이 되었습니다. 현재는 사실상 유지 관리되지 않으며, 그것이 이 도구가 존재하는 이유 중 하나입니다.
+
+## 시작하기
+
+<CardGrid>
+  <LinkCard title="빠른 시작" href="/ko/docs/getting-started/quick-start/" description="하나의 init 명령으로 전체 설정을 스캐폴딩합니다." />
+  <LinkCard title="수동 설정" href="/ko/docs/getting-started/manual-setup/" description="풀스택 또는 브라우저 전용 앱에 직접 연결합니다." />
+  <LinkCard title="작동 원리" href="/ko/docs/getting-started/how-it-works/" description="프록시와 HAR 기록 메커니즘." />
+  <LinkCard title="API 참조" href="/ko/docs/reference/api/readme/" description="playwrightProxy, setProxyMode, defineConfig, 그리고 Next.js 헬퍼." />
+</CardGrid>
+
+## 요구 사항
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0 (피어 의존성)

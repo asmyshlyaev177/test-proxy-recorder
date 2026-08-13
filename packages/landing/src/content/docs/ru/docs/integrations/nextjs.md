@@ -1,6 +1,8 @@
 ---
 title: Next.js
 description: Тегируйте серверные fetch в Next.js заголовком recording-session, чтобы SSR записывался и воспроизводился — через registerProxyFetch (рекомендуется, любой runtime), registerProxyAxios для axios или createHeadersWithRecordingId на каждый вызов. Middleware опционален.
+i18nSource: docs/integrations/nextjs.md
+i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
 ---
 
 SSR-фреймворки вроде Next.js делают серверные вызовы `fetch`, которые проходят через прокси без контекста браузера. Прокси определяет, какой сессии принадлежат эти запросы, по заголовку `x-test-rcrd-id`. `playwrightProxy.before()` Playwright уже устанавливает его на навигацию браузера, которая трегерит SSR, поэтому id доступен в `next/headers` — задача в том, чтобы **прикрепить его к исходящим серверным запросам**. (Тестам только в браузере всё это не нужно; прокси откатывается к глобально заданной сессии.)

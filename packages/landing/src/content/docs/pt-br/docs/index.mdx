@@ -1,0 +1,69 @@
+---
+title: test-proxy-recorder
+description: VCR para Playwright — grave as respostas reais da API uma vez e reproduza-as de forma determinística na CI. Cobre SSR do Next.js, navegador e tráfego WebSocket, sem backend e sem mocks escritos à mão.
+i18nSource: docs/index.mdx
+i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**VCR para Playwright.** Grave as respostas reais da API uma vez e reproduza-as de forma determinística na CI. Cobre SSR do Next.js, navegador e tráfego WebSocket — sem backend, sem mocks escritos à mão.
+
+O proxy grava respostas reais da API durante uma execução de teste e depois as reproduz na CI. Os testes continuam rápidos e determinísticos, e você nunca mantém fixtures de mock à mão.
+
+A pegada é pequena: uma dev-dependency e um proxy leve que roda **junto com a sua aplicação durante a execução dos testes** — não um serviço que você implanta ou opera. Você aponta a URL base da API da aplicação para ele uma vez; grave contra o backend real e depois reproduza a partir do disco na CI.
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## Por quê
+
+- **Sem backend na CI** — grave uma vez contra a API real, reproduza a cada execução da CI.
+- **Sem mocks manuais** — capture interações reais em vez de escrever fixtures à mão.
+- **Suporte a SSR** — grava requisições do lado do servidor do Next.js e de frameworks semelhantes.
+- **Suporte ao lado do navegador** — grava chamadas `fetch` do navegador, chamadas de API de extensões do Chrome, analytics e mais.
+- **Determinístico** — as mesmas respostas todas as vezes, sem rede instável.
+- **Suporte a WebSocket** — grava e reproduz conexões WebSocket.
+
+## Comparação
+
+As ferramentas de mock são boas em trabalhos diferentes. O test-proxy-recorder é aquela que grava tráfego **real** em SSR, navegador e WebSockets sem mocks escritos à mão — essa combinação é a lacuna que as outras deixam em aberto.
+
+| Recurso | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Gravar tráfego real | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Lado do servidor (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| Lado do navegador | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Nativo do Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Mantido | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ O Polly.js intercepta o HTTP do Node, então mockar SSR é possível dentro do processo da aplicação, mas não como parte de uma execução do Playwright. O MSW e o Mocky Balboa também reproduzem respostas reais — mas você escreve os mocks à mão em vez de gravá-los.
+
+### Quando optar por outra ferramenta
+
+- **Todo o seu tráfego é do lado do navegador** — o `routeFromHAR` embutido do Playwright tem zero dependências. Comece por ele; adicione isto quando o SSR aparecer.
+- **Você quer criar respostas à mão ou forçar casos de erro/limite** — os handlers escritos e o grande ecossistema do MSW se encaixam melhor nisso e funcionam muito além do Playwright.
+- **Cache leve somente de navegador, sem SSR** — o [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) faz exatamente isso com menos configuração.
+
+O Polly.js é a inspiração desta abordagem (gravar/reproduzir HTTP, "VCR para JS"); hoje ele está efetivamente sem manutenção, o que é parte da razão de isto existir.
+
+## Comece aqui
+
+<CardGrid>
+  <LinkCard title="Início rápido" href="/pt-br/docs/getting-started/quick-start/" description="Gere toda a configuração com um único comando init." />
+  <LinkCard title="Configuração manual" href="/pt-br/docs/getting-started/manual-setup/" description="Configure à mão para aplicações full-stack ou somente de navegador." />
+  <LinkCard title="Como funciona" href="/pt-br/docs/getting-started/how-it-works/" description="Os mecanismos de gravação por proxy e HAR." />
+  <LinkCard title="Referência da API" href="/docs/reference/api/readme/" description="playwrightProxy, setProxyMode, defineConfig e os helpers do Next.js." />
+</CardGrid>
+
+## Requisitos
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0 (dependência peer)

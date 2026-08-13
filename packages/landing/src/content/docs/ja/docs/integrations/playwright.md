@@ -1,6 +1,8 @@
 ---
 title: Playwright
 description: Playwright のテストから test-proxy-recorder を使う — before() セッションフック、推奨される global teardown、記録ファイルの保存場所。
+i18nSource: docs/integrations/playwright.md
+i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -44,7 +46,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` はプロキシを `transparent` にリセットし、HAR の[編集](/ja/docs/guides/secret-redaction/)パスを実行します。`fullyParallel` 下でテストごとの `afterAll` フックでは呼ばないでください — それが並列再生を壊す理由は[FAQ](/ja/docs/reference/faq/#parallel-replay)を参照してください。
+`teardown()` はプロキシを `transparent` にリセットし、HAR の[マスキング](/ja/docs/guides/secret-redaction/)パスを実行します。`fullyParallel` 下でテストごとの `afterAll` フックでは呼ばないでください — それが並列再生を壊す理由は[FAQ](/ja/docs/reference/faq/#parallel-replay)を参照してください。
 
 ## 記録ファイル
 

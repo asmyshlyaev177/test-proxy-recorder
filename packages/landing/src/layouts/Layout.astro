@@ -7,6 +7,30 @@ import ThemeToggle from '../components/ThemeToggle.astro';
 // Read from the package being documented so `softwareVersion` in the JSON-LD
 // can't drift from what npm actually serves.
 import { version as pkgVersion } from '../../../test-proxy-recorder/package.json';
+import {
+  ALL_LOCALES,
+  alternates,
+  dateLocale,
+  localePrefix,
+  ogLocale,
+  SOURCE,
+  stripLocale,
+  type Locale,
+} from '../i18n';
+import { home as englishCopy } from '../i18n/home/en';
+import type { HomeCopy } from '../i18n/home/types';
+
+interface Props {
+  /** Defaults to English so a page that isn't localised needs no change. */
+  locale?: Locale;
+  copy?: HomeCopy;
+}
+
+const locale = Astro.props.locale ?? SOURCE;
+const copy = Astro.props.copy ?? englishCopy;
+
+/** `''` for English, `/ja` for the rest — every in-site link is built from it. */
+const prefix = localePrefix(locale.code);
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 const npmUrl = 'https://www.npmjs.com/package/test-proxy-recorder';
@@ -14,9 +38,8 @@ const discordUrl = 'https://discord.gg/w7rgYbY5zz';
 const authorUrl = 'https://asmyshlyaev177.dev';
 const base = import.meta.env.BASE_URL.replace(/\/$/, '');
 
-const title = 'VCR for Playwright — record & replay API responses | test-proxy-recorder';
-const description =
-  'VCR-style record & replay for Playwright. Capture real API responses once, replay them deterministically on CI — no backend, no hand-written mocks. SSR proxy + browser HAR, WebSockets. Free & MIT.';
+const title = copy.meta.title;
+const description = copy.meta.description;
 
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const ogImage = new URL('og.png', Astro.site);
@@ -24,7 +47,10 @@ const ogImage = new URL('og.png', Astro.site);
 // When the content last changed (HEAD commit) — see scripts/build-date.mjs.
 // Drives `dateModified` in the JSON-LD and the "Updated" line in the footer.
 const lastModified = new Date(__CONTENT_LAST_MODIFIED__);
-const lastModifiedLabel = lastModified.toLocaleDateString('en-GB', {
+// Formatted in the page's own language: "13 August 2026" reads as an error on
+// a Japanese page. Intl carries every locale here in Node and in workerd, so
+// this needs no data of our own.
+const lastModifiedLabel = lastModified.toLocaleDateString(dateLocale(locale.code), {
   day: 'numeric',
   month: 'long',
   year: 'numeric',
@@ -75,7 +101,7 @@ const jsonLd = {
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang={locale.code}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -118,6 +144,16 @@ const jsonLd = {
     <meta name="description" content={description} />
     <meta name="author" content="asmyshlyaev177" />
     <link rel="canonical" href={canonical.href} />
+    {/* Each language of this page lists every other one *and itself*, plus an
+        x-default pointing at English. A cluster whose members disagree about
+        who is in it is discarded wholesale, so this is generated from one
+        list rather than written per page. Starlight emits its own alternates
+        for the docs; this covers the hand-built marketing page. */}
+    {
+      alternates(stripLocale(Astro.url.pathname), Astro.site).map((alt) => (
+        <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
+      ))
+    }
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta name="last-modified" content={lastModified.toISOString()} />
     <link
@@ -138,14 +174,11 @@ const jsonLd = {
     <meta property="og:type" content="website" />
     <meta property="og:url" content={canonical.href} />
     <meta property="og:site_name" content="test-proxy-recorder" />
-    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale" content={ogLocale(locale.code)} />
     <meta property="og:image" content={ogImage.href} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta
-      property="og:image:alt"
-      content="test-proxy-recorder — record once, replay forever. Diagram of record and replay modes."
-    />
+    <meta property="og:image:alt" content={copy.meta.ogImageAlt} />
 
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content={title} />
@@ -164,20 +197,37 @@ const jsonLd = {
     </script>
   </head>
   <body>
-    <a class="skip-link" href="#main">Skip to content</a>
+    <a class="skip-link" href="#main">{copy.chrome.skipToContent}</a>
 
     <header class="site-header">
       <div class="container header-row">
-        <a class="wordmark" href={`${base}/`}>
+        <a class="wordmark" href={`${base}${prefix}/`}>
           <span class="wordmark-dot" aria-hidden="true"></span>
           test-proxy-recorder
         </a>
         <nav aria-label="Site">
-          <a href="#quick-start">Quick start</a>
-          <a href={`${base}/docs/`}>Docs</a>
+          <a href="#quick-start">{copy.chrome.navQuickStart}</a>
+          <a href={`${base}${prefix}/docs/`}>{copy.chrome.navDocs}</a>
           <a href={npmUrl}>npm</a>
           <a href={repo}>GitHub</a>
           <a href={discordUrl}>Discord</a>
+          {/* A plain <select> rather than a scripted menu: it is one control,
+              it is keyboard- and screen-reader-native, and it costs four lines
+              of inline script instead of a component. Options carry endonyms —
+              a reader looking for their language scans for "日本語", not for
+              "Japanese". */}
+          <label class="lang-picker">
+            <span class="visually-hidden">{copy.chrome.languageLabel}</span>
+            <select data-lang-picker>
+              {
+                ALL_LOCALES.map((l) => (
+                  <option value={`${base}${localePrefix(l.code)}/`} selected={l.code === locale.code}>
+                    {l.label}
+                  </option>
+                ))
+              }
+            </select>
+          </label>
           <ThemeToggle />
         </nav>
       </div>
@@ -190,8 +240,9 @@ const jsonLd = {
     <footer class="site-footer">
       <div class="container footer-row">
         <p>
-          © {copyrightYear} <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>. MIT
-          licensed. Updated <time datetime={lastModified.toISOString()}>{lastModifiedLabel}</time
+          © {copyrightYear} <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>. {
+            copy.chrome.licensed
+          } {copy.chrome.updated} <time datetime={lastModified.toISOString()}>{lastModifiedLabel}</time
           >. <a href="/llms.txt">llms.txt</a>
         </p>
         <a
@@ -228,6 +279,18 @@ const jsonLd = {
     <for-hire-badge></for-hire-badge>
     <script is:inline async src="https://asmyshlyaev177.dev/for-hire-badge.js"
     ></script>
+
+    <script>
+      // The language picker navigates on change. Its options carry the target
+      // path as their value, so this needs to know nothing about the locale
+      // table — and with JS off it degrades to an inert select rather than to
+      // a broken link, which is why the header also carries no other switcher.
+      document
+        .querySelector<HTMLSelectElement>('[data-lang-picker]')
+        ?.addEventListener('change', (event) => {
+          location.href = (event.currentTarget as HTMLSelectElement).value;
+        });
+    </script>
 
     <script>
       // `data-copy` carries inline text; `data-copy-pre` copies the rendered
@@ -305,6 +368,33 @@ const jsonLd = {
 
       nav a:hover {
         color: var(--link);
+      }
+
+      .lang-picker select {
+        font: inherit;
+        font-size: var(--step--1);
+        font-weight: 600;
+        color: var(--ink);
+        background: transparent;
+        border: 1px solid var(--line);
+        border-radius: 0.375rem;
+        padding: 0.15rem 0.35rem;
+        cursor: pointer;
+      }
+
+      .lang-picker select:hover {
+        color: var(--link);
+      }
+
+      /* The picker's own label: needed by screen readers, redundant on screen
+         where the selected language is the visible value. */
+      .visually-hidden {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
       }
 
       .site-footer {

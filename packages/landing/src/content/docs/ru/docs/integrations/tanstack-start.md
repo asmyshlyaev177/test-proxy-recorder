@@ -1,6 +1,8 @@
 ---
 title: TanStack Start
 description: Помечайте серверные fetch-запросы TanStack Start заголовком сессии записи, чтобы записывать и воспроизводить SSR — через registerProxyFetch (рекомендуется) или createHeadersWithRecordingId для каждого вызова.
+i18nSource: docs/integrations/tanstack-start.md
+i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
 ---
 
 TanStack Start выполняет loaders и server functions на сервере, поэтому их вызовы `fetch` идут через прокси без контекста браузера — та же ситуация, что и с [SSR в Next.js](/ru/docs/integrations/nextjs/). Прокси определяет, какой сессии принадлежат эти запросы, по заголовку `x-test-rcrd-id`. `playwrightProxy.before()` из Playwright уже устанавливает его на навигацию браузера, запускающую SSR, поэтому id приходит во входящем серверном запросе — задача в том, чтобы **прикрепить его к исходящим серверным запросам**. (Тестам только для браузера это не нужно; прокси откатывается к глобально заданной сессии.)
@@ -52,4 +54,4 @@ const res = await fetch('http://localhost:8100/todos', {
 
 ## Полный пример
 
-Полноценное запускаемое приложение — построенное на **TanStack Query** (предзагрузка на SSR + `useMutation`), охватывающее todos (браузер + SSR), маршрут ISR на основе заголовков кэша, случай редактирования (сокрытия секретов), WebSocket-чат и настоящий вход через AWS Cognito (аутентификация в прозрачном режиме + записанный защищённый API со скрытым токеном), всё записывается и воспроизводится — находится в [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Оно показывает, что рекордер прозрачен для вашего слоя данных: `registerProxyFetch()` помечает fetch-запросы из `queryFn` Query во время SSR, без кода, специфичного для Query.
+Полноценное запускаемое приложение — построенное на **TanStack Query** (предзагрузка на SSR + `useMutation`), охватывающее todos (браузер + SSR), маршрут ISR на основе заголовков кэша, случай маскирования секретов, WebSocket-чат и настоящий вход через AWS Cognito (аутентификация в прозрачном режиме + записанный защищённый API со скрытым токеном), всё записывается и воспроизводится — находится в [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Оно показывает, что рекордер прозрачен для вашего слоя данных: `registerProxyFetch()` помечает fetch-запросы из `queryFn` Query во время SSR, без кода, специфичного для Query.

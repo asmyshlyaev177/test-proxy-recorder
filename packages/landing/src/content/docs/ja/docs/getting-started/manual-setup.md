@@ -1,6 +1,8 @@
 ---
 title: 手動セットアップ
 description: フルスタック（SSR + ブラウザ）アプリ、またはブラウザのみの SPA / 拡張に test-proxy-recorder を手で組み込み、一度記録して CI で再生します。
+i18nSource: docs/getting-started/manual-setup.md
+i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 ---
 
 ほとんどの人は [`init`](/ja/docs/getting-started/quick-start/) を実行すべきです — 以下のファイルをすべて書き出してくれます。このページは `init` が生成する内容のリファレンスで、手で組み込んだり、コード生成を省いたり、各ピースを理解したりするために使います。

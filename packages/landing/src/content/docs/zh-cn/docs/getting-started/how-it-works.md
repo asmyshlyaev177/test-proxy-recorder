@@ -1,6 +1,8 @@
 ---
 title: 工作原理
 description: test-proxy-recorder 通过两种机制录制流量 —— 用代理处理服务端请求，用 HAR 处理浏览器端请求。两者可以一起使用，也可以单独使用。
+i18nSource: docs/getting-started/how-it-works.md
+i18nSourceBlob: c82c75cbf1d14fc641da1da4d85b7713c5e612db
 ---
 
 test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以一起使用，也可以独立使用。

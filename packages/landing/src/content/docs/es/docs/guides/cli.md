@@ -1,6 +1,8 @@
 ---
 title: CLI
 description: La interfaz de línea de comandos de test-proxy-recorder — opciones, ritmo de reproducción de WebSocket y cómo reiniciar un proxy atascado.
+i18nSource: docs/guides/cli.md
+i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
 ---
 
 ```bash
@@ -16,7 +18,7 @@ test-proxy-recorder <target-url> [options]
 | `--config, -c`   | *(auto)*       | Ruta a un archivo de configuración  |
 | `--ws-timing`    | `burst`        | Ritmo de reproducción de WebSocket — `burst` u `original` |
 
-La redacción de secretos está **activada por defecto** — Authorization/Cookie/Set-Cookie se eliminan de las grabaciones automáticamente. Desactívala con `--no-redact`, o `redaction: false` en la [configuración](/es/docs/guides/config/). Mira [redacción de secretos](/es/docs/guides/secret-redaction/) para los flags `--redact-headers` y `--redact-body` que añaden a lo que se redacta.
+El enmascaramiento de secretos está **activado por defecto** — Authorization/Cookie/Set-Cookie se eliminan de las grabaciones automáticamente. Desactívalo con `--no-redact`, o `redaction: false` en la [configuración](/es/docs/guides/config/). Mira [enmascaramiento de secretos](/es/docs/guides/secret-redaction/) para los flags `--redact-headers` y `--redact-body` que añaden a lo que se enmascara.
 
 ```bash
 # Examples

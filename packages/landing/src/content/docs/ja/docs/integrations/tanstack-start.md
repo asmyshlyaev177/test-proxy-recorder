@@ -1,6 +1,8 @@
 ---
 title: TanStack Start
 description: TanStack Start のサーバーサイド fetch に記録セッションのヘッダーを付与して SSR を記録・再生します —— registerProxyFetch（推奨）または呼び出しごとの createHeadersWithRecordingId を使います。
+i18nSource: docs/integrations/tanstack-start.md
+i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
 ---
 
 TanStack Start は loader と server functions をサーバー上で実行するため、それらの `fetch` 呼び出しはブラウザーのコンテキストなしにプロキシを通ります —— [Next.js の SSR](/ja/docs/integrations/nextjs/) と同じ状況です。プロキシは `x-test-rcrd-id` ヘッダーによって、それらのリクエストがどのセッションに属するかを識別します。Playwright の `playwrightProxy.before()` は SSR を引き起こすブラウザーのナビゲーションに既にそれを設定しているので、id は入ってくるサーバーリクエストに届きます —— やるべきことは **それを送信するサーバーサイドのリクエストに付与する** ことです。（ブラウザーのみのテストにはこれは不要で、プロキシはグローバルに設定されたセッションにフォールバックします。）

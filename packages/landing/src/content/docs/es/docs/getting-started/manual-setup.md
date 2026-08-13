@@ -1,6 +1,8 @@
 ---
 title: Configuración manual
 description: Integra test-proxy-recorder a mano en una app full-stack (SSR + navegador) o en una SPA o extensión solo de navegador, luego graba una vez y reproduce en CI.
+i18nSource: docs/getting-started/manual-setup.md
+i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 ---
 
 La mayoría debería ejecutar [`init`](/es/docs/getting-started/quick-start/) — escribe por ti todos los archivos de abajo. Esta página es la referencia de lo que `init` genera, para que puedas cablearlo a mano, omitir el codegen o entender cada pieza.

@@ -1,0 +1,26 @@
+---
+import HomePage from '../../components/HomePage.astro';
+import { LOCALES } from '../../i18n';
+import { homeCopy } from '../../i18n/home';
+
+// The translated homepages, one per language, at `/ja/`, `/zh-cn/`, …
+//
+// Prerendered, unlike the English `/`. That page is server-rendered only so
+// middleware can hand agents the Markdown reference, and the policy is that
+// agents get English: `src/middleware.ts` matches `/` exactly and these paths
+// never reach it. With nothing to negotiate, a static file is the same answer
+// with no Worker invocation — and, more to the point, a URL served from disk
+// has one representation and cannot be negotiated into caching the wrong one.
+//
+// The locale segment is the lowercase `dir`, matching the docs tree
+// (`/zh-cn/docs/`), so both halves of the site live under the same prefix.
+export const prerender = true;
+
+export function getStaticPaths() {
+  return LOCALES.map((locale) => ({ params: { locale: locale.dir }, props: { locale } }));
+}
+
+const { locale } = Astro.props;
+---
+
+<HomePage copy={homeCopy(locale.code)} locale={locale} />

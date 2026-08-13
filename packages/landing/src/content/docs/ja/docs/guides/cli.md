@@ -1,6 +1,8 @@
 ---
 title: CLI
 description: test-proxy-recorder のコマンドラインインターフェース — オプション、WebSocket の再生ペース、スタックしたプロキシのリセット方法。
+i18nSource: docs/guides/cli.md
+i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
 ---
 
 ```bash
@@ -16,7 +18,7 @@ test-proxy-recorder <target-url> [options]
 | `--config, -c`   | *(自動)*       | 設定ファイルのパス                  |
 | `--ws-timing`    | `burst`        | WebSocket の再生ペース — `burst` または `original` |
 
-シークレットの編集（redaction）は**デフォルトで有効**です — Authorization/Cookie/Set-Cookie は記録から自動的に取り除かれます。`--no-redact`、または[設定](/ja/docs/guides/config/)で `redaction: false` にして無効化できます。編集対象を追加する `--redact-headers` と `--redact-body` フラグについては[シークレットの編集](/ja/docs/guides/secret-redaction/)を参照してください。
+シークレットのマスキング（redaction）は**デフォルトで有効**です — Authorization/Cookie/Set-Cookie は記録から自動的に取り除かれます。`--no-redact`、または[設定](/ja/docs/guides/config/)で `redaction: false` にして無効化できます。マスキング対象を追加する `--redact-headers` と `--redact-body` フラグについては[シークレットのマスキング](/ja/docs/guides/secret-redaction/)を参照してください。
 
 ```bash
 # Examples

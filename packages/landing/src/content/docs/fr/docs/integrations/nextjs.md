@@ -1,6 +1,8 @@
 ---
 title: Next.js
 description: Taggez les fetches côté serveur de Next.js avec l'en-tête de session d'enregistrement pour que le SSR soit enregistré et rejoué — via registerProxyFetch (recommandé, tout runtime), registerProxyAxios pour axios, ou createHeadersWithRecordingId par appel. Le middleware est optionnel.
+i18nSource: docs/integrations/nextjs.md
+i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
 ---
 
 Les frameworks SSR comme Next.js font des appels `fetch` côté serveur qui passent par le proxy sans contexte de navigateur. Le proxy identifie à quelle session appartiennent ces requêtes via l'en-tête `x-test-rcrd-id`. Le `playwrightProxy.before()` de Playwright le définit déjà sur la navigation navigateur qui déclenche le SSR, donc l'id est disponible dans `next/headers` — le travail consiste à **l'attacher aux requêtes sortantes côté serveur**. (Les tests navigateur uniquement n'ont besoin de rien de tout ça ; le proxy revient à la session définie globalement.)

@@ -1,6 +1,8 @@
 ---
 title: Cómo funciona
 description: test-proxy-recorder graba tráfico mediante dos mecanismos — un proxy para peticiones del lado del servidor y HAR para peticiones del lado del navegador. Úsalos juntos o por separado.
+i18nSource: docs/getting-started/how-it-works.md
+i18nSourceBlob: c82c75cbf1d14fc641da1da4d85b7713c5e612db
 ---
 
 test-proxy-recorder admite dos mecanismos de grabación según dónde se originan tus peticiones. Ambos pueden usarse juntos o de forma independiente.

@@ -1,6 +1,8 @@
 ---
 title: Playwright
 description: Используйте test-proxy-recorder из тестов Playwright — хук сессии before(), рекомендуемый global teardown и где появляются файлы записей.
+i18nSource: docs/integrations/playwright.md
+i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -44,7 +46,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` сбрасывает прокси в `transparent` и выполняет проход [редактирования](/ru/docs/guides/secret-redaction/) HAR. Не вызывайте его в хуке `afterAll` для каждого теста при `fullyParallel` — почему это ломает параллельное воспроизведение, см. в [FAQ](/ru/docs/reference/faq/#parallel-replay).
+`teardown()` сбрасывает прокси в `transparent` и выполняет проход [маскирования](/ru/docs/guides/secret-redaction/) HAR. Не вызывайте его в хуке `afterAll` для каждого теста при `fullyParallel` — почему это ломает параллельное воспроизведение, см. в [FAQ](/ru/docs/reference/faq/#parallel-replay).
 
 ## Файлы записей
 

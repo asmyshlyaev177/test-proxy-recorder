@@ -1,6 +1,8 @@
 ---
 title: CLI
 description: Интерфейс командной строки test-proxy-recorder — опции, темп воспроизведения WebSocket и как сбросить зависший прокси.
+i18nSource: docs/guides/cli.md
+i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
 ---
 
 ```bash
@@ -16,7 +18,7 @@ test-proxy-recorder <target-url> [options]
 | `--config, -c`   | *(авто)*       | Путь к файлу конфигурации           |
 | `--ws-timing`    | `burst`        | Темп воспроизведения WebSocket — `burst` или `original` |
 
-Редактирование секретов **включено по умолчанию** — Authorization/Cookie/Set-Cookie автоматически вырезаются из записей. Отключите через `--no-redact` или `redaction: false` в [конфигурации](/ru/docs/guides/config/). О флагах `--redact-headers` и `--redact-body`, которые добавляют к тому, что редактируется, см. [редактирование секретов](/ru/docs/guides/secret-redaction/).
+Маскирование секретов **включено по умолчанию** — Authorization/Cookie/Set-Cookie автоматически вырезаются из записей. Отключите через `--no-redact` или `redaction: false` в [конфигурации](/ru/docs/guides/config/). О флагах `--redact-headers` и `--redact-body`, которые добавляют к тому, что маскируется, см. [маскирование секретов](/ru/docs/guides/secret-redaction/).
 
 ```bash
 # Examples
