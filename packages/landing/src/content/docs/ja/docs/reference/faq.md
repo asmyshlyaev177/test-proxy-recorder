@@ -1,6 +1,8 @@
 ---
 title: FAQ
 description: test-proxy-recorder に関するよくある質問 — 並列再生、記録の git へのコミット、HAR 記録のためのプロキシターゲット、Next.js の開発サーバー、記録の更新。
+i18nSource: docs/reference/faq.md
+i18nSourceBlob: 35d6fcf35338b9b64fd4c7988beea62f0a7219d3
 ---
 
 ## 並列の再生テストが時々実際のバックエンドを呼ぶのはなぜ? {#parallel-replay}

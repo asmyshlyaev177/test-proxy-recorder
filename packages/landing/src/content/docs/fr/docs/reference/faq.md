@@ -1,6 +1,8 @@
 ---
 title: FAQ
 description: Questions fréquentes sur test-proxy-recorder — replay en parallèle, commit des enregistrements dans git, la cible du proxy pour l'enregistrement HAR, le serveur de dev Next.js et la mise à jour des enregistrements.
+i18nSource: docs/reference/faq.md
+i18nSourceBlob: 35d6fcf35338b9b64fd4c7988beea62f0a7219d3
 ---
 
 ## Mes tests de replay en parallèle appellent parfois le vrai backend — pourquoi ? {#parallel-replay}

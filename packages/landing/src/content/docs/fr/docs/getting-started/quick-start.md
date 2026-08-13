@@ -1,6 +1,8 @@
 ---
 title: Démarrage rapide
 description: Configurez test-proxy-recorder avec une seule commande init — idéalement pilotée par un agent IA. Pointez votre API vers le proxy, enregistrez une fois, rejouez en CI.
+i18nSource: docs/getting-started/quick-start.md
+i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
 ---
 
 ## Configurer avec un agent IA (recommandé)
@@ -11,8 +13,8 @@ Copiez ceci et collez-le dans votre agent de codage IA (Claude Code, Cursor, …
 Set up test-proxy-recorder for end-to-end tests in this project, then follow the
 instructions that `init` prints. Run these commands:
 
-  npx @tanstack/intent@latest install
   npm install --save-dev test-proxy-recorder
+  npx @tanstack/intent@latest install
 
 Then run init, passing this project's backend API base URL as the target — find
 it yourself from the app's env/config (the URL the app calls in dev); don't

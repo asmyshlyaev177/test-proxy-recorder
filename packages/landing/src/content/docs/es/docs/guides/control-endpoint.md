@@ -1,6 +1,8 @@
 ---
 title: Endpoint de control
 description: El proxy expone /__control para cambiar de modo programáticamente entre transparent, record y replay.
+i18nSource: docs/guides/control-endpoint.md
+i18nSourceBlob: 17fac3de2790301f1ba96f8b4db21a5f01c05d79
 ---
 
 El proxy expone `/__control` para cambiar de modo programáticamente.

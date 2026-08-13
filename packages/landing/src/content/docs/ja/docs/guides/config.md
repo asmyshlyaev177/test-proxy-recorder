@@ -1,9 +1,11 @@
 ---
 title: 設定ファイル
-description: test-proxy-recorder のオプション — ターゲット、ポート、編集用の正規表現、WebSocket のペース — を CLI フラグの代わりに自動検出される設定ファイルに記述します。
+description: test-proxy-recorder のオプション — ターゲット、ポート、マスキング用の正規表現、WebSocket のペース — を CLI フラグの代わりに自動検出される設定ファイルに記述します。
+i18nSource: docs/guides/config.md
+i18nSourceBlob: d633335aa6541254ec9f1af34ca98d1ee4b6d758
 ---
 
-数個のフラグを超えるもの — 特にボディ編集の正規表現 — は、設定ファイルにオプションを記述してください。プロキシはカレントディレクトリの `test-proxy-recorder.config.{ts,js,mjs,cjs}` を自動検出します。あるいは `--config <path>` で明示的に指定します。`.ts` ファイルはそのまま動作します。
+数個のフラグを超えるもの — 特にボディマスキングの正規表現 — は、設定ファイルにオプションを記述してください。プロキシはカレントディレクトリの `test-proxy-recorder.config.{ts,js,mjs,cjs}` を自動検出します。あるいは `--config <path>` で明示的に指定します。`.ts` ファイルはそのまま動作します。
 
 ```ts
 // test-proxy-recorder.config.ts

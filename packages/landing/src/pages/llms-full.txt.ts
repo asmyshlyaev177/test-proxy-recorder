@@ -14,6 +14,9 @@ export const prerender = false;
 // Reading order that mirrors the docs sidebar (astro.config.mjs).
 const SECTION_ORDER = ['getting-started', 'guides', 'integrations', 'reference'];
 
+/** Content-directory names of every non-English locale, baked in at build. */
+const LOCALE_DIRS: readonly string[] = __LOCALE_DIRS__;
+
 function rank(id: string): number {
   // The docs landing page first.
   if (id === 'docs' || id === 'docs/index') return -1;
@@ -42,8 +45,12 @@ function stripMdx(body: string): string {
 export const GET: APIRoute = async ({ site }) => {
   const entries = await getCollection('docs', (entry) => {
     const { id } = entry;
-    // English (root locale) only — skip the translated locale trees.
-    if (/^(fr|es|ja|zh-cn|ru)\//.test(id)) return false;
+    // English (root locale) only — skip the translated locale trees. The
+    // prefixes come from the one locale table in scripts/i18n/locales.mjs via
+    // astro.config.mjs; enumerating them here is how a newly added language
+    // silently got concatenated onto the English docs instead of being left
+    // out of this file.
+    if (LOCALE_DIRS.some((dir) => id.startsWith(`${dir}/`))) return false;
     // Skip the auto-generated TypeScript API reference: it is verbose, derived
     // from JSDoc, and better consumed from the types themselves. The
     // hand-written /llms.txt already links to the rendered API reference.

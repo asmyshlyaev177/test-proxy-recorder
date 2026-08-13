@@ -1,6 +1,8 @@
 ---
 title: React Router / Remix
 description: 面向 React Router 7（framework mode）和 Remix 的一流集成已在路线图中。在它发布之前，请从 loader 和 action 手动转发录制会话 header。
+i18nSource: docs/integrations/react-router.md
+i18nSourceBlob: 84a70df0fa049d7fe27235ed2884156c7bb75cfa
 ---
 
 :::caution[在路线图中]

@@ -1,6 +1,8 @@
 ---
 title: Apps d'exemple
 description: Exemples complets et fonctionnels de test-proxy-recorder — SSR Next.js et TanStack Start, une extension Chrome, un ticker WebSocket tiers et une app authentifiée rejouée sans backend.
+i18nSource: docs/reference/examples.md
+i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
 ---
 
 Des exemples complets et fonctionnels se trouvent dans [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — un par mécanisme d'enregistrement. Chacun a son propre README avec la configuration complète et le flux enregistrer/rejouer.
@@ -8,6 +10,10 @@ Des exemples complets et fonctionnels se trouvent dans [`apps/`](https://github.
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — une app de tâches Next.js 16 avec un backend mock, un proxy et des tests e2e Playwright. Enregistre à la fois les fetches SSR (`.mock.json`) et les fetches navigateur (`.har`), et inclut un chat WebSocket contre le backend local. Voir son [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+
+## Next.js Edge runtime {#nextjs-edge}
+
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — une app Next.js 16 dont la page est rendue sur le **runtime Edge** (`export const runtime = 'edge'`). Son `fetch` SSR est marqué avec l'id de session d'enregistrement via `registerProxyFetch()` (appelé depuis le root layout), de sorte que les sessions de rejeu concurrentes restent distinctes là où `instrumentation.ts` ne peut pas intervenir. Voir son [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
 
 ## TanStack Start {#tanstack-start}
 
@@ -23,4 +29,4 @@ Des exemples complets et fonctionnels se trouvent dans [`apps/`](https://github.
 
 ## App authentifiée {#authenticated-app}
 
-[`apps/example-auth-cognito`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — une app Next.js qui se connecte à un user pool **AWS Cognito réel**, puis enregistre/rejoue son API protégée. La connexion reste en direct à chaque exécution (jamais enregistrée) ; les données protégées sont rejouées avec le backend éteint, et le jeton d'authentification est rédigé des enregistrements. L'intégration ne représente qu'une poignée de fichiers — voir son [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-auth-cognito/README.md). Pour le même modèle **sans compte cloud**, voir [`apps/example-auth-mock`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-mock).
+[`apps/example-auth-cognito`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-cognito) — une app Next.js qui se connecte à un user pool **AWS Cognito réel**, puis enregistre/rejoue son API protégée. La connexion reste en direct à chaque exécution (jamais enregistrée) ; les données protégées sont rejouées avec le backend éteint, et le jeton d'authentification est masqué dans les enregistrements. L'intégration ne représente qu'une poignée de fichiers — voir son [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-auth-cognito/README.md). Pour le même modèle **sans compte cloud**, voir [`apps/example-auth-mock`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-auth-mock).

@@ -1,0 +1,69 @@
+---
+title: test-proxy-recorder
+description: VCR cho Playwright — ghi lại các response API thật một lần, phát lại chúng một cách tất định trên CI. Bao phủ SSR của Next.js, trình duyệt, và traffic WebSocket, không cần backend và không cần mock viết tay.
+i18nSource: docs/index.mdx
+i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+**VCR cho Playwright.** Ghi lại các response API thật một lần, phát lại chúng một cách tất định trên CI. Bao phủ SSR của Next.js, trình duyệt, và traffic WebSocket — không cần backend, không cần mock viết tay.
+
+Proxy ghi lại các response API thật trong một lần chạy test, rồi phát lại chúng trên CI. Test luôn nhanh và tất định, và bạn không bao giờ phải tự bảo trì các mock fixture.
+
+Dấu chân rất nhỏ: một dev-dependency và một proxy nhẹ chạy **song song với ứng dụng trong lúc chạy test** — không phải một dịch vụ bạn phải deploy hay vận hành. Bạn trỏ base URL API của ứng dụng về nó một lần; ghi lại dựa trên backend thật, rồi phát lại từ đĩa trên CI.
+
+```text
+                        Record mode                          Replay mode
+
+  Browser/App ──> Proxy ──> Real API        Browser/App ──> Proxy ──> Disk
+                    │                                         │
+                    └──> saves to disk                        └──> serves saved responses
+                         (.mock.json)                              (.mock.json)
+```
+
+## Tại sao
+
+- **Không cần backend trên CI** — ghi lại một lần dựa trên API thật, phát lại trong mỗi lần chạy CI.
+- **Không cần mock thủ công** — ghi lại các tương tác thật thay vì viết fixture bằng tay.
+- **Hỗ trợ SSR** — ghi lại các request phía máy chủ từ Next.js và các framework tương tự.
+- **Hỗ trợ phía trình duyệt** — ghi lại các lời gọi `fetch` của trình duyệt, lời gọi API của extension Chrome, analytics, và nhiều thứ khác.
+- **Tất định** — cùng các response mỗi lần, không có mạng không ổn định.
+- **Hỗ trợ WebSocket** — ghi lại và phát lại các kết nối WebSocket.
+
+## So sánh
+
+Các công cụ mocking giỏi ở những việc khác nhau. test-proxy-recorder là công cụ ghi lại traffic **thật** trên cả SSR, trình duyệt, và WebSockets mà không cần mock viết tay — sự kết hợp đó chính là khoảng trống các công cụ khác để lại.
+
+| Tính năng | **test-proxy-recorder** | `routeFromHAR` | MSW | Polly.js | playwright-network-cache | Mocky Balboa |
+| --- | :---: | :---: | :---: | :---: | :---: | :---: |
+| Ghi lại traffic thật | ✅ | ✅ | ❌ | ✅ | ✅ | ❌ |
+| Phía máy chủ (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
+| Phía trình duyệt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+| WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
+| Thuần Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Được bảo trì | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
+
+> ⚠️ Polly.js chặn HTTP của Node, nên việc mock SSR có thể thực hiện bên trong tiến trình ứng dụng, nhưng không phải như một phần của lần chạy Playwright. MSW và Mocky Balboa cũng phát lại các response thật — nhưng bạn phải viết mock bằng tay thay vì ghi lại chúng.
+
+### Khi nào nên chọn thứ khác
+
+- **Mọi traffic của bạn đều ở phía trình duyệt** — `routeFromHAR` có sẵn của Playwright không cần thêm dependency. Bắt đầu từ đó; thêm công cụ này khi SSR xuất hiện.
+- **Bạn muốn tự tạo response hoặc ép các tình huống lỗi/biên** — các handler do MSW viết và hệ sinh thái lớn của nó phù hợp hơn, và hoạt động vượt xa Playwright.
+- **Chỉ cần cache nhẹ ở trình duyệt, không có SSR** — [`playwright-network-cache`](https://github.com/vitalets/playwright-network-cache) làm đúng việc đó với ít thứ phải thiết lập hơn.
+
+Polly.js là nguồn cảm hứng cho cách tiếp cận này (ghi lại/phát lại HTTP, "VCR cho JS"); nó giờ gần như không còn được bảo trì, đó là một phần lý do công cụ này tồn tại.
+
+## Bắt đầu từ đây
+
+<CardGrid>
+  <LinkCard title="Bắt đầu nhanh" href="/vi/docs/getting-started/quick-start/" description="Dựng toàn bộ thiết lập bằng một lệnh init." />
+  <LinkCard title="Thiết lập thủ công" href="/vi/docs/getting-started/manual-setup/" description="Tự kết nối bằng tay cho các ứng dụng full-stack hoặc chỉ chạy trên trình duyệt." />
+  <LinkCard title="Cách thức hoạt động" href="/vi/docs/getting-started/how-it-works/" description="Các cơ chế ghi lại proxy và HAR." />
+  <LinkCard title="Tham chiếu API" href="/vi/docs/reference/api/readme/" description="playwrightProxy, setProxyMode, defineConfig, và các helper của Next.js." />
+</CardGrid>
+
+## Yêu cầu
+
+- Node.js >= 20.0.0
+- `@playwright/test` >= 1.0.0 (peer dependency)

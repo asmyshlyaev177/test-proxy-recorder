@@ -1,6 +1,8 @@
 ---
 title: Примеры приложений
 description: Полностью рабочие примеры test-proxy-recorder — SSR Next.js и TanStack Start, расширение Chrome, сторонний WebSocket-тикер и аутентифицированное приложение, воспроизводимое без бэкенда.
+i18nSource: docs/reference/examples.md
+i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
 ---
 
 Полностью рабочие примеры находятся в [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — по одному на каждый механизм записи. У каждого свой README с полной настройкой и рабочим процессом записи/воспроизведения.
@@ -8,6 +10,10 @@ description: Полностью рабочие примеры test-proxy-recorde
 ## Next.js 16 {#nextjs-16}
 
 [`apps/example-nextjs16`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs16) — приложение списка задач на Next.js 16 с мок-бэкендом, прокси и e2e-тестами Playwright. Записывает и SSR-фетчи (`.mock.json`), и браузерные фетчи (`.har`), а также включает WebSocket-чат против локального бэкенда. См. его [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs16/README.md).
+
+## Next.js Edge runtime {#nextjs-edge}
+
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — приложение на Next.js 16, чья страница рендерится на **Edge runtime** (`export const runtime = 'edge'`). Его SSR-`fetch` тегируется id сессии записи через `registerProxyFetch()` (вызывается из root layout), поэтому конкурентные сессии воспроизведения остаются разными там, куда `instrumentation.ts` не достаёт. См. его [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
 
 ## TanStack Start {#tanstack-start}
 

@@ -1,6 +1,8 @@
 ---
 title: Next.js
 description: 用 recording-session header 给 Next.js 服务端 fetch 打标，让 SSR 得以录制和回放 —— 通过 registerProxyFetch（推荐，任意 runtime）、axios 用 registerProxyAxios，或按调用用 createHeadersWithRecordingId。中间件是可选的。
+i18nSource: docs/integrations/nextjs.md
+i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
 ---
 
 Next.js 这样的 SSR 框架会发起不带浏览器上下文的服务端 `fetch` 调用，它们经过代理。代理通过 `x-test-rcrd-id` header 识别这些请求属于哪个会话。Playwright 的 `playwrightProxy.before()` 已经在触发 SSR 的浏览器导航上设置了它，所以 id 在 `next/headers` 里可取 —— 我们要做的是**把它附加到外发的服务端请求上**。（纯浏览器测试不需要这些；代理会回退到全局设置的会话。）

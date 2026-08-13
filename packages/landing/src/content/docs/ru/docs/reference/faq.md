@@ -1,6 +1,8 @@
 ---
 title: Частые вопросы
 description: Частые вопросы о test-proxy-recorder — параллельное воспроизведение, коммит записей в git, цель прокси для записи HAR, dev-сервер Next.js и обновление записей.
+i18nSource: docs/reference/faq.md
+i18nSourceBlob: 35d6fcf35338b9b64fd4c7988beea62f0a7219d3
 ---
 
 ## Мои параллельные тесты воспроизведения иногда обращаются к реальному бэкенду — почему? {#parallel-replay}

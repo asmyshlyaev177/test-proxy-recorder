@@ -1,6 +1,8 @@
 ---
 title: TanStack Start
 description: Marquez les fetch côté serveur de TanStack Start avec l'en-tête de session d'enregistrement pour enregistrer et rejouer le SSR — via registerProxyFetch (recommandé) ou createHeadersWithRecordingId par appel.
+i18nSource: docs/integrations/tanstack-start.md
+i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
 ---
 
 TanStack Start exécute les loaders et les server functions sur le serveur, donc leurs appels `fetch` passent par le proxy sans contexte navigateur — la même situation que le [SSR de Next.js](/fr/docs/integrations/nextjs/). Le proxy identifie à quelle session appartiennent ces requêtes grâce à l'en-tête `x-test-rcrd-id`. Le `playwrightProxy.before()` de Playwright le définit déjà sur la navigation navigateur qui déclenche le SSR, donc l'id arrive sur la requête serveur entrante — le travail consiste à **l'attacher aux requêtes sortantes côté serveur**. (Les tests uniquement navigateur n'en ont pas besoin ; le proxy se rabat sur la session définie globalement.)
@@ -52,4 +54,4 @@ L'application [`example-tanstack-start`](https://github.com/asmyshlyaev177/test-
 
 ## Exemple complet
 
-Une application complète et exécutable — construite avec **TanStack Query** (préchargement SSR + `useMutation`), couvrant les todos (navigateur + SSR), une route ISR basée sur les en-têtes de cache, un cas de rédaction (masquage), un chat WebSocket et une vraie connexion AWS Cognito (authentification en mode transparent + une API protégée enregistrée avec token masqué), le tout enregistré et rejoué — se trouve dans [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Elle montre que l'enregistreur est transparent pour votre couche de données : `registerProxyFetch()` marque les fetch du `queryFn` de Query pendant le SSR, sans code spécifique à Query.
+Une application complète et exécutable — construite avec **TanStack Query** (préchargement SSR + `useMutation`), couvrant les todos (navigateur + SSR), une route ISR basée sur les en-têtes de cache, un cas de masquage, un chat WebSocket et une vraie connexion AWS Cognito (authentification en mode transparent + une API protégée enregistrée avec token masqué), le tout enregistré et rejoué — se trouve dans [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Elle montre que l'enregistreur est transparent pour votre couche de données : `registerProxyFetch()` marque les fetch du `queryFn` de Query pendant le SSR, sans code spécifique à Query.

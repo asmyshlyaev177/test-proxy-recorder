@@ -1,6 +1,8 @@
 ---
 title: Playwright
 description: 在 Playwright 测试中使用 test-proxy-recorder —— before() 会话钩子、推荐的 global teardown，以及录制文件的存放位置。
+i18nSource: docs/integrations/playwright.md
+i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`

@@ -1,6 +1,8 @@
 ---
 title: TanStack Start
 description: Marca los fetch del lado del servidor de TanStack Start con la cabecera de sesión de grabación para grabar y reproducir el SSR — mediante registerProxyFetch (recomendado) o createHeadersWithRecordingId por llamada.
+i18nSource: docs/integrations/tanstack-start.md
+i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
 ---
 
 TanStack Start ejecuta los loaders y las server functions en el servidor, por lo que sus llamadas `fetch` pasan por el proxy sin un contexto de navegador — la misma situación que el [SSR de Next.js](/es/docs/integrations/nextjs/). El proxy identifica a qué sesión pertenecen esas peticiones mediante la cabecera `x-test-rcrd-id`. El `playwrightProxy.before()` de Playwright ya la establece en la navegación del navegador que dispara el SSR, así que el id llega en la petición entrante del servidor — el trabajo consiste en **adjuntarlo a las peticiones salientes del lado del servidor**. (Las pruebas solo de navegador no necesitan nada de esto; el proxy recurre a la sesión establecida globalmente.)
@@ -45,11 +47,11 @@ En dev/test, apunta las URLs base de tu backend al proxy para que **ambos** orí
 La grabadora [funciona con tu proveedor de autenticación real](/es/docs/getting-started/how-it-works/) (AWS Cognito, Auth0, Clerk, …), y se combina con el marcado de SSR anterior. El patrón:
 
 - **Inicia sesión de verdad, en modo `transparent`.** Un proyecto `setup` de Playwright inicia sesión una sola vez con el proxy en modo pass-through, así que el inicio de sesión **nunca se graba**, y guarda la sesión (`storageState`) que reutilizan las specs autenticadas.
-- **Las peticiones protegidas llevan el token y se graban.** Cada petición autenticada envía una cabecera `Authorization: Bearer …`; la grabadora la [oculta](/es/docs/guides/secret-redaction/), así que ningún token llega a las grabaciones commiteadas.
+- **Las peticiones protegidas llevan el token y se graban.** Cada petición autenticada envía una cabecera `Authorization: Bearer …`; la grabadora la [enmascara](/es/docs/guides/secret-redaction/), así que ningún token llega a las grabaciones commiteadas.
 - **Dónde vive el token decide el mecanismo.** Un token en `localStorage` no se puede leer en el servidor, así que el fetch protegido se ejecuta en el navegador y se graba vía HAR — sin precarga en SSR. Una sesión basada en cookie, en cambio, puede reenviarse a un loader con `createHeadersWithRecordingId()` y grabarse en el servidor.
 
 La aplicación [`example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start) incluye un flujo de AWS Cognito ejecutable `/login` → `/dashboard` (`e2e/setup-auth.ts` + `e2e/auth.spec.ts`) que demuestra exactamente esto.
 
 ## Ejemplo completo
 
-Una aplicación completa y ejecutable — construida con **TanStack Query** (precarga en SSR + `useMutation`), que cubre todos (navegador + SSR), una ruta ISR basada en cabeceras de caché, un caso de redacción (ocultación), un chat WebSocket y un inicio de sesión real con AWS Cognito (autenticación en modo transparente + una API protegida grabada con el token ocultado), todo grabado y reproducido — se encuentra en [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Demuestra que la grabadora es transparente para tu capa de datos: `registerProxyFetch()` marca los fetch del `queryFn` de Query durante el SSR, sin código específico de Query.
+Una aplicación completa y ejecutable — construida con **TanStack Query** (precarga en SSR + `useMutation`), que cubre todos (navegador + SSR), una ruta ISR basada en cabeceras de caché, un caso de enmascaramiento, un chat WebSocket y un inicio de sesión real con AWS Cognito (autenticación en modo transparente + una API protegida grabada con el token enmascarado), todo grabado y reproducido — se encuentra en [`apps/example-tanstack-start`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-tanstack-start). Demuestra que la grabadora es transparente para tu capa de datos: `registerProxyFetch()` marca los fetch del `queryFn` de Query durante el SSR, sin código específico de Query.

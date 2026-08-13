@@ -6,8 +6,36 @@ import { defineConfig, sessionDrivers } from 'astro/config';
 import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
 import { createLastmodResolver, getContentLastModified } from './scripts/build-date.mjs';
+import { LOCALES } from '../../scripts/i18n/locales.mjs';
+import { badge as sidebarBadge, label as sidebarLabel } from './src/i18n/sidebar';
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
+
+// The locale set is declared once, in scripts/i18n/locales.mjs, and expanded
+// here into the three shapes that need it. They used to be three hand-kept
+// lists, and the third was already wrong: /llms-full.txt enumerated five
+// locale prefixes to skip, so a sixth language would have been concatenated
+// onto the English docs with nothing to notice.
+//
+// `dir` is the content directory and URL prefix (lowercase, because content
+// collection ids and URLs are); `code` is the BCP 47 tag that goes in
+// <html lang> and hreflang. They differ only for zh-CN and pt-BR.
+const localeDirs = LOCALES.map((l) => l.dir);
+
+// Starlight: English is the unprefixed root locale, each translation a
+// directory under it.
+const starlightLocales = {
+  root: { label: 'English', lang: 'en' },
+  ...Object.fromEntries(LOCALES.map((l) => [l.dir, { label: l.label, lang: l.code }])),
+};
+
+// @astrojs/sitemap: maps the URL prefix to the hreflang value it emits. A
+// first segment that is not a known locale falls through to `defaultLocale`,
+// which is how the unprefixed English pages get theirs.
+const sitemapLocales = {
+  en: 'en',
+  ...Object.fromEntries(LOCALES.map((l) => [l.dir, l.code])),
+};
 
 // When the content last changed (HEAD commit). Baked in at build time and
 // exposed as __CONTENT_LAST_MODIFIED__ so schema.org `dateModified`, the
@@ -57,6 +85,7 @@ export default defineConfig({
   vite: {
     define: {
       __CONTENT_LAST_MODIFIED__: JSON.stringify(contentLastModified),
+      __LOCALE_DIRS__: JSON.stringify(localeDirs),
     },
   },
   integrations: [
@@ -77,14 +106,7 @@ export default defineConfig({
       // through to `defaultLocale`.
       i18n: {
         defaultLocale: 'en',
-        locales: {
-          en: 'en',
-          es: 'es',
-          fr: 'fr',
-          ja: 'ja',
-          'zh-cn': 'zh-CN',
-          ru: 'ru',
-        },
+        locales: sitemapLocales,
       },
     }),
     // Docs site. The hand-built marketing page owns `/` (src/pages/index.astro);
@@ -120,14 +142,7 @@ export default defineConfig({
       // slugs automatically and falls back to English for any untranslated
       // page (e.g. the generated API reference, which stays English).
       defaultLocale: 'root',
-      locales: {
-        root: { label: 'English', lang: 'en' },
-        es: { label: 'Español', lang: 'es' },
-        fr: { label: 'Français', lang: 'fr' },
-        ja: { label: '日本語', lang: 'ja' },
-        'zh-cn': { label: '简体中文', lang: 'zh-CN' },
-        ru: { label: 'Русский', lang: 'ru' },
-      },
+      locales: starlightLocales,
       social: [
         { icon: 'github', label: 'GitHub', href: repo },
         { icon: 'discord', label: 'Discord (support)', href: 'https://discord.gg/w7rgYbY5zz' },
@@ -150,41 +165,48 @@ export default defineConfig({
           },
         }),
       ],
+      // Page entries carry no `label`. Starlight resolves a `slug` entry as
+      // `translations[lang] || label || frontmatter.sidebar.label ||
+      // frontmatter.title`, so with the label omitted each locale's sidebar
+      // reads that locale's own translated page title — the labels here were
+      // byte-identical to the English titles anyway, and duplicating them was
+      // what pinned all nine sidebars to English. Only the strings with no
+      // page behind them need a table: src/i18n/sidebar.ts.
       sidebar: [
         {
-          label: 'Getting started',
+          ...sidebarLabel('gettingStarted'),
           items: [
-            { label: 'Introduction', slug: 'docs' },
-            { label: 'Quick start', slug: 'docs/getting-started/quick-start' },
-            { label: 'Manual setup', slug: 'docs/getting-started/manual-setup' },
-            { label: 'How it works', slug: 'docs/getting-started/how-it-works' },
+            { ...sidebarLabel('introduction'), slug: 'docs' },
+            { slug: 'docs/getting-started/quick-start' },
+            { slug: 'docs/getting-started/manual-setup' },
+            { slug: 'docs/getting-started/how-it-works' },
           ],
         },
         {
-          label: 'Guides',
+          ...sidebarLabel('guides'),
           items: [
-            { label: 'CLI', slug: 'docs/guides/cli' },
-            { label: 'Config file', slug: 'docs/guides/config' },
-            { label: 'Secret redaction', slug: 'docs/guides/secret-redaction' },
-            { label: 'Control endpoint', slug: 'docs/guides/control-endpoint' },
+            { slug: 'docs/guides/cli' },
+            { slug: 'docs/guides/config' },
+            { slug: 'docs/guides/secret-redaction' },
+            { slug: 'docs/guides/control-endpoint' },
           ],
         },
         {
-          label: 'Integrations',
+          ...sidebarLabel('integrations'),
           items: [
-            { label: 'Playwright', slug: 'docs/integrations/playwright' },
-            { label: 'Next.js', slug: 'docs/integrations/nextjs' },
-            { label: 'TanStack Start', slug: 'docs/integrations/tanstack-start' },
-            { label: 'React Router / Remix', slug: 'docs/integrations/react-router', badge: 'Soon' },
+            { slug: 'docs/integrations/playwright' },
+            { slug: 'docs/integrations/nextjs' },
+            { slug: 'docs/integrations/tanstack-start' },
+            { slug: 'docs/integrations/react-router', badge: sidebarBadge('soon') },
           ],
         },
         {
-          label: 'Reference',
+          ...sidebarLabel('reference'),
           items: [
-            { label: 'Example apps', slug: 'docs/reference/examples' },
+            { slug: 'docs/reference/examples' },
             typeDocSidebarGroup,
-            { label: 'AI agent skills', slug: 'docs/reference/ai-agent-skills' },
-            { label: 'FAQ', slug: 'docs/reference/faq' },
+            { slug: 'docs/reference/ai-agent-skills' },
+            { slug: 'docs/reference/faq' },
           ],
         },
       ],

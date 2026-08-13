@@ -1,0 +1,847 @@
+---
+// Code snippets render through markdown partials (src/snippets/*.md) rather
+// than astro:components' <Code>. Starlight disables Astro's built-in Shiki in
+// favour of Expressive Code; EC highlights markdown at build time in Node, so
+// these blocks prerender to static HTML and work under the Cloudflare workerd
+// prerender (where a render-time highlighter does not).
+import { Content as AiPromptSnippet } from '../snippets/ai-prompt.md';
+import { Content as InstallSnippet } from '../snippets/install.md';
+import { Content as ApiEnvSnippet } from '../snippets/api-env.md';
+import { Content as SsrTagSnippet } from '../snippets/register-proxy-fetch.md';
+import { Content as FixtureSnippet } from '../snippets/fixture.md';
+import { Content as RecordSnippet } from '../snippets/record.md';
+import { Content as AuthSetupSnippet } from '../snippets/auth-setup.md';
+import Layout from '../layouts/Layout.astro';
+import RecorderScene from './RecorderScene.astro';
+import type { HomeCopy } from '../i18n/home/types';
+import type { Locale } from '../../../../scripts/i18n/locales.mjs';
+
+// One implementation of the marketing page, rendered by both routes: the
+// unprefixed English `/`, which stays server-rendered so middleware can
+// negotiate Markdown for agents, and the prerendered `/<locale>/` pages.
+// Structure, URLs, the install command and the comparison data live here; the
+// words arrive as `copy`, one module per language.
+interface Props {
+  copy: HomeCopy;
+  locale: Locale;
+}
+
+const { copy: home, locale } = Astro.props;
+
+const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
+
+const installCmd = 'npm i -D test-proxy-recorder';
+
+// Comparison table. y = yes, n = no, p = partial (see footnote).
+// The feature labels down the left are copy, so they live in the copy module
+// (`home.compare.features`) and line up with each row's `cells` by index.
+const compareRows: {
+  tool: string;
+  self?: boolean;
+  note?: string;
+  cells: ('y' | 'n' | 'p')[];
+}[] = [
+  { tool: 'test-proxy-recorder', self: true, cells: ['y', 'y', 'y', 'y', 'y', 'y'] },
+  { tool: 'Playwright routeFromHAR', cells: ['y', 'n', 'y', 'n', 'y', 'y'] },
+  { tool: 'MSW', cells: ['n', 'y', 'y', 'y', 'n', 'y'] },
+  { tool: 'Polly.js', cells: ['y', 'p', 'y', 'n', 'n', 'n'] },
+  { tool: 'playwright-network-cache', cells: ['y', 'n', 'y', 'n', 'y', 'y'] },
+  { tool: 'Mocky Balboa', cells: ['n', 'y', 'y', 'n', 'y', 'y'] },
+];
+const markGlyph = { y: '✓', n: '✕', p: '~' } as const;
+const markText = home.compare.markText;
+---
+
+<Layout locale={locale} copy={home}>
+  <!-- ============================================================ hero -->
+  <section class="hero">
+    <div class="container hero-grid">
+      <div class="hero-copy">
+        <p class="hero-eyebrow">{home.hero.eyebrow}</p>
+        <h1>{home.hero.headlineTop}<br />{home.hero.headlineBottom}</h1>
+        <p class="hero-sub">
+          {home.hero.sub}
+        </p>
+        <div class="hero-actions">
+          <span class="cmd">
+            <code>{installCmd}</code>
+            <button class="copy-btn" type="button" data-copy={installCmd}>
+              <span class="copy-label">{home.hero.copyLabel}</span>
+            </button>
+          </span>
+          <a class="btn btn-ghost btn-star" href={`${repo}/stargazers`}>
+            <span class="star-glyph" aria-hidden="true">★</span> {home.hero.starCta}
+            {/* width/height reserve the box before the badge arrives — it is
+                a third-party image in the hero, so without them it lands at
+                0px wide and shifts the row. Not `loading="lazy"`: above the
+                fold that only delays the request, and the shift with it. */}
+            <img
+              class="star-count"
+              src="https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=flat&label=&color=%23eab308"
+              alt={home.hero.starCountAlt}
+              width="23"
+              height="20"
+            />
+          </a>
+        </div>
+        <p class="hero-fine">
+          {home.hero.fine}
+        </p>
+      </div>
+      <RecorderScene />
+    </div>
+  </section>
+
+  <!-- ============================================================ demo -->
+  <section class="demo" id="demo">
+    <div class="container demo-inner">
+      <h2>{home.demo.heading}</h2>
+      <p class="section-sub">
+        {home.demo.sub}
+      </p>
+      <figure class="demo-frame">
+        <video
+          class="demo-video"
+          autoplay
+          muted
+          loop
+          playsinline
+          preload="metadata"
+          controls
+          poster="/demo-poster.webp"
+          aria-label={home.demo.videoLabel}
+        >
+          <source src="/demo.webm" type="video/webm" />
+          <source src="/demo.mp4" type="video/mp4" />
+        </video>
+      </figure>
+    </div>
+  </section>
+
+  <!-- ======================================================= mechanisms -->
+  <section class="mechanisms">
+    <div class="container">
+      <h2>{home.mechanisms.heading}</h2>
+      <p class="section-sub">
+        {home.mechanisms.sub}
+      </p>
+      <div class="mech-grid">
+        <article class="mech">
+          <header class="mech-head">
+            <h3>{home.mechanisms.proxy.title}</h3>
+            <code class="mech-ext">.mock.json</code>
+          </header>
+          <p class="mech-flow">{home.mechanisms.proxy.flow}</p>
+          <p>
+            {home.mechanisms.proxy.body}
+          </p>
+          <p class="mech-when">{home.mechanisms.proxy.when}</p>
+          <a class="mech-example" href={`${repo}/tree/master/apps/example-nextjs16`}>
+            {home.mechanisms.proxy.exampleNextjs}
+          </a>
+          <a
+            class="mech-example"
+            href={`${repo}/tree/master/apps/example-tanstack-start`}
+            style="margin-left: 1rem;"
+          >
+            {home.mechanisms.proxy.exampleTanstack}
+          </a>
+        </article>
+        <article class="mech">
+          <header class="mech-head">
+            <h3>{home.mechanisms.har.title}</h3>
+            <code class="mech-ext">.har</code>
+          </header>
+          <p class="mech-flow">{home.mechanisms.har.flow}</p>
+          <p>
+            {home.mechanisms.har.bodyStart} <code>fetch</code>
+            {home.mechanisms.har.bodyEnd}
+          </p>
+          <p class="mech-when">{home.mechanisms.har.when}</p>
+          <a class="mech-example" href={`${repo}/tree/master/apps/example-extension`}>
+            {home.mechanisms.har.exampleExtension}
+          </a>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================================================= comparison -->
+  <section class="compare" id="comparison">
+    <div class="container">
+      <h2>{home.compare.heading}</h2>
+      <p class="section-sub">
+        {home.compare.sub}
+      </p>
+
+      <div class="compare-scroll">
+        <table class="compare-table">
+          <caption class="vh">
+            {home.compare.tableCaption}
+          </caption>
+          <thead>
+            <tr>
+              <th scope="col"><span class="vh">{home.compare.featureLabel}</span></th>
+              {
+                compareRows.map((row) => (
+                  <th scope="col" class={row.self ? 'is-self' : undefined}>
+                    {row.tool}
+                    {row.note && <span class="row-note">{row.note}</span>}
+                  </th>
+                ))
+              }
+            </tr>
+          </thead>
+          <tbody>
+            {
+              home.compare.features.map((col, i) => (
+                <tr>
+                  <th scope="row">{col}</th>
+                  {compareRows.map((row) => {
+                    const c = row.cells[i];
+                    return (
+                      <td class={row.self ? 'is-self' : undefined}>
+                        <span class={`mark mark-${c}`} aria-hidden="true">
+                          {markGlyph[c]}
+                        </span>
+                        <span class="vh">{markText[c]}</span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))
+            }
+          </tbody>
+        </table>
+      </div>
+
+      <p class="compare-foot">
+        <span class="mark mark-p" aria-hidden="true">~</span> {home.compare.footStart}
+        <a href="/docs/#comparison">{home.compare.footLinkLabel}</a>{home.compare.footEnd}
+      </p>
+    </div>
+  </section>
+
+  <!-- ======================================================= real auth -->
+  <section class="auth" id="auth">
+    <div class="container">
+      <h2>{home.auth.heading}</h2>
+      <p class="section-sub">
+        {home.auth.sub}
+      </p>
+      <div class="auth-code">
+        <AuthSetupSnippet />
+      </div>
+      <p class="auth-links">
+        <a href={`${repo}/tree/master/apps/example-auth-cognito`}>{home.auth.links.cognito}</a>
+        <a href={`${repo}/tree/master/apps/example-tanstack-start`}>{home.auth.links.tanstack}</a>
+        <a href={`${repo}/tree/master/apps/example-auth-mock`}>{home.auth.links.mock}</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- ====================================================== quick start -->
+  <section class="quick-start" id="quick-start">
+    <div class="container qs-inner">
+      <h2>{home.quickStart.heading}</h2>
+      <p class="section-sub">
+        {home.quickStart.subStart} <code>init</code>
+        {home.quickStart.subEnd}
+      </p>
+
+      <div class="ai-setup">
+        <h3>{home.quickStart.ai.heading}</h3>
+        <p class="step-note">
+          {home.quickStart.ai.noteStart} <code>init</code>
+          {home.quickStart.ai.noteMid} <code>init</code>
+          {home.quickStart.ai.noteEnd}
+        </p>
+        <div class="ai-prompt">
+          <AiPromptSnippet />
+          <button class="copy-btn copy-btn--float" type="button" data-copy-pre>
+            <span class="copy-label">{home.quickStart.ai.copyLabel}</span>
+          </button>
+        </div>
+      </div>
+
+      <p class="section-sub">{home.quickStart.manualIntro}</p>
+
+      <ol class="steps">
+        <li class="step">
+          <h3>{home.quickStart.steps.install.title}</h3>
+          <p class="step-note">
+            <code>init</code> {home.quickStart.steps.install.noteStart}
+            <code>package.json</code> {home.quickStart.steps.install.noteEnd}
+          </p>
+          <InstallSnippet />
+        </li>
+        <li class="step">
+          <h3>{home.quickStart.steps.apiEnv.title}</h3>
+          <p class="step-note">
+            {home.quickStart.steps.apiEnv.noteStart} <code>init</code>
+            {home.quickStart.steps.apiEnv.noteEnd}
+          </p>
+          <ApiEnvSnippet />
+          <p class="step-note">
+            {home.quickStart.steps.apiEnv.ssrStart} <code>init</code>
+            {home.quickStart.steps.apiEnv.ssrAfterInit} <code>registerProxyFetch()</code>
+            {home.quickStart.steps.apiEnv.ssrAfterFn} <code>fetch</code>
+            {home.quickStart.steps.apiEnv.ssrEnd}
+          </p>
+          <SsrTagSnippet />
+        </li>
+        <li class="step">
+          <h3>{home.quickStart.steps.record.title}</h3>
+          <p class="step-note">
+            {home.quickStart.steps.record.noteStart} <code>MODE = 'record'</code>{
+              home.quickStart.steps.record.noteMid
+            } <code>'replay'</code>
+            {home.quickStart.steps.record.noteEnd}
+          </p>
+          <FixtureSnippet />
+          <RecordSnippet />
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ============================================================== cta -->
+  <section class="cta">
+    <div class="container cta-inner">
+      <h2>{home.cta.heading}</h2>
+      <p class="cta-sub">
+        {home.cta.sub}
+      </p>
+      <div class="cta-actions">
+        <span class="cmd cmd-on-dark">
+          <code>{installCmd}</code>
+          <button class="copy-btn" type="button" data-copy={installCmd}>
+            <span class="copy-label">{home.cta.copyLabel}</span>
+          </button>
+        </span>
+        <a class="btn btn-on-dark btn-star" href={`${repo}/stargazers`}>
+          <span class="star-glyph" aria-hidden="true">★</span> {home.cta.starCta}
+        </a>
+      </div>
+      <p class="cta-fine">
+        {home.cta.fineStart} <a href={`${repo}/issues/new`}>{home.cta.issueLabel}</a>
+        {home.cta.fineBetween}
+        <a href="https://discord.gg/w7rgYbY5zz">{home.cta.discordLabel}</a>{home.cta.fineEnd}
+      </p>
+    </div>
+  </section>
+</Layout>
+
+<style>
+  section {
+    padding-block: clamp(3.5rem, 9vw, 6.5rem);
+  }
+
+  .section-sub {
+    color: var(--muted);
+    margin-top: 0.7rem;
+    max-width: 56ch;
+  }
+
+  .section-sub a {
+    color: var(--link);
+  }
+
+  /* visually hidden — accessible text equivalents for the table marks */
+  .vh {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  /* --------------------------------------------------------- comparison */
+
+  .compare-scroll {
+    margin-top: 2rem;
+    overflow-x: auto;
+  }
+
+  .compare-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+    min-width: 720px;
+  }
+
+  .compare-table th,
+  .compare-table td {
+    padding: 0.85rem 1rem;
+    border-bottom: 1px solid var(--line);
+    text-align: center;
+  }
+
+  .compare-table thead th {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--ink);
+    vertical-align: bottom;
+    line-height: 1.25;
+  }
+
+  .compare-table thead th:first-child,
+  .compare-table tbody th {
+    text-align: left;
+  }
+
+  .compare-table tbody th {
+    font-weight: 600;
+    color: var(--ink);
+    white-space: nowrap;
+  }
+
+  .row-note {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    font-weight: 400;
+    color: var(--muted);
+    margin-top: 0.15rem;
+  }
+
+  /* highlight the test-proxy-recorder column */
+  .compare-table th.is-self,
+  .compare-table td.is-self {
+    background: var(--primary-soft);
+  }
+
+  .compare-table thead th.is-self {
+    color: var(--primary-on-soft);
+    box-shadow: inset 0 3px 0 var(--primary);
+  }
+
+  .mark {
+    font-size: 1.05rem;
+    line-height: 1;
+  }
+
+  .mark-y {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .mark-n {
+    color: var(--muted);
+    opacity: 0.55;
+  }
+
+  .mark-p {
+    color: var(--rec-bright);
+    font-weight: 700;
+  }
+
+  .compare-foot {
+    margin-top: 1.1rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+    max-width: 70ch;
+  }
+
+  .compare-foot .mark-p {
+    font-size: 0.85rem;
+  }
+
+  .compare-foot a {
+    color: var(--link);
+  }
+
+  /* ---------------------------------------------------------- real auth */
+
+  .auth-code {
+    max-width: 640px;
+    margin-top: 1.6rem;
+  }
+
+  .auth-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.4rem;
+    margin-top: 1.4rem;
+  }
+
+  .auth-links a {
+    color: var(--link);
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  /* ------------------------------------------------------------- hero */
+
+  .hero {
+    padding-block: clamp(3.5rem, 8vw, 6rem) clamp(3rem, 7vw, 5.5rem);
+  }
+
+  .hero-grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: center;
+  }
+
+  .hero-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--primary);
+    margin-bottom: 0.9rem;
+  }
+
+  :global([data-theme='dark']) .hero-eyebrow {
+    color: var(--link);
+  }
+
+  .hero-sub {
+    margin-top: 1.4rem;
+    font-size: var(--step-1);
+    line-height: 1.55;
+    color: var(--muted);
+    max-width: 34ch;
+  }
+
+  .hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 2.1rem;
+  }
+
+  .hero-fine {
+    margin-top: 1.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--muted);
+  }
+
+  .cmd {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.85rem;
+    background: var(--panel);
+    color: var(--panel-ink);
+    border: 1px solid var(--panel-edge);
+    border-radius: 9px;
+    padding: 0.55rem 0.6rem 0.55rem 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+
+  .cmd code::before {
+    content: '$ ';
+    color: var(--panel-muted);
+  }
+
+  .copy-btn {
+    border: 1px solid var(--panel-edge);
+    background: oklch(0.27 0.045 262);
+    color: var(--panel-ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    transition: background-color 150ms var(--ease-out);
+  }
+
+  .copy-btn:hover {
+    background: oklch(0.32 0.05 262);
+  }
+
+  .copy-btn.copied {
+    background: oklch(0.42 0.1 150);
+    border-color: transparent;
+  }
+
+  .ai-prompt {
+    position: relative;
+  }
+
+  /* Floats over the rendered code block (top-right), like a typical
+     copy-to-clipboard affordance on a snippet. */
+  .copy-btn--float {
+    position: absolute;
+    top: 0.7rem;
+    right: 0.7rem;
+    z-index: 2;
+  }
+
+  /* EC renders its own copy button, but its icon color resolves to an undefined
+     Starlight var on this page (invisible). Hide it and use our labeled one. */
+  .ai-prompt :global(.copy) {
+    display: none;
+  }
+
+  /* ------------------------------------------------------------- demo */
+
+  .demo {
+    background: var(--surface);
+    border-block: 1px solid var(--line);
+  }
+
+  .demo-inner {
+    text-align: center;
+    display: grid;
+    justify-items: center;
+  }
+
+  .demo-frame {
+    margin: 2.5rem 0 0;
+    width: 100%;
+    max-width: 60rem;
+    border: 1px solid var(--panel-edge);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: var(--shadow-panel);
+    background: var(--panel);
+  }
+
+  .demo-video {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+  }
+
+  /* ------------------------------------------------------- mechanisms */
+
+  .mech-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(290px, 1fr));
+    gap: 1.5rem;
+    margin-top: 2.5rem;
+  }
+
+  .mech {
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 1.7rem 1.8rem 1.8rem;
+  }
+
+  .mech p {
+    margin-top: 0.85rem;
+    font-size: var(--step--1);
+    color: var(--muted);
+  }
+
+  .mech-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+  }
+
+  .mech-ext {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border: 0;
+    font-weight: 600;
+    font-size: 0.78rem;
+    padding: 0.22em 0.6em;
+    border-radius: 99px;
+  }
+
+  :global([data-theme='dark']) .mech-ext {
+    color: var(--link);
+  }
+
+  .mech-flow {
+    font-family: var(--font-mono);
+    font-size: 0.78rem !important;
+    color: var(--ink) !important;
+    margin-top: 1rem !important;
+  }
+
+  .mech-when {
+    font-weight: 600;
+    color: var(--ink) !important;
+  }
+
+  .mech-example {
+    display: inline-block;
+    margin-top: 1.1rem;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  .mech-example:hover {
+    text-decoration: underline;
+  }
+
+  :global([data-theme='dark']) .mech-example {
+    color: var(--link);
+  }
+
+  /* ------------------------------------------------------- quick start */
+
+  .qs-inner {
+    max-width: calc(46rem + 2 * var(--gutter));
+  }
+
+  .steps {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin-top: 2.75rem;
+    max-width: 46rem;
+    display: grid;
+    gap: 2.9rem;
+  }
+
+  .step {
+    counter-increment: step;
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .step h3 {
+    display: flex;
+    align-items: baseline;
+    gap: 0.85rem;
+    font-size: var(--step-1);
+  }
+
+  .step h3::before {
+    content: counter(step);
+    font-family: var(--font-mono);
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--primary);
+    border: 1.5px solid currentColor;
+    border-radius: 99px;
+    width: 1.7rem;
+    height: 1.7rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    translate: 0 -0.15rem;
+  }
+
+  :global([data-theme='dark']) .step h3::before {
+    color: var(--link);
+  }
+
+  .step-note {
+    color: var(--muted);
+    font-size: var(--step--1);
+    max-width: 58ch;
+  }
+
+  /* -------------------------------------------------------------- cta */
+
+  .cta {
+    background: var(--primary);
+    padding-block: clamp(4rem, 10vw, 6.5rem);
+  }
+
+  :global([data-theme='dark']) .cta {
+    background: oklch(0.45 0.15 262);
+  }
+
+  .cta-inner {
+    text-align: center;
+    display: grid;
+    justify-items: center;
+  }
+
+  .cta h2 {
+    color: oklch(1 0 0);
+  }
+
+  .cta-sub {
+    margin-top: 0.8rem;
+    color: oklch(0.88 0.045 262);
+    font-size: var(--step-1);
+  }
+
+  .cta-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 0.85rem;
+    margin-top: 2.2rem;
+  }
+
+  /* ----------------------------------------------------------- star cta */
+
+  .btn-star {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .star-glyph {
+    color: #eab308;
+    font-size: 1.05em;
+    line-height: 1;
+  }
+
+  .star-count {
+    display: block;
+    height: 20px;
+    width: auto;
+    border-radius: 4px;
+  }
+
+  .cta-fine {
+    margin-top: 1.6rem;
+    max-width: 52ch;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: oklch(0.9 0.04 262);
+  }
+
+  .cta-fine a {
+    color: oklch(1 0 0);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .cmd-on-dark {
+    background: oklch(0.32 0.11 262);
+    border-color: oklch(0.52 0.12 262);
+  }
+
+  .btn-on-dark {
+    border: 1px solid oklch(0.68 0.1 262);
+    color: oklch(1 0 0);
+  }
+
+  .btn-on-dark:hover {
+    background: oklch(0.52 0.14 262);
+    border-color: oklch(0.75 0.09 262);
+  }
+
+  /* ------------------------------------------------------- responsive */
+
+  @media (max-width: 880px) {
+    .hero-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero-sub {
+      max-width: 52ch;
+    }
+  }
+
+  @media (max-width: 560px) {
+    .step :global(.astro-code) {
+      font-size: 0.78rem;
+    }
+  }
+</style>

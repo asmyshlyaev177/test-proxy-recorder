@@ -1,6 +1,8 @@
 ---
 title: 配置文件
 description: 把 test-proxy-recorder 的选项 —— 目标、端口、涂抹正则、WebSocket 节奏 —— 放进一个会被自动发现的配置文件，而不是 CLI 标志。
+i18nSource: docs/guides/config.md
+i18nSourceBlob: d633335aa6541254ec9f1af34ca98d1ee4b6d758
 ---
 
 只要超出寥寥几个标志 —— 尤其是 body 涂抹的正则 —— 就把选项放进配置文件。代理会在当前目录自动发现 `test-proxy-recorder.config.{ts,js,mjs,cjs}`，或用 `--config <path>` 明确指定。`.ts` 文件开箱即用。

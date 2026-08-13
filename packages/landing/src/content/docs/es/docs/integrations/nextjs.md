@@ -1,6 +1,8 @@
 ---
 title: Next.js
 description: Etiqueta los fetch del lado del servidor de Next.js con la cabecera de sesión de grabación para que el SSR se grabe y reproduzca — vía registerProxyFetch (recomendado, cualquier runtime), registerProxyAxios para axios, o createHeadersWithRecordingId por llamada. El middleware es opcional.
+i18nSource: docs/integrations/nextjs.md
+i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
 ---
 
 Los frameworks SSR como Next.js hacen llamadas `fetch` del lado del servidor que pasan por el proxy sin un contexto de navegador. El proxy identifica a qué sesión pertenecen esas peticiones mediante la cabecera `x-test-rcrd-id`. El `playwrightProxy.before()` de Playwright ya la establece en la navegación del navegador que dispara el SSR, así que el id está disponible en `next/headers` — el trabajo es **adjuntarlo a las peticiones salientes del lado del servidor**. (Las pruebas solo de navegador no necesitan nada de esto; el proxy recurre a la sesión establecida globalmente.)
@@ -74,7 +76,7 @@ export const config = {
 };
 ```
 
-Mira la [referencia de la API](/es/docs/reference/api/readme/) para las firmas completas de los helpers de `test-proxy-recorder/nextjs`. Un proyecto Edge completo y ejecutable vive en el [ejemplo de runtime Edge](https://github.com/asmyshylaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
+Mira la [referencia de la API](/es/docs/reference/api/readme/) para las firmas completas de los helpers de `test-proxy-recorder/nextjs`. Un proyecto Edge completo y ejecutable vive en el [ejemplo de runtime Edge](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge).
 
 ## Caché e ISR
 

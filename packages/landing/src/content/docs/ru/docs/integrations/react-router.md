@@ -1,6 +1,8 @@
 ---
 title: React Router / Remix
 description: Полноценная интеграция для React Router 7 (framework mode) и Remix в дорожной карте. Пока её нет, пробрасывайте заголовок сессии записи вручную из loader'ов и action'ов.
+i18nSource: docs/integrations/react-router.md
+i18nSourceBlob: 84a70df0fa049d7fe27235ed2884156c7bb75cfa
 ---
 
 :::caution[В дорожной карте]

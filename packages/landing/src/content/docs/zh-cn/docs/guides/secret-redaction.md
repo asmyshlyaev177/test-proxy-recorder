@@ -1,6 +1,8 @@
 ---
 title: 机密涂抹
 description: 涂抹默认开启 —— Authorization、Cookie 和 Set-Cookie 会在写入磁盘前从录制中去除。可添加 header 和 body 模式、放行 cookie，或以编程方式涂抹。
+i18nSource: docs/guides/secret-redaction.md
+i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
 ---
 
 录制会被提交到 git，所以在向磁盘写入任何内容之前会先去除机密。涂抹**默认开启**；代理会把下列请求/响应 header 的值替换为 `[REDACTED]`：

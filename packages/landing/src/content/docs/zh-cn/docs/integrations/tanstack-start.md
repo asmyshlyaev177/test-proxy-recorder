@@ -1,6 +1,8 @@
 ---
 title: TanStack Start
 description: 用录制会话 header 标记 TanStack Start 的服务端 fetch，从而录制并回放 SSR —— 通过 registerProxyFetch（推荐）或按调用使用 createHeadersWithRecordingId。
+i18nSource: docs/integrations/tanstack-start.md
+i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
 ---
 
 TanStack Start 在服务端运行 loader 和 server functions，所以它们的 `fetch` 调用不带浏览器上下文就经过代理 —— 与 [Next.js SSR](/zh-cn/docs/integrations/nextjs/) 情况相同。代理通过 `x-test-rcrd-id` header 识别这些请求属于哪个会话。Playwright 的 `playwrightProxy.before()` 已经在触发 SSR 的浏览器导航上设置了它，所以这个 id 会随入站的服务端请求到达 —— 要做的就是**把它附加到出站的服务端请求上**。（纯浏览器测试无需这些；代理会回退到全局设置的会话。）

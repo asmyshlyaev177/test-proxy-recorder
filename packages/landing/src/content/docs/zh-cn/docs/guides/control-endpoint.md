@@ -1,6 +1,8 @@
 ---
 title: 控制端点
 description: 代理暴露 /__control，用于在 transparent、record 和 replay 之间以编程方式切换模式。
+i18nSource: docs/guides/control-endpoint.md
+i18nSourceBlob: 17fac3de2790301f1ba96f8b4db21a5f01c05d79
 ---
 
 代理暴露 `/__control`，用于以编程方式切换模式。

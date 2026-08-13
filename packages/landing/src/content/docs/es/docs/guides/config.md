@@ -1,9 +1,11 @@
 ---
 title: Archivo de configuración
-description: Pon las opciones de test-proxy-recorder — destino, puerto, regex de redacción, ritmo de WebSocket — en un archivo de configuración autodetectado en vez de flags de CLI.
+description: Pon las opciones de test-proxy-recorder — destino, puerto, regex de enmascaramiento, ritmo de WebSocket — en un archivo de configuración autodetectado en vez de flags de CLI.
+i18nSource: docs/guides/config.md
+i18nSourceBlob: d633335aa6541254ec9f1af34ca98d1ee4b6d758
 ---
 
-Para cualquier cosa más allá de un par de flags — especialmente las regex de redacción de cuerpo — pon las opciones en un archivo de configuración. El proxy autodetecta `test-proxy-recorder.config.{ts,js,mjs,cjs}` en el directorio actual, o pasa `--config <path>` para apuntar a uno explícitamente. Los archivos `.ts` funcionan sin más.
+Para cualquier cosa más allá de un par de flags — especialmente las regex de enmascaramiento de cuerpo — pon las opciones en un archivo de configuración. El proxy autodetecta `test-proxy-recorder.config.{ts,js,mjs,cjs}` en el directorio actual, o pasa `--config <path>` para apuntar a uno explícitamente. Los archivos `.ts` funcionan sin más.
 
 ```ts
 // test-proxy-recorder.config.ts

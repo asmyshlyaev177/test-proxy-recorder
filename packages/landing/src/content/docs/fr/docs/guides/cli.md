@@ -1,6 +1,8 @@
 ---
 title: CLI
 description: L'interface en ligne de commande de test-proxy-recorder — options, cadence de replay WebSocket et comment réinitialiser un proxy bloqué.
+i18nSource: docs/guides/cli.md
+i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
 ---
 
 ```bash
@@ -16,7 +18,7 @@ test-proxy-recorder <target-url> [options]
 | `--config, -c`   | *(auto)*       | Chemin vers un fichier de configuration |
 | `--ws-timing`    | `burst`        | Cadence de replay WebSocket — `burst` ou `original` |
 
-La rédaction des secrets est **activée par défaut** — Authorization/Cookie/Set-Cookie sont retirés des enregistrements automatiquement. Désactivez-la avec `--no-redact`, ou `redaction: false` dans la [configuration](/fr/docs/guides/config/). Voir [rédaction des secrets](/fr/docs/guides/secret-redaction/) pour les flags `--redact-headers` et `--redact-body` qui ajoutent à ce qui est rédigé.
+Le masquage des secrets est **activé par défaut** — Authorization/Cookie/Set-Cookie sont retirés des enregistrements automatiquement. Désactivez-le avec `--no-redact`, ou `redaction: false` dans la [configuration](/fr/docs/guides/config/). Voir [masquage des secrets](/fr/docs/guides/secret-redaction/) pour les flags `--redact-headers` et `--redact-body` qui ajoutent à ce qui est masqué.
 
 ```bash
 # Examples

@@ -1,6 +1,8 @@
 ---
 title: React Router / Remix
 description: Une intégration de première classe pour React Router 7 (framework mode) et Remix est sur la feuille de route. En attendant, transmettez l'en-tête de session d'enregistrement à la main depuis les loaders et actions.
+i18nSource: docs/integrations/react-router.md
+i18nSourceBlob: 84a70df0fa049d7fe27235ed2884156c7bb75cfa
 ---
 
 :::caution[Sur la feuille de route]
