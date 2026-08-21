@@ -1,5 +1,6 @@
 // @ts-check
 import cloudflare from '@astrojs/cloudflare';
+import { unified } from '@astrojs/markdown-remark';
 import sitemap from '@astrojs/sitemap';
 import starlight from '@astrojs/starlight';
 import { defineConfig, sessionDrivers } from 'astro/config';
@@ -81,7 +82,9 @@ function remarkCustomHeadingIds() {
 export default defineConfig({
   site: 'https://test-proxy-recorder.dev',
   adapter: cloudflare(),
-  markdown: { remarkPlugins: [remarkCustomHeadingIds] },
+  // Astro 7's default markdown processor is Sätteri; the remark pipeline is
+  // opt-in now, and Starlight's own rehype passes ride on it too.
+  markdown: { processor: unified({ remarkPlugins: [remarkCustomHeadingIds] }) },
   vite: {
     define: {
       __CONTENT_LAST_MODIFIED__: JSON.stringify(contentLastModified),
