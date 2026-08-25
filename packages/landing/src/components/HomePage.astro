@@ -436,7 +436,7 @@ const markText = home.compare.markText;
   }
 
   .mark-p {
-    color: var(--rec-bright);
+    color: var(--panel-rec);
     font-weight: 700;
   }
 
@@ -645,16 +645,12 @@ const markText = home.compare.markText;
 
   .mech-ext {
     background: var(--primary-soft);
-    color: var(--primary);
+    color: var(--primary-on-soft);
     border: 0;
     font-weight: 600;
     font-size: 0.78rem;
     padding: 0.22em 0.6em;
     border-radius: 99px;
-  }
-
-  :global([data-theme='dark']) .mech-ext {
-    color: var(--link);
   }
 
   .mech-flow {

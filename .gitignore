@@ -48,3 +48,8 @@ test-results
 
 # Generated at publish from the root README (prepack), removed after (postpack).
 packages/test-proxy-recorder/README.md
+
+# Astro's generated cache: sync-written types and content schemas, the content
+# data-store (megabytes), and dev/preview server pid+port state. `astro build`
+# rewrites them, and landing has no typecheck job that runs without a build.
+packages/landing/.astro/

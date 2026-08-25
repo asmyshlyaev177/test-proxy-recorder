@@ -337,6 +337,9 @@ importers:
         specifier: ^0.44.1
         version: 0.44.1(astro@7.2.4(@astrojs/markdown-remark@7.2.4)(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@24.13.2)(db0@0.3.4)(jiti@2.7.0)(tsx@4.20.6)(yaml@2.9.0))
     devDependencies:
+      '@asmyshlyaev177/design-tokens':
+        specifier: ^1.1.1
+        version: 1.1.1(@playwright/test@1.59.1)(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-lighthouse@4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1))
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -453,6 +456,22 @@ packages:
 
   '@apm-js-collab/tracing-hooks@0.13.0':
     resolution: {integrity: sha512-mTvWz9rnQwx1U3h0XPTHaX7bgfkpipLLTQyjlC2cdhQpQEuoLT0AGzoydeoq2NxfEVv6fWOOETcSbb2nptleyw==}
+
+  '@asmyshlyaev177/design-tokens@1.1.1':
+    resolution: {integrity: sha512-Lhr9y5F7AC6C0G43HbCZ3/3BcFeRFr/TuWlrv6kYkcE/Coh+kgbpgDxF1rBRdNTHPrlSAsjbfknzq/f57CwnPQ==}
+    engines: {node: '>=20'}
+    hasBin: true
+    peerDependencies:
+      '@playwright/test': '>=1.40'
+      lighthouse: '>=11'
+      playwright-lighthouse: '>=4'
+    peerDependenciesMeta:
+      '@playwright/test':
+        optional: true
+      lighthouse:
+        optional: true
+      playwright-lighthouse:
+        optional: true
 
   '@astrojs/cloudflare@14.2.3':
     resolution: {integrity: sha512-rXTj2wnRehICDXCfvJBMFi2S5+FOJe6Z+Izt0VlEmdDL8Z905rasnO+ZjLZLhzw+MV1EcKxH93U8phdjtSmMaA==}
@@ -5997,6 +6016,12 @@ snapshots:
       module-details-from-path: 1.0.4
     transitivePeerDependencies:
       - supports-color
+
+  '@asmyshlyaev177/design-tokens@1.1.1(@playwright/test@1.59.1)(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-lighthouse@4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1))':
+    optionalDependencies:
+      '@playwright/test': 1.59.1
+      lighthouse: 13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))
+      playwright-lighthouse: 4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1)
 
   '@astrojs/cloudflare@14.2.3(@types/node@24.13.2)(astro@7.2.4(@astrojs/markdown-remark@7.2.4)(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@24.13.2)(db0@0.3.4)(jiti@2.7.0)(tsx@4.20.6)(yaml@2.9.0))(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.20.6)(workerd@1.20260611.1)(wrangler@4.100.0)(yaml@2.9.0)':
     dependencies:
