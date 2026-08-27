@@ -7,6 +7,11 @@ import { defineConfig, sessionDrivers } from 'astro/config';
 import starlightTypeDoc, { typeDocSidebarGroup } from 'starlight-typedoc';
 
 import { createLastmodResolver, getContentLastModified } from './scripts/build-date.mjs';
+import {
+  liftThemeContrast,
+  preTabIndex,
+  rehypeScrollableTables,
+} from './integrations/expressive-code-a11y.mjs';
 import { LOCALES } from '../../scripts/i18n/locales.mjs';
 import { badge as sidebarBadge, label as sidebarLabel } from './src/i18n/sidebar';
 
@@ -84,7 +89,12 @@ export default defineConfig({
   adapter: cloudflare(),
   // Astro 7's default markdown processor is Sätteri; the remark pipeline is
   // opt-in now, and Starlight's own rehype passes ride on it too.
-  markdown: { processor: unified({ remarkPlugins: [remarkCustomHeadingIds] }) },
+  markdown: {
+    processor: unified({
+      remarkPlugins: [remarkCustomHeadingIds],
+      rehypePlugins: [rehypeScrollableTables],
+    }),
+  },
   vite: {
     define: {
       __CONTENT_LAST_MODIFIED__: JSON.stringify(contentLastModified),
@@ -121,7 +131,14 @@ export default defineConfig({
       title: 'test-proxy-recorder',
       description:
         'VCR for Playwright — record real API responses once, replay them deterministically on CI. SSR proxy, browser HAR, and WebSockets.',
-      logo: { src: './public/favicon.svg', alt: 'test-proxy-recorder' },
+      // Decorative: the site title renders the same words right beside it, and
+      // an alt that repeats them is `image-redundant-alt`.
+      logo: { src: './public/favicon.svg', alt: '' },
+      // Both halves are there for `tests/a11y.spec.ts` — see the integration.
+      expressiveCode: {
+        customizeTheme: liftThemeContrast,
+        plugins: [preTabIndex],
+      },
       // Adds a per-page <link> to that page's own `.md` mirror, ahead of the
       // site-wide llms.txt link below. See the component for why.
       components: { Head: './src/components/starlight/Head.astro' },

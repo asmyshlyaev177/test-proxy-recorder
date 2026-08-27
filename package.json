@@ -35,7 +35,7 @@
     "landing:dev": "pnpm --filter landing dev",
     "landing:build": "pnpm --filter landing build",
     "landing:serve": "pnpm --filter landing preview",
-    "landing:lighthouse": "pnpm --filter landing test:lighthouse",
+    "landing:audits": "pnpm --filter landing test:audits",
     "example:test:e2e": "pnpm --filter example-nextjs16 test:e2e",
     "example:test:e2e:ci": "pnpm --filter example-nextjs16 test:e2e:ci",
     "example-edge:test:e2e": "pnpm --filter example-nextjs-edge test:e2e",

@@ -46,21 +46,95 @@ pnpm example-edge:test:e2e:ci                 # edge example
 pnpm example-tanstack:test:e2e:ci             # TanStack Start example
 pnpm landing:dev
 pnpm landing:build                            # docs site
-pnpm landing:lighthouse                       # Lighthouse audits of the built docs site
+pnpm landing:audits                           # accessibility + Lighthouse on the built docs site
 ```
 
-## Lighthouse (docs site)
+## Site audits (docs site)
 
-`pnpm landing:lighthouse` → `packages/landing/tests/lighthouse.spec.ts`, driven by
-`packages/landing/playwright.lighthouse.config.ts`. Everything lives in the landing
-package, including the ~100 MB `lighthouse` dependency, because nothing else in the
-repo has a use for it. `.github/workflows/lighthouse.yml` runs it on changes under
-`packages/landing/**` and nowhere else.
+`pnpm landing:audits` → the token contract, then two Playwright projects driven by
+`packages/landing/playwright.audits.config.ts`: `tests/a11y.spec.ts` and then
+`tests/lighthouse.spec.ts`, which is held back by `dependencies: ['a11y']` so the
+timing measurement has the box to itself. Everything lives in the landing package,
+including the ~100 MB `lighthouse` dependency, because nothing else in the repo has
+a use for it. `.github/workflows/lighthouse.yml` runs it on changes under
+`packages/landing/**` and nowhere else. Both projects share one page list,
+`tests/pages.ts`.
 
-It audits the **production build**, never `astro dev`: the `webServer` block runs
+Both audit the **production build**, never `astro dev`: the `webServer` block runs
 `pnpm run build && astro preview --port 4331`. Port 4331 is deliberately not 4321 —
 both `astro dev` and `astro preview` default to that, and a dev server left running
 would otherwise be silently accepted in place of the build.
+
+### The accessibility gate
+
+`tests/a11y.spec.ts` is one gate with two halves, both from
+`@asmyshlyaev177/design-tokens` and both run against the same loaded page, in
+**both themes** — Starlight's theme select defaults to `auto`, so the OS
+preference is what picks the ramp on a first visit. Every assertion is
+`expect.soft`, so an axe violation cannot hide a contrast failure beside it.
+
+**axe**, at `COMPREHENSIVE_TAGS` (WCAG 2.0/2.1/2.2 A and AA, plus
+`best-practice`). Its own contrast rules stay disabled by the package default —
+the other half scores the same nodes on APCA as well as WCAG 2 — and
+`incomplete` is asserted on, so text over a background image or an element below
+the fold fails once and gets a decision rather than sitting unread.
+
+**Rendered contrast** walks every visible text node and scores it against both
+models. The floor is Lc 60, the weakest the token contract grants anything at
+body size — not `--muted`'s 70. A DOM node does not say which token it used, so
+a stricter floor fails sanctioned tokens.
+
+Neither half is redundant with the Lighthouse accessibility score. Lighthouse
+13.4 bundles axe-core 4.12 and runs 76 audits — 66 real rules plus 10 manual
+checklist items that never execute — against axe's 104, in one theme only,
+weighted into an average rather than a per-rule verdict. It scores no element
+that holds no text node, which on a docs site is most of the chrome.
+
+`integrations/expressive-code-a11y.mjs` is what the suite forced, and all three
+of its parts close a gap the shipped defaults leave:
+
+- **`liftThemeContrast`**, wired as expressive-code's `customizeTheme`. Night
+  Owl leaves roughly a third of its tokens under the floor on Starlight's code
+  background — comments worst, but keywords, punctuation and operators too. It
+  raises each token's OKLCH lightness away from `theme.bg` until it clears both
+  models, leaving hue and chroma alone.
+- **`preTabIndex`**, an expressive-code plugin. EC's own client script gives an
+  overflowing `<pre>` both `tabindex="0"` and `role="region"` with no accessible
+  name, so every code block became an unnamed landmark (`landmark-unique`) —
+  and until that script runs, 250 ms behind a ResizeObserver, the block is a
+  scrollable region with no tab stop (`scrollable-region-focusable`). Setting
+  the tab stop at build satisfies the second and takes the script's role branch
+  out of play. The hast key is **`tabIndex`**; the lowercase spelling is dropped
+  on serialisation without a word.
+- **`rehypeScrollableTables`**, on the markdown pipeline. Starlight scrolls a
+  wide table on the table element itself, and its content holds nothing
+  focusable.
+
+⚠ **Expressive-code output is cached in `.astro/`.** A change to the EC config
+or to either plugin leaves already-rendered pages untouched, so a partial
+rebuild reads as "the fix didn't work". `rm -rf .astro node_modules/.astro dist`
+before trusting a result.
+
+⚠ **`astro preview` backgrounds itself when it detects an AI agent**
+(`isRunByAgent`, Astro 7). Playwright's `webServer` then sees the process exit
+immediately and fails the run. CI is unaffected; locally, run the suite with
+`env -u CLAUDECODE`.
+
+Four colour decisions came out of the first run, and each names a rule:
+
+- **`--primary` is a fill.** The comparison table's ✓ measured 2.92:1 on it.
+  `--link` and `--accent-on-soft` are the two tokens with a checked floor, and
+  the marks use one each so ✓ and ~ differ by hue as well as by shape.
+- **No alpha tints of text tokens.** `--muted/55` has no contract; `--muted`
+  does.
+- **`--panel-rec` is a lamp, and a lamp is a fill.** The same colour worn as a
+  glyph or a heading measured Lc 38-44, so `--panel-rec-text` is its own token,
+  at the most chroma that round-trips through sRGB at a lightness that clears
+  the floor on both panel grounds.
+- **Starlight's dark `--sl-color-gray-3` carries the table of contents, the
+  sidebar and the pagination labels at Lc 39**, and its `--sl-color-text-accent`
+  carries prose links, inline code and the current entries at Lc 49-56. Both are
+  re-pinned in `src/styles/docs.css`; the light ramp clears the floor untouched.
 
 **Nine pages, one per template, not one per route.** The build emits **405**
 documents (44 docs pages × 9 locales, the eight translated marketing pages and

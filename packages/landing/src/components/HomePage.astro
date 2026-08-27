@@ -425,18 +425,21 @@ const markText = home.compare.markText;
     line-height: 1;
   }
 
+  /* `--primary` is a fill, not a text colour: this glyph measured 2.92:1.
+     `--link` and `--accent-on-soft` are the two that carry a checked floor,
+     and using one each keeps ✓ and ~ apart by hue as well as by shape. */
   .mark-y {
-    color: var(--primary);
+    color: var(--link);
     font-weight: 700;
   }
 
+  /* No tint: `--muted` has a checked floor, `--muted/55` has none. */
   .mark-n {
     color: var(--muted);
-    opacity: 0.55;
   }
 
   .mark-p {
-    color: var(--panel-rec);
+    color: var(--accent-on-soft);
     font-weight: 700;
   }
 
@@ -781,8 +784,10 @@ const markText = home.compare.markText;
     gap: 0.5rem;
   }
 
+  /* Was gold, which no lightness reconciles with both a light page ground and
+     the dark CTA panel. The star carries its meaning by shape. */
   .star-glyph {
-    color: #eab308;
+    color: inherit;
     font-size: 1.05em;
     line-height: 1;
   }

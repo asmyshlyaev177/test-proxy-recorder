@@ -13,7 +13,16 @@
   --sl-color-accent-low: oklch(0.26 0.06 262);
   --sl-color-accent: oklch(0.55 0.16 262);
   --sl-color-accent-high: oklch(0.82 0.09 262);
-  --sl-color-text-accent: oklch(0.74 0.115 262);
+  /* Carries prose links, inline code, the skip link and the current sidebar
+     and table-of-contents entries. At L 0.74 all of them sat at Lc 49-56. */
+  --sl-color-text-accent: oklch(0.82 0.115 262);
+
+  /* Starlight's dark gray-3 (#888c96) carries the table of contents, the
+     sidebar and the pagination labels at Lc 39 — under half of body level.
+     Its light counterpart clears the floor and is left alone. gray-4 shares
+     the value, so it moves with it. */
+  --sl-color-gray-3: oklch(0.79 0.0156 268.4);
+  --sl-color-gray-4: oklch(0.79 0.0156 268.4);
 }
 
 /* The recording dot from the landing wordmark, reused in the site title. */

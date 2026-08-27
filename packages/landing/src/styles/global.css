@@ -22,12 +22,17 @@
   --panel: oklch(0.215 0.04 262);
   --panel-edge: oklch(0.305 0.045 262);
   --panel-ink: oklch(0.93 0.012 262);
-  --panel-muted: oklch(0.73 0.035 262);
-  --panel-accent: oklch(0.76 0.11 262);
+  --panel-muted: oklch(0.78 0.035 262);
+  --panel-accent: oklch(0.78 0.11 262);
   /* The recording lamp. Panel-scoped rather than the page's --accent: it burns
      on cobalt-dark chrome in both themes, where the page accent measures
      3.45:1 in light mode. */
   --panel-rec: oklch(0.65 0.21 29);
+  /* The lamp is a fill and is held to 3:1; the same colour used as a glyph or
+     a heading answers to the text floor and measured Lc 38-44, so the two are
+     separate tokens. Chroma is the most that round-trips through sRGB at a
+     lightness that clears the floor on both panel grounds. */
+  --panel-rec-text: oklch(0.795 0.12 29);
   --panel-rec-soft: oklch(0.95 0.018 29);
 
   --shadow-panel:

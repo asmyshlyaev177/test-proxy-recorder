@@ -338,8 +338,11 @@ importers:
         version: 0.44.1(astro@7.2.4(@astrojs/markdown-remark@7.2.4)(@emnapi/core@1.11.2)(@emnapi/runtime@1.11.2)(@types/node@24.13.2)(db0@0.3.4)(jiti@2.7.0)(tsx@4.20.6)(yaml@2.9.0))
     devDependencies:
       '@asmyshlyaev177/design-tokens':
-        specifier: ^1.1.1
-        version: 1.1.1(@playwright/test@1.59.1)(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-lighthouse@4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1))
+        specifier: ^1.2.0
+        version: 1.2.0(@axe-core/playwright@4.13.0(playwright-core@1.59.1))(@playwright/test@1.59.1)(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-lighthouse@4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1))
+      '@axe-core/playwright':
+        specifier: ^4.13.0
+        version: 4.13.0(playwright-core@1.59.1)
       '@playwright/test':
         specifier: ^1.59.1
         version: 1.59.1
@@ -457,15 +460,18 @@ packages:
   '@apm-js-collab/tracing-hooks@0.13.0':
     resolution: {integrity: sha512-mTvWz9rnQwx1U3h0XPTHaX7bgfkpipLLTQyjlC2cdhQpQEuoLT0AGzoydeoq2NxfEVv6fWOOETcSbb2nptleyw==}
 
-  '@asmyshlyaev177/design-tokens@1.1.1':
-    resolution: {integrity: sha512-Lhr9y5F7AC6C0G43HbCZ3/3BcFeRFr/TuWlrv6kYkcE/Coh+kgbpgDxF1rBRdNTHPrlSAsjbfknzq/f57CwnPQ==}
+  '@asmyshlyaev177/design-tokens@1.2.0':
+    resolution: {integrity: sha512-xa4o4xhn/cf+iHGksPjO1Wm7XKiYixSFz7+l2hjh+LeQ8ih2RVb/kfKtYCiiBuKms/ZlNzipvT8aKnHnNVQGIQ==}
     engines: {node: '>=20'}
     hasBin: true
     peerDependencies:
+      '@axe-core/playwright': '>=4.8'
       '@playwright/test': '>=1.40'
       lighthouse: '>=11'
       playwright-lighthouse: '>=4'
     peerDependenciesMeta:
+      '@axe-core/playwright':
+        optional: true
       '@playwright/test':
         optional: true
       lighthouse:
@@ -581,6 +587,11 @@ packages:
 
   '@astrojs/underscore-redirects@1.0.4':
     resolution: {integrity: sha512-sD3bn7i2yC+ocxlhCTshdg3gUM471Nag3wgyHilA+kpmufokvmUu1p5Mw5GT5Xp8SPC1Nlq0BJAgV/lslnWvRw==}
+
+  '@axe-core/playwright@4.13.0':
+    resolution: {integrity: sha512-6YLx+kxXu5GJceG4ozFg+33a2EMTdjYwWGloJ3sb9Kta5pp+ZNS53uxGVog5JetIY8s++P5UrtX+cri+u0VAVg==}
+    peerDependencies:
+      playwright-core: '>= 1.0.0'
 
   '@babel/code-frame@7.27.1':
     resolution: {integrity: sha512-cjQ7ZlQ0Mv3b47hABuTevyTuYN4i+loJKGeV9flcCgIK37cCXRh+L1bd3iBHlynerhQ7BhCkn2BPbQUL+rGqFg==}
@@ -2801,6 +2812,10 @@ packages:
 
   axe-core@4.12.1:
     resolution: {integrity: sha512-s7iGf5GaVMxEG0ENN9x+xTr7GFZCb1ZP/1uATUpCEK2X78nDB3RwbtFCo9pGAf9ru+VwoQ464DkaLEeRM08wJA==}
+    engines: {node: '>=4'}
+
+  axe-core@4.13.0:
+    resolution: {integrity: sha512-UzGt8zg7Ny8djbYMhxl2zuEevVa7r2gJjYY5Lwr1xM7+XU2nd6CkIWFTVcCIbAP63vSz71NaVyyuSk9lHKcy0A==}
     engines: {node: '>=4'}
 
   axios@1.15.0:
@@ -6017,8 +6032,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@asmyshlyaev177/design-tokens@1.1.1(@playwright/test@1.59.1)(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-lighthouse@4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1))':
+  '@asmyshlyaev177/design-tokens@1.2.0(@axe-core/playwright@4.13.0(playwright-core@1.59.1))(@playwright/test@1.59.1)(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-lighthouse@4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1))':
     optionalDependencies:
+      '@axe-core/playwright': 4.13.0(playwright-core@1.59.1)
       '@playwright/test': 1.59.1
       lighthouse: 13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1))
       playwright-lighthouse: 4.0.0(lighthouse@13.4.1(@opentelemetry/core@2.10.0(@opentelemetry/api@1.9.1)))(playwright-core@1.59.1)
@@ -6222,6 +6238,11 @@ snapshots:
       package-manager-detector: 1.6.0
 
   '@astrojs/underscore-redirects@1.0.4': {}
+
+  '@axe-core/playwright@4.13.0(playwright-core@1.59.1)':
+    dependencies:
+      axe-core: 4.13.0
+      playwright-core: 1.59.1
 
   '@babel/code-frame@7.27.1':
     dependencies:
@@ -8273,6 +8294,8 @@ snapshots:
       when-exit: 2.1.5
 
   axe-core@4.12.1: {}
+
+  axe-core@4.13.0: {}
 
   axios@1.15.0:
     dependencies:

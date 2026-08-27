@@ -9,7 +9,8 @@
     "test:tokens": "check-tokens src/styles/global.css",
     "preview": "pnpm run build && astro preview",
     "preview:lighthouse": "astro preview --port 4331",
-    "test:lighthouse": "playwright test -c playwright.lighthouse.config.ts",
+    "test:audits": "pnpm run test:tokens && playwright test -c playwright.audits.config.ts",
+    "test:a11y": "playwright test -c playwright.audits.config.ts --project=a11y",
     "deploy": "npm run build && wrangler deploy",
     "og:image": "node scripts/generate-og-image.mjs"
   },
@@ -24,7 +25,8 @@
     "astro-expressive-code": "^0.44.1"
   },
   "devDependencies": {
-    "@asmyshlyaev177/design-tokens": "^1.1.1",
+    "@asmyshlyaev177/design-tokens": "^1.2.0",
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.59.1",
     "lighthouse": "^13.4.1",
     "playwright-lighthouse": "^4.0.0",
