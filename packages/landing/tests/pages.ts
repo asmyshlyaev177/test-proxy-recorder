@@ -35,7 +35,7 @@ export const PAGES = [
   { path: '/ja/docs/', name: '/ja/docs/ (localised, CJK fallback)' },
   { path: '/vi/docs/', name: '/vi/docs/ (localised, partial latin subset)' },
   { path: '/ru/docs/', name: '/ru/docs/ (localised, Cyrillic)' },
-  // Chrome, a heading and a link: the floor that proves a page was measured at
-  // all has to be the page's own, not the site's busiest.
+  // Chrome, a heading and a link — the "did we measure anything" floor has to
+  // be this page's, not the site's busiest.
   { path: '/404', name: '/404', minNodes: 4 },
 ];

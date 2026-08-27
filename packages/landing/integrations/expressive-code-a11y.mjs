@@ -1,7 +1,5 @@
-/**
- * Two accessibility gaps in expressive-code's output, both of which
- * `tests/a11y.spec.ts` fails on.
- */
+/** Three gaps in expressive-code's and Starlight's output that
+ *  `tests/a11y.spec.ts` fails on. */
 import {
   contrast,
   hexToRgb,
@@ -11,8 +9,8 @@ import {
   toHex,
 } from '@asmyshlyaev177/design-tokens';
 
-/** What the a11y suite holds body-size text to, plus two points of margin:
- *  the suite scores the composited pixel, which rounds. */
+/** The suite's body-text floor plus two points: it scores the composited
+ *  pixel, which rounds. */
 const LC_FLOOR = 62;
 const WCAG_FLOOR = 4.5;
 
@@ -24,10 +22,8 @@ const OPAQUE_HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
 const clears = (rgb, background) =>
   lc(rgb, background) >= LC_FLOOR && contrast(rgb, background) >= WCAG_FLOOR;
 
-/**
- * Moves a colour away from its ground in OKLCH lightness until it clears both
- * floors, leaving hue and chroma alone so the palette still reads as itself.
- */
+/** Away from the ground in OKLCH lightness until both floors clear; hue and
+ *  chroma untouched, so the palette still reads as itself. */
 function lift(hex, background) {
   if (!OPAQUE_HEX.test(hex)) return hex;
 
@@ -44,11 +40,10 @@ function lift(hex, background) {
 }
 
 /**
- * `customizeTheme`: Night Owl leaves a third of its tokens under the floor on
- * Starlight's code background — comments worst, but keywords, punctuation and
- * operators too. `theme.bg` is the ground the engine itself computes contrast
- * against, and Starlight pins it to the same colour the CSS variable resolves
- * to, so it is the real one.
+ * `customizeTheme`. Night Owl leaves a third of its tokens under the floor on
+ * Starlight's code background — comments worst, keywords and operators too.
+ * `theme.bg` is the real ground: Starlight pins it to what the CSS variable
+ * resolves to.
  */
 export function liftThemeContrast(theme) {
   const background = hexToRgb(theme.bg);
@@ -70,17 +65,15 @@ const findPre = (node) => {
 };
 
 /**
- * Expressive-code's own client script gives an overflowing `<pre>` both
- * `tabindex="0"` and `role="region"`, and no accessible name — so every code
- * block on a page becomes an unnamed landmark and axe reports
- * `landmark-unique`. Until it runs (a 250 ms debounce behind a ResizeObserver)
- * the block is a scrollable region with no tab stop at all, which is
- * `scrollable-region-focusable`.
+ * EC's client script gives an overflowing `<pre>` `tabindex="0"` and
+ * `role="region"` with no name, so every code block becomes an unnamed
+ * landmark (`landmark-unique`) — and until it runs, 250 ms behind a
+ * ResizeObserver, the block is a scrollable region with no tab stop
+ * (`scrollable-region-focusable`).
  *
- * Setting the tab stop at build satisfies the second and takes the script's
- * first branch out of play, so the role is never added and there is no landmark
- * to name. Its other branch still removes the attribute from blocks that turn
- * out not to overflow, which is the behaviour we want anyway.
+ * Setting the tab stop at build answers the second and skips the branch that
+ * adds the role. The script still strips both from blocks that do not
+ * overflow, which is what we want anyway.
  */
 export const preTabIndex = {
   name: 'a11y-pre-tabindex',
@@ -94,12 +87,8 @@ export const preTabIndex = {
   },
 };
 
-/**
- * Starlight scrolls a wide markdown table on the table element itself, and a
- * scrollable region whose content holds no focusable element cannot be reached
- * by keyboard at all (axe `scrollable-region-focusable`). A tab stop on the
- * table is the smallest thing that gives it one.
- */
+/** Starlight scrolls a wide table on the table element itself, and nothing
+ *  inside is focusable — so the table carries the tab stop. */
 export function rehypeScrollableTables() {
   const visit = (node) => {
     if (node.tagName === 'table') {

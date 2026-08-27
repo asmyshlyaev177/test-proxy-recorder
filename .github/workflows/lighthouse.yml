@@ -6,9 +6,8 @@ name: Site audits
 # ~100 MB of `lighthouse` that the proxy's own suites have no use for. Keeping
 # it apart means a change to `packages/test-proxy-recorder/` pays for neither.
 #
-# Two gates run here, in that order: the accessibility suite (axe-core plus
-# rendered contrast, both themes) and then Lighthouse, which is held back so
-# the timing measurement has the runner to itself.
+# Two gates, in order: accessibility (axe plus rendered contrast, both themes),
+# then Lighthouse, held back so the timing measurement gets the runner.
 on:
   push:
     branches:
@@ -56,16 +55,13 @@ jobs:
       - name: Install Playwright chromium
         run: pnpm --filter landing exec playwright install --with-deps chromium
 
-      # Builds the site once, then runs both gates against the preview server —
-      # one page per template, ~1m on top of the build. The build is part of the
-      # suite's webServer block, so there is no separate build step here.
+      # One build (in the suite's webServer block), both gates, one page per
+      # template, ~1m on top of it.
       #
-      # Performance is a timing measurement and this runner is shared. The
-      # Lighthouse project runs serially for that reason; if the score starts
-      # flaking here while holding locally, lower that one threshold in the spec
-      # rather than dropping the assertion — the other three categories are
-      # deterministic, as is the whole accessibility gate, and they are the
-      # reason this job exists.
+      # Performance is a timing measurement on a shared runner, which is why
+      # Lighthouse runs serially. If it flakes here while holding locally, lower
+      # that one threshold rather than dropping the assertion — the other three
+      # categories and the whole a11y gate are deterministic.
       - name: Site audits
         run: pnpm run landing:audits
 

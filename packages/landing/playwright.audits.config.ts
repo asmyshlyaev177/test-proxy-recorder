@@ -32,16 +32,14 @@ export default defineConfig({
   // A cold Lighthouse run is far slower than an ordinary assertion.
   timeout: 180_000,
   reporter: [['list']],
-  // No `use` block: the Lighthouse tests launch their own browser (Lighthouse
-  // needs a debugging port the `page` fixture does not expose), so nothing here
-  // would reach them; the a11y suite is happy with the defaults.
+  // No `use` block: the Lighthouse tests launch their own browser for the CDP
+  // port the `page` fixture does not expose, and a11y wants the defaults.
 
   projects: [
     { name: 'a11y', testMatch: /a11y\.spec\.ts/ },
-    // Held back so the audits have the box to themselves: two Chrome instances
-    // auditing at once skew each other's performance numbers, and the audit
-    // ends up measuring the test runner rather than the site. `workers` stays
-    // at the default because the spec's serial describe pins them to one anyway.
+    // Held back so the audits get the box: two Chrome instances measuring at
+    // once score the test runner, not the site. `workers` stays at the default
+    // — the spec's serial describe pins them to one anyway.
     {
       name: 'lighthouse',
       testMatch: /lighthouse\.spec\.ts/,

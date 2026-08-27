@@ -131,10 +131,10 @@ export default defineConfig({
       title: 'test-proxy-recorder',
       description:
         'VCR for Playwright — record real API responses once, replay them deterministically on CI. SSR proxy, browser HAR, and WebSockets.',
-      // Decorative: the site title renders the same words right beside it, and
-      // an alt that repeats them is `image-redundant-alt`.
+      // Decorative: the site title renders the same words beside it, and an alt
+      // repeating them is `image-redundant-alt`.
       logo: { src: './public/favicon.svg', alt: '' },
-      // Both halves are there for `tests/a11y.spec.ts` — see the integration.
+      // Both for `tests/a11y.spec.ts` — see the integration.
       expressiveCode: {
         customizeTheme: liftThemeContrast,
         plugins: [preTabIndex],
