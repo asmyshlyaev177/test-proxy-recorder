@@ -88,3 +88,16 @@ jobs:
       - name: Publish to npm with provenance
         run: npm publish --provenance --access public
         working-directory: packages/test-proxy-recorder
+
+      # release-please has already pushed the tag and release commit to master,
+      # which is what Context7 re-clones. The package is published by now, so a
+      # failed refresh must not fail the release.
+      - name: Refresh Context7 docs
+        continue-on-error: true
+        env:
+          CONTEXT7_API_KEY: ${{ secrets.CONTEXT7_API_KEY }}
+        run: |
+          curl -fsS -X POST https://context7.com/api/v1/refresh \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $CONTEXT7_API_KEY" \
+            -d '{"libraryName": "/${{ github.repository }}"}'
