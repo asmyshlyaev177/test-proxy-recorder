@@ -18,21 +18,34 @@ export const SOURCE = {
   label: 'English',
   /** Exonym, for prompts and reports written in English. */
   english: 'English',
+  indexed: true,
 };
 
-/** @type {ReadonlyArray<{code: string, dir: string, label: string, english: string}>} */
+/**
+ * `indexed: false` keeps a translation out of the index — `noindex` on its
+ * pages, no hreflang or sitemap entry — while it stays built, linked from the
+ * switcher and readable. Set from Search Console demand, Jun–Sep 2026
+ * impressions: zh-CN 84, ja 29, ru 19, fr 19, es 16, ko 9, pt-BR 4, vi 4,
+ * against 361 English; a locale earns `true` at 10. Eight LLM translations of
+ * every page is the shape Google's scaled-content policy describes, and it
+ * cost a sister site (x-pat.pages.dev) its whole index in Aug 2026.
+ */
+/** @type {ReadonlyArray<{code: string, dir: string, label: string, english: string, indexed: boolean}>} */
 export const LOCALES = [
-  { code: 'zh-CN', dir: 'zh-cn', label: '简体中文', english: 'Chinese (Simplified)' },
-  { code: 'ja', dir: 'ja', label: '日本語', english: 'Japanese' },
-  { code: 'ko', dir: 'ko', label: '한국어', english: 'Korean' },
-  { code: 'ru', dir: 'ru', label: 'Русский', english: 'Russian' },
-  { code: 'es', dir: 'es', label: 'Español', english: 'Spanish' },
-  { code: 'pt-BR', dir: 'pt-br', label: 'Português (BR)', english: 'Portuguese (Brazil)' },
-  { code: 'fr', dir: 'fr', label: 'Français', english: 'French' },
-  { code: 'vi', dir: 'vi', label: 'Tiếng Việt', english: 'Vietnamese' },
+  { code: 'zh-CN', dir: 'zh-cn', label: '简体中文', english: 'Chinese (Simplified)', indexed: true },
+  { code: 'ja', dir: 'ja', label: '日本語', english: 'Japanese', indexed: true },
+  { code: 'ko', dir: 'ko', label: '한국어', english: 'Korean', indexed: false },
+  { code: 'ru', dir: 'ru', label: 'Русский', english: 'Russian', indexed: true },
+  { code: 'es', dir: 'es', label: 'Español', english: 'Spanish', indexed: true },
+  { code: 'pt-BR', dir: 'pt-br', label: 'Português (BR)', english: 'Portuguese (Brazil)', indexed: false },
+  { code: 'fr', dir: 'fr', label: 'Français', english: 'French', indexed: true },
+  { code: 'vi', dir: 'vi', label: 'Tiếng Việt', english: 'Vietnamese', indexed: false },
 ];
 
 export const ALL_LOCALES = [SOURCE, ...LOCALES];
+
+/** The locales a crawler is told about — see `indexed` above. */
+export const INDEXED_LOCALES = ALL_LOCALES.filter((l) => l.indexed);
 
 export const CODES = LOCALES.map((l) => l.code);
 

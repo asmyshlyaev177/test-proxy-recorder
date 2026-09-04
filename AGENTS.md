@@ -170,6 +170,16 @@ else derives from that list — the Starlight `locales` map, the sitemap's
 README suffixes. Adding a language is an edit there plus `pnpm i18n:init` and
 `pnpm i18n:docs:init`.
 
+Each locale also carries `indexed`. `ko`, `pt-BR` and `vi` are `false`: their
+pages ship `<meta name="robots" content="noindex">`, sit in no hreflang cluster
+and are filtered out of the sitemap, while staying built and in the switcher.
+The marketing page reads the flag in `Layout.astro`; the docs get it from
+`packages/landing/src/starlightRouteData.ts`, a Starlight route middleware that
+strips those locales from every docs page's cluster (Starlight's own head
+lists all nine) and marks their pages. The figures behind the split are in the
+table's comment; a sister site lost its whole index in Aug 2026 to eight-way
+translated near-duplicates.
+
 Three surfaces, three addressing schemes, one toolkit:
 
 | Surface | Where a translation lives | Tool |

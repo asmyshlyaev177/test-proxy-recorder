@@ -145,15 +145,20 @@ const jsonLd = {
     <meta name="author" content="asmyshlyaev177" />
     <meta name="directree-verify" content="directree-verify=8c75fb7b9cfcad2c2f70be353d80c6ba" />
     <link rel="canonical" href={canonical.href} />
-    {/* Each language of this page lists every other one *and itself*, plus an
-        x-default pointing at English. A cluster whose members disagree about
-        who is in it is discarded wholesale, so this is generated from one
-        list rather than written per page. Starlight emits its own alternates
-        for the docs; this covers the hand-built marketing page. */}
+    {/* Each indexed language of this page lists every other one *and itself*,
+        plus an x-default pointing at English. A cluster whose members disagree
+        about who is in it is discarded wholesale, so this is generated from
+        one list rather than written per page. An unindexed locale says
+        `noindex` instead. Starlight's docs get the same treatment from
+        src/starlightRouteData.ts; this covers the hand-built marketing page. */}
     {
-      alternates(stripLocale(Astro.url.pathname), Astro.site).map((alt) => (
-        <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
-      ))
+      locale.indexed ? (
+        alternates(stripLocale(Astro.url.pathname), Astro.site).map((alt) => (
+          <link rel="alternate" hreflang={alt.hreflang} href={alt.href} />
+        ))
+      ) : (
+        <meta name="robots" content="noindex" />
+      )
     }
     <link rel="sitemap" href="/sitemap-index.xml" />
     <meta name="last-modified" content={lastModified.toISOString()} />

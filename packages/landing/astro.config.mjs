@@ -13,6 +13,9 @@ import {
   rehypeScrollableTables,
 } from './integrations/expressive-code-a11y.mjs';
 import { LOCALES } from '../../scripts/i18n/locales.mjs';
+
+// URL prefixes of the translations kept out of the index (`indexed: false`).
+const unindexedPrefixes = LOCALES.filter((l) => !l.indexed).map((l) => `/${l.dir}/`);
 import { badge as sidebarBadge, label as sidebarLabel } from './src/i18n/sidebar';
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
@@ -103,6 +106,10 @@ export default defineConfig({
   },
   integrations: [
     sitemap({
+      // An unindexed locale is `noindex` on every page; listing it here would
+      // ask for the opposite. The integration builds each URL's hreflang
+      // cluster from the filtered set, so they drop out of those too.
+      filter: (url) => !unindexedPrefixes.some((prefix) => new URL(url).pathname.startsWith(prefix)),
       // Emit <lastmod> per URL, from the newest commit touching that page's
       // source. Without it all ~265 URLs are dateless and search engines get
       // no signal about what changed.
@@ -163,6 +170,9 @@ export default defineConfig({
       // page (e.g. the generated API reference, which stays English).
       defaultLocale: 'root',
       locales: starlightLocales,
+      // Strips unindexed locales from the docs' hreflang clusters and marks
+      // their own pages `noindex` — see the file.
+      routeMiddleware: './src/starlightRouteData.ts',
       social: [
         { icon: 'github', label: 'GitHub', href: repo },
         { icon: 'discord', label: 'Discord (support)', href: 'https://discord.gg/w7rgYbY5zz' },

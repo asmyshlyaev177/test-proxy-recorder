@@ -6,9 +6,16 @@
 // astro.config.mjs expands into the Starlight and sitemap locale maps, and the
 // same one the README tooling reads. One list, four consumers.
 
-import { ALL_LOCALES, LOCALES, SOURCE, SOURCE_LOCALE, type Locale } from '../../../../scripts/i18n/locales.mjs';
+import {
+  ALL_LOCALES,
+  INDEXED_LOCALES,
+  LOCALES,
+  SOURCE,
+  SOURCE_LOCALE,
+  type Locale,
+} from '../../../../scripts/i18n/locales.mjs';
 
-export { ALL_LOCALES, LOCALES, SOURCE, SOURCE_LOCALE };
+export { ALL_LOCALES, INDEXED_LOCALES, LOCALES, SOURCE, SOURCE_LOCALE };
 export type { Locale };
 
 /**
@@ -64,16 +71,18 @@ export function localeFromPath(pathname: string): Locale {
 /**
  * The reciprocal hreflang cluster for a page, plus `x-default`.
  *
- * Every locale of a page lists every other one *and itself*; a cluster where
- * the pages disagree about who is in it is ignored wholesale by search
- * engines. `x-default` points at English, which is what an unmatched reader
- * should get.
+ * Every *indexed* locale of a page lists every other one *and itself*; a
+ * cluster where the pages disagree about who is in it is ignored wholesale by
+ * search engines, and one naming a `noindex` page is reported as an error, so
+ * an unindexed locale is left out on both sides (its own pages emit none —
+ * see Layout.astro and starlightRouteData.ts). `x-default` points at English,
+ * which is what an unmatched reader should get.
  */
 export function alternates(pathWithoutLocale: string, site: URL | undefined) {
   const origin = site ? site.origin : '';
   const href = (code: string) => `${origin}${localePrefix(code)}${pathWithoutLocale}`;
   return [
-    ...ALL_LOCALES.map((l) => ({ hreflang: l.code, href: href(l.code) })),
+    ...INDEXED_LOCALES.map((l) => ({ hreflang: l.code, href: href(l.code) })),
     { hreflang: 'x-default', href: href(SOURCE_LOCALE) },
   ];
 }

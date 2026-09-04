@@ -9,19 +9,24 @@
  * deterministic audits of the document, and a drop in any of them is a
  * regression rather than noise.
  */
-import { chromium, test } from '@playwright/test';
+import { chromium, expect, test } from '@playwright/test';
 import { playAudit } from 'playwright-lighthouse';
 import desktopConfig from 'lighthouse/core/config/desktop-config.js';
 
 import { PREVIEW_URL } from '../playwright.audits.config';
+import { localeFromPath } from '../src/i18n';
 import { PAGES } from './pages';
 
-const THRESHOLDS = {
+const ALWAYS = {
   performance: 100,
   accessibility: 100,
   'best-practices': 100,
-  seo: 100,
 };
+
+/** And SEO, if the page asks to be indexed. */
+const INDEXABLE = { ...ALWAYS, seo: 100 };
+
+const CATEGORIES = [...Object.keys(INDEXABLE)];
 
 test.describe('Lighthouse', () => {
   // Serial: two Chrome instances auditing at once skew each other's
@@ -33,6 +38,11 @@ test.describe('Lighthouse', () => {
     // rejects a named first argument ("First argument must use the object
     // destructuring pattern"), leaving `{}` as the only spelling — which is
     // itself a lint error. `test.info()` is the way out of both.
+    // An unindexed locale ships `noindex`, which is *meant* to fail
+    // `is-crawlable`. Naming the one audit allowed to fail asserts both halves:
+    // that the tag reached the document, and that nothing else in SEO slipped.
+    const noindex = !localeFromPath(path).indexed;
+
     test(`${name} meets Lighthouse thresholds`, async () => {
       // Lighthouse drives the browser over CDP, which needs a debugging port
       // Playwright's own `page` fixture does not expose. Offset by worker index
@@ -46,16 +56,26 @@ test.describe('Lighthouse', () => {
         const page = await browser.newPage();
         await page.goto(`${PREVIEW_URL}${path}`, { waitUntil: 'networkidle' });
 
-        await playAudit({
+        const { lhr } = await playAudit({
           page,
           port,
-          thresholds: THRESHOLDS,
+          thresholds: noindex ? ALWAYS : INDEXABLE,
+          // Pinned: `playAudit` otherwise derives the categories from the
+          // threshold keys, and dropping `seo` would stop it running at all.
+          opts: { onlyCategories: CATEGORIES },
           // Desktop, not Lighthouse's mobile default: mobile applies a 4x CPU
           // slowdown, which turns the performance score into a measurement of
           // the runner rather than the site.
           config: desktopConfig,
           disableLogs: false,
         });
+
+        if (noindex) {
+          const failed = lhr.categories.seo.auditRefs
+            .filter((ref) => (lhr.audits[ref.id]?.score ?? 1) < 1)
+            .map((ref) => ref.id);
+          expect(failed).toEqual(['is-crawlable']);
+        }
       } finally {
         await browser.close();
       }
