@@ -31,8 +31,22 @@ function git(args) {
  * kind of freshness signal crawlers learn to discount.
  */
 export function getContentLastModified() {
-  const iso = git('log -1 --format=%cI').trim();
+  ensureHistory();
+  // Scoped to the site's own files: this package shares a repository with the
+  // library, and a release there is not a change to any page here — yet this
+  // date moved on every one. HEAD is the fallback for a clone that could not
+  // be deepened, where a path-scoped log may find nothing.
+  const iso = (git('log -1 --format=%cI -- src public') || git('log -1 --format=%cI')).trim();
   return iso ? new Date(iso).toISOString() : new Date().toISOString();
+}
+
+/**
+ * A shallow CI clone knows one commit: a path-scoped log finds nothing and
+ * every per-file date below is missing. Deepen once if the remote allows it.
+ */
+function ensureHistory() {
+  if (git('rev-parse --is-shallow-repository').trim() !== 'true') return;
+  git('fetch --unshallow --quiet');
 }
 
 /**
@@ -44,6 +58,7 @@ export function getContentLastModified() {
  * spawns on every build.
  */
 function fileDates() {
+  ensureHistory();
   // `--relative` makes the emitted paths relative to this package rather than
   // to the repository root, so they line up with what `sourceFor` builds.
   const log = git('log --relative --format=%x00%cI --name-only -- src');
