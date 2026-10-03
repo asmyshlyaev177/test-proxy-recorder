@@ -2,7 +2,7 @@
 title: 手动配置
 description: 为全栈（SSR + 浏览器）应用，或纯浏览器的 SPA / 扩展手动接入 test-proxy-recorder，然后录制一次并在 CI 中回放。
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 大多数人应当运行 [`init`](/zh-cn/docs/getting-started/quick-start/) —— 它替你写下下面所有文件。本页是 `init` 所生成内容的参考，便于你手动接线、移除 codegen 或理解每个部分。
@@ -28,10 +28,11 @@ i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 在你的应用代码中，当 recorder 启用时将 API 基础 URL 指向代理，否则指向真实后端 —— 代理从不在生产环境中运行：
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // 代理地址
+// 只有 e2e 运行时，TEST_PROXY_RECORDER_ENABLED 才是 'true' 或 '1'。
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // 代理地址
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` 由上面的 `dev:proxy` / `serve:proxy` 脚本以及 `init` 生成的脚本设置。请使用你的应用已有的 API 基础 URL 环境变量（比如 `API_URL`、`NEXT_PUBLIC_API_URL`）—— 同样的条件判断适用。
@@ -185,8 +186,8 @@ git commit -m "add e2e recordings"
 **不要**把 `e2e/recordings` 加入 `.gitignore`。录制必须在 git 中，CI 才能回放。
 :::
 
-把下面这行加入 `.gitattributes`，以便在 PR diff 中折叠较大的录制文件：
+把下面这行加入 `.gitattributes`，以便在 PR diff 中折叠较大的录制文件；GitHub 仍然可以一键展开它们，所以响应的变化依然可以审阅：
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

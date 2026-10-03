@@ -2,7 +2,7 @@
 title: 빠른 시작
 description: 하나의 init 명령으로 test-proxy-recorder를 설정합니다. AI 에이전트로 진행하는 것이 가장 좋습니다. API를 프록시로 연결하고, 한 번 기록한 뒤 CI에서 재생합니다.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
+i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
 ---
 
 ## AI 에이전트로 설정(권장)
@@ -47,10 +47,11 @@ package.json             # + proxy / test:e2e 스크립트
 `init`이 추측할 수 없는 유일한 것은 바로 API 기본 URL을 담고 있는 환경 변수입니다. 레코더가 활성화되어 있으면 프록시를, 그렇지 않으면 실제 백엔드를 가리키세요. 프록시는 프로덕션에서 절대 실행되지 않습니다.
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // `init`에서의 프록시 주소
+// TEST_PROXY_RECORDER_ENABLED는 e2e 실행에서만 'true' 또는 '1'입니다.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // `init`에서의 프록시 주소
+  : 'https://api.example.com';
 ```
 
 ### 2. 서버 측 fetch 태깅(Next.js 전용)

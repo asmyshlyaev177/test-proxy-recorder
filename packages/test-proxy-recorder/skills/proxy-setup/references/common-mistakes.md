@@ -125,7 +125,7 @@ Correct:
 # .gitignore — do NOT list e2e/recordings/
 
 # .gitattributes — collapse diffs without excluding files
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```
 
 CI has no recordings to replay from if the directory is gitignored. Tests will

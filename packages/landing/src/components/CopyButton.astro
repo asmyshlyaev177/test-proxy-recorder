@@ -1,0 +1,57 @@
+---
+interface Props {
+  text: string;
+  label: string;
+  copiedLabel: string;
+}
+
+const { text, label, copiedLabel } = Astro.props;
+---
+
+{/* Layout.astro's script copies `data-copy`, toggles `.copied` and announces
+    the copied label. Both labels share one grid cell, so the button keeps its
+    width when the label changes: swapping the text widened the install
+    command's panel by 14px (2026-10-03 critique). */}
+<button class="copy-btn" type="button" data-copy={text}>
+  <span class="copy-idle">{label}</span>
+  <span class="copy-done" aria-hidden="true">{copiedLabel}</span>
+</button>
+
+<style>
+  .copy-btn {
+    display: inline-grid;
+    border: 1px solid var(--panel-edge);
+    background: oklch(0.27 0.045 262);
+    color: var(--panel-ink);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    font-weight: 600;
+    border-radius: 6px;
+    padding: 0.3rem 0.6rem;
+    cursor: pointer;
+    transition: background-color 150ms var(--ease-out);
+  }
+
+  .copy-btn > span {
+    grid-area: 1 / 1;
+  }
+
+  /* Opacity, not visibility: the idle label stays the button's accessible name. */
+  .copy-done,
+  .copy-btn.copied .copy-idle {
+    opacity: 0;
+  }
+
+  .copy-btn.copied .copy-done {
+    opacity: 1;
+  }
+
+  .copy-btn:hover {
+    background: oklch(0.32 0.05 262);
+  }
+
+  .copy-btn.copied {
+    background: oklch(0.42 0.1 150);
+    border-color: transparent;
+  }
+</style>

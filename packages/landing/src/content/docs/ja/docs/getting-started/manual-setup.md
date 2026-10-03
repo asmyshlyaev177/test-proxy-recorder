@@ -2,7 +2,7 @@
 title: 手動セットアップ
 description: フルスタック（SSR + ブラウザ）アプリ、またはブラウザのみの SPA / 拡張に test-proxy-recorder を手で組み込み、一度記録して CI で再生します。
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 ほとんどの人は [`init`](/ja/docs/getting-started/quick-start/) を実行すべきです — 以下のファイルをすべて書き出してくれます。このページは `init` が生成する内容のリファレンスで、手で組み込んだり、コード生成を省いたり、各ピースを理解したりするために使います。
@@ -28,10 +28,11 @@ Next.js や類似フレームワーク向けで、サーバーとブラウザの
 アプリのコードでは、recorder が有効な場合はプロキシへ、そうでない場合は実際のバックエンドへ API のベース URL を向けてください — プロキシは本番では実行されません：
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // proxy address
+// TEST_PROXY_RECORDER_ENABLED is 'true' or '1' for the e2e run only.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // proxy address
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` は上記の `dev:proxy` / `serve:proxy` スクリプト、および `init` が生成したスクリプトによって設定されます。アプリが API のベース URL に既に使用している環境変数を使ってください（例えば `API_URL`、`NEXT_PUBLIC_API_URL`） — 同じ条件分岐が適用されます。
@@ -185,8 +186,8 @@ CI はネットワークアクセスなしで実行できるようになりま�
 `e2e/recordings` を `.gitignore` に追加**しないでください**。CI での再生のため、記録は git に入っている必要があります。
 :::
 
-PR の差分で大きな記録ファイルを折りたたむには、`.gitattributes` に次を追加してください:
+PR の差分で大きな記録ファイルを折りたたむには、`.gitattributes` に次を追加してください。GitHub ではクリック 1 回で表示できるため、変更されたレスポンスも引き続きレビューできます:
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

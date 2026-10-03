@@ -1,8 +1,10 @@
 ---
-title: Playwright
-description: Utilisez test-proxy-recorder depuis les tests Playwright — le hook de session before(), le teardown global recommandé et l'emplacement des fichiers d'enregistrement.
+title: "Configuration Playwright : enregistrer et rejouer chaque test"
+description: Enregistrez et rejouez les appels d'API dans les tests Playwright avec test-proxy-recorder, grâce au hook de session before(), au teardown global recommandé et aux fichiers d'enregistrement par test.
+sidebar:
+  label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
+i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -24,11 +26,11 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Motif `url` :** correspond au vrai domaine externe que le navigateur appelle. En mode record, les requêtes vont à la vraie API et sont sauvegardées dans un fichier `.har`. En mode replay, elles sont servies depuis ce fichier — sans réseau. Ce motif ne pointe **pas** vers le proxy (`localhost:8100`).
 
-**Exception — apps full-stack :** quand le navigateur appelle aussi `localhost:8100` (parce que le frontend est configuré avec l'URL du proxy comme base d'API), utilisez `/localhost:8100/` comme motif.
+**Exception — apps full-stack :** quand le navigateur appelle aussi `localhost:8100` (parce que le frontend est configuré avec l'URL du proxy comme base d'API), utilisez `/localhost:8100/` comme motif. Ces requêtes du navigateur passent alors jusqu'au proxy, qui les enregistre dans le `.mock.json` du test et les rejoue depuis celui-ci : une requête manquante reçoit donc la 404 du proxy plutôt qu'une interruption HAR (voir [la correspondance des requêtes en replay](/fr/docs/getting-started/how-it-works/#replay-matching)).
 
 Les noms de fichiers d'enregistrement sont dérivés des noms de tests (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-## Teardown global (recommandé)
+## Teardown global (recommandé) {#global-teardown-recommended}
 
 ```typescript
 // e2e/global-teardown.ts

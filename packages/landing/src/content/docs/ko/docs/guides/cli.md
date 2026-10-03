@@ -2,7 +2,7 @@
 title: CLI
 description: test-proxy-recorder 명령줄 인터페이스 — 옵션, WebSocket 재생 페이싱, 그리고 멈춘 프록시를 재설정하는 방법.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## WebSocket 재생 페이싱
+## WebSocket 재생 페이싱 {#websocket-replay-pacing}
 
 기본적으로 기록된 WebSocket 서버 메시지는 연결 시 **버스트(burst)**로 재생됩니다. 가장 빠르고 완전히 결정적이어서 CI에 이상적입니다. 대신 `--ws-timing original`(또는 설정의 `websocket: { timing: 'original' }`)을 전달하면 기록된 타임스탬프로 다시 페이싱하여 메시지가 실제 메시지 간격을 두고 도착합니다. 이렇게 하면 테스트가 기록의 실제 경과 시간만큼 걸립니다.
 

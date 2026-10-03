@@ -1,8 +1,10 @@
 ---
-title: TanStack Start
-description: 기록 세션 헤더로 TanStack Start 서버 측 fetch에 태깅하여 SSR을 기록하고 재생합니다. registerProxyFetch(권장) 또는 호출별 createHeadersWithRecordingId를 통해 가능합니다.
+title: Playwright 테스트에서 TanStack Start 서버 측 요청 기록
+description: Playwright 테스트에서 TanStack Start의 로더와 서버 함수가 보내는 fetch 호출을 registerProxyFetch 또는 createHeadersWithRecordingId로 기록하고 재생합니다.
+sidebar:
+  label: TanStack Start
 i18nSource: docs/integrations/tanstack-start.md
-i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
+i18nSourceBlob: 384a8dedd3160993f23c90648890d6dfb62e1367
 ---
 
 TanStack Start는 로더와 서버 함수를 서버에서 실행하므로 그 `fetch` 호출이 브라우저 컨텍스트 없이 프록시를 통과합니다. [Next.js SSR](/ko/docs/integrations/nextjs/)과 같은 상황입니다. 프록시는 `x-test-rcrd-id` 헤더를 통해 그 요청들이 어떤 세션에 속하는지 식별합니다. Playwright의 `playwrightProxy.before()`가 SSR을 트리거하는 브라우저 내비게이션에 이미 설정해 두므로 id가 들어오는 서버 요청에 도착합니다. 해야 할 일은 **나가는 서버 측 요청에 id를 붙이는 것**뿐입니다. (브라우저 전용 테스트는 이 모든 것이 필요 없습니다. 프록시가 전역으로 설정된 세션으로 폴백합니다.)

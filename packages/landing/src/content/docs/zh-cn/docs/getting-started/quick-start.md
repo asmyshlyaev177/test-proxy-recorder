@@ -2,7 +2,7 @@
 title: 快速开始
 description: 一条 init 命令即可搭建 test-proxy-recorder —— 最好由 AI agent 驱动。把你的 API 指向代理，录制一次，在 CI 中回放。
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
+i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
 ---
 
 ## 用 AI agent 搭建（推荐）
@@ -47,10 +47,11 @@ package.json             # + proxy / test:e2e 脚本
 `init` 唯一猜不到的事情：哪个环境变量保存着你的 API 基础 URL。在录制器启用时把它指向代理，其余情况指向真实后端 —— 代理绝不在生产环境中运行：
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // `init` 给出的代理地址
+// 只有 e2e 运行时，TEST_PROXY_RECORDER_ENABLED 才是 'true' 或 '1'。
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // `init` 给出的代理地址
+  : 'https://api.example.com';
 ```
 
 ### 2. 给服务端 fetch 打标（仅 Next.js）

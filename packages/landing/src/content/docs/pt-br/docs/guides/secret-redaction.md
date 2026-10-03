@@ -2,16 +2,16 @@
 title: Remoção de segredos
 description: A remoção fica ativa por padrão — Authorization, Cookie e Set-Cookie são removidos das gravações antes de chegarem ao disco. Adicione padrões de header e de corpo, cookies na allow-list ou remova programaticamente.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-As gravações são commitadas no git, então os segredos são removidos antes de qualquer coisa ser gravada no disco. A remoção fica **ativa por padrão**; o proxy substitui os valores destes headers de requisição/resposta por `[REDACTED]`:
+As gravações são commitadas no git, então os segredos são removidos antes de qualquer coisa ser gravada no disco. A remoção fica **ativa por padrão** sempre que o proxy roda a partir da CLI ou do arquivo de config, que é como o `init` o configura; o proxy substitui os valores destes headers de requisição/resposta por `[REDACTED]`:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-Isso é seguro: a correspondência na reprodução ignora esses headers, então a remoção nunca quebra a reprodução. Ela se aplica a gravações `.mock.json`, gravações WebSocket e arquivos `.har`. Para desativar a remoção, passe `--no-redact` na CLI ou defina `redaction: false` na [config](/pt-br/docs/guides/config/).
+Isso é seguro: a correspondência na reprodução ignora esses headers, então a remoção nunca quebra a reprodução. Ela se aplica a gravações `.mock.json`, gravações WebSocket e arquivos `.har`. Diferentemente das gravações do proxy, os arquivos `.har` ficam no disco sem a remoção de segredos até o fim da execução, quando o seu teardown global chama o `playwrightProxy.teardown()`, que remove os segredos deles. Para desativar a remoção, passe `--no-redact` na CLI ou defina `redaction: false` na [config](/pt-br/docs/guides/config/).
 
 Quando apenas *alguns* cookies são sensíveis, coloque os inofensivos na allow-list por nome (por exemplo, um cookie `theme` ou de teste A/B). Cookies na allow-list mantêm seus valores dentro de `Cookie`/`Set-Cookie`; todos os outros cookies continuam removidos.
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### Programático
 
-Ao construir o `ProxyServer` diretamente:
+Quando você mesmo constrói o `ProxyServer`, o padrão da CLI não se aplica: a remoção fica desativada a menos que você passe uma config.
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

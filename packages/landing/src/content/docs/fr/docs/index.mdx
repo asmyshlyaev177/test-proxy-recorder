@@ -1,8 +1,8 @@
 ---
-title: test-proxy-recorder
-description: VCR pour Playwright — enregistrez les vraies réponses d'API une fois, puis rejouez-les de façon déterministe en CI. Couvre le SSR Next.js, le navigateur et les WebSockets, sans backend ni mocks écrits à la main.
+title: "Enregistrer et rejouer les appels d'API dans Playwright : documentation"
+description: Enregistrez les vraies réponses d'API dans les tests Playwright et rejouez-les en CI, y compris les fetches côté serveur de Next.js et TanStack Start, les appels du navigateur et les WebSockets.
 i18nSource: docs/index.mdx
-i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+i18nSourceBlob: a8464f5330d4b2dfa145f52ef441464ee96a9991
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
@@ -10,6 +10,8 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 **VCR pour Playwright.** Enregistrez les vraies réponses d'API une fois, puis rejouez-les de façon déterministe en CI. Couvre le trafic SSR Next.js, navigateur et WebSocket — sans backend, sans mocks écrits à la main.
 
 Le proxy enregistre les vraies réponses d'API pendant une exécution de tests, puis les rejoue en CI. Les tests restent rapides et déterministes, et vous ne maintenez jamais de fixtures de mock à la main.
+
+L'empreinte est minime : une seule dépendance de développement et un proxy léger qui tourne **à côté de votre app pendant l'exécution des tests** — pas un service que vous déployez ou exploitez. Vous pointez une fois l'URL de base de l'API de votre app vers lui ; enregistrez contre le vrai backend, puis rejouez depuis le disque en CI.
 
 ```text
                         Record mode                          Replay mode
@@ -29,7 +31,7 @@ Le proxy enregistre les vraies réponses d'API pendant une exécution de tests, 
 - **Déterministe** — les mêmes réponses à chaque fois, sans réseau instable.
 - **Support des WebSockets** — enregistre et rejoue les connexions WebSocket.
 
-## Comparaison
+## Comparaison \{#comparison\}
 
 Les outils de mock sont bons pour des tâches différentes. test-proxy-recorder est celui qui enregistre le trafic **réel** à travers le SSR, le navigateur et les WebSockets sans mocks écrits à la main — cette combinaison est la lacune que les autres laissent ouverte.
 
@@ -39,10 +41,12 @@ Les outils de mock sont bons pour des tâches différentes. test-proxy-recorder 
 | Côté serveur (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | Côté navigateur | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Natif Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Natif Playwright | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Maintenu | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js intercepte le HTTP de Node, donc le mock SSR est possible dans le processus de l'app, mais pas dans le cadre d'une exécution Playwright. MSW et Mocky Balboa rejouent aussi de vraies réponses — mais vous écrivez les mocks à la main au lieu de les enregistrer.
+> ⚠️ Polly.js intercepte le HTTP de Node, donc le mock SSR est possible dans le processus de l'app, mais pas dans le cadre d'une exécution Playwright. MSW et Mocky Balboa mockent aussi les requêtes côté serveur, mais vous écrivez les réponses à la main au lieu de les enregistrer.
+
+La [comparaison complète](/fr/docs/reference/comparison/) ajoute le mode test de Next.js, mockttp, scenarist, talkback et proxay, avec une source pour chaque cellule.
 
 ### Quand préférer autre chose
 

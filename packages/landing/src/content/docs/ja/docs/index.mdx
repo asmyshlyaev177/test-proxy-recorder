@@ -1,8 +1,8 @@
 ---
-title: test-proxy-recorder
-description: Playwright のための VCR — 実際の API レスポンスを一度記録し、CI で決定論的に再生します。Next.js の SSR、ブラウザ、WebSocket のトラフィックに対応。バックエンド不要、手書きのモック不要。
+title: 'Playwright で API 呼び出しを記録・再生: ドキュメント'
+description: Playwright テストで実際の API レスポンスを記録し、CI で再生します。Next.js と TanStack Start のサーバーサイドフェッチ、ブラウザからの呼び出し、WebSocket も対象です。
 i18nSource: docs/index.mdx
-i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+i18nSourceBlob: a8464f5330d4b2dfa145f52ef441464ee96a9991
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
@@ -10,6 +10,8 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 **Playwright のための VCR。** 実際の API レスポンスを一度記録し、CI で決定論的に再生します。Next.js の SSR、ブラウザ、WebSocket のトラフィックに対応 — バックエンド不要、手書きのモック不要。
 
 プロキシはテスト実行中に実際の API レスポンスを記録し、CI で再生します。テストは高速かつ決定論的に保たれ、モックのフィクスチャを手作業で保守する必要はありません。
+
+導入の負担は小さく、必要なのは開発依存パッケージ 1 つと、**テスト実行中にアプリと並べて動かす**軽量なプロキシだけです。デプロイや運用が必要なサービスではありません。アプリの API ベース URL を一度プロキシに向けたら、実際のバックエンドに対して記録し、CI ではディスクから再生します。
 
 ```text
                         Record mode                          Replay mode
@@ -29,7 +31,7 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 - **決定論的** — 毎回同じレスポンスで、不安定なネットワークがありません。
 - **WebSocket 対応** — WebSocket 接続を記録・再生します。
 
-## 比較
+## 比較 \{#comparison\}
 
 各モックツールはそれぞれ得意分野が異なります。test-proxy-recorder は、手書きのモックなしで SSR・ブラウザ・WebSocket をまたいで**実際の**トラフィックを記録できる唯一のツールです — その組み合わせこそ、他のツールが埋めていない隙間です。
 
@@ -39,10 +41,12 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 | サーバーサイド (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | ブラウザサイド | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright ネイティブ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright ネイティブ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | メンテナンス継続中 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js は Node の HTTP をインターセプトするため、アプリのプロセス内では SSR のモックが可能ですが、Playwright の実行の一部としては機能しません。MSW と Mocky Balboa も実際のレスポンスを再生しますが、モックを記録するのではなく手で書きます。
+> ⚠️ Polly.js は Node の HTTP をインターセプトするため、アプリのプロセス内では SSR のモックが可能ですが、Playwright の実行の一部としては機能しません。MSW と Mocky Balboa もサーバーサイドのリクエストをモックできますが、レスポンスは記録するのではなく手で書きます。
+
+[詳しい比較](/ja/docs/reference/comparison/)では Next.js テストモード、mockttp、scenarist、talkback、proxay を加え、すべてのセルに出典を示しています。
 
 ### 他を選ぶべき場合
 

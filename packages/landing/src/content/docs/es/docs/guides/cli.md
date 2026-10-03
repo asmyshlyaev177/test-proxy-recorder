@@ -2,7 +2,7 @@
 title: CLI
 description: La interfaz de línea de comandos de test-proxy-recorder — opciones, ritmo de reproducción de WebSocket y cómo reiniciar un proxy atascado.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## Ritmo de reproducción de WebSocket
+## Ritmo de reproducción de WebSocket {#websocket-replay-pacing}
 
 Por defecto, los mensajes de servidor de WebSocket grabados se reproducen en **ráfaga** (`burst`) al conectar — lo más rápido y totalmente determinista, ideal para CI. Pasa `--ws-timing original` (o `websocket: { timing: 'original' }` en la configuración) para reproducirlos usando las marcas de tiempo grabadas, de modo que los mensajes lleguen con sus intervalos reales; una prueba entonces dura aproximadamente el tiempo de reloj de la grabación.
 

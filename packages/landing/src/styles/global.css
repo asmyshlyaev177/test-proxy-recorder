@@ -34,22 +34,44 @@
   --panel-rec-text: oklch(0.795 0.12 29);
   --panel-rec-soft: oklch(0.95 0.018 29);
 
+  /* Tight, not a wide soft halo: a 1px border with a 32px blur is the detector's
+     generic card, and these panels draw a terminal. */
   --shadow-panel:
     0 1px 2px oklch(0.2 0.04 262 / 0.18),
-    0 12px 32px -12px oklch(0.25 0.08 262 / 0.35);
+    0 6px 14px -8px oklch(0.25 0.08 262 / 0.35);
 
-  --z-skip: 20;
+  /* Above the sticky header, or the focused skip link renders under its blur. */
+  --z-skip: calc(var(--z-sticky) + 1);
+
+  /* `--primary` is a fill: as a ring it measured 2.94:1 on the dark page and
+     2.63:1 on the panels (2026-10-03 critique), so dark mode and the panels
+     each get a colour that clears WCAG 1.4.11's 3:1. */
+  --focus-ring: var(--primary);
 }
 
-[data-theme='dark'] {
+/* `:root`, because an Expressive Code group carries `data-theme="dark"` too,
+   and this block would re-theme the panel inside it. */
+:root[data-theme='dark'] {
   --panel: oklch(0.192 0.035 262);
   --panel-edge: oklch(0.3 0.045 262);
   --panel-rec: oklch(0.68 0.185 29);
   --panel-rec-soft: oklch(0.235 0.045 29);
 
+  /* Neutral on dark: a blue blur reads as the glow PRODUCT.md rules out. The
+     blur matches light's 14px; at 18px the detector reads a thin border with
+     a wide shadow, its generic-card tell. */
   --shadow-panel:
     0 1px 2px oklch(0 0 0 / 0.5),
-    0 16px 40px -12px oklch(0.3 0.1 262 / 0.45);
+    0 6px 14px -8px oklch(0 0 0 / 0.6);
+
+  --focus-ring: var(--link);
+}
+
+/* Terminal panels stay dark in both themes. */
+.scene,
+.cmd,
+.expressive-code {
+  --focus-ring: var(--panel-accent);
 }
 
 /* ----------------------------------------------------------------- reset */
@@ -126,7 +148,7 @@ a:hover {
 }
 
 :focus-visible {
-  outline: 2px solid var(--primary);
+  outline: 2px solid var(--focus-ring);
   outline-offset: 3px;
   border-radius: 2px;
 }
@@ -224,15 +246,31 @@ dd > code {
 
 /* ------------------------------------------------------------ code panels */
 
-.astro-code {
-  background: var(--panel) !important;
-  border: 1px solid var(--panel-edge);
-  border-radius: 12px;
-  padding: 1rem 1.25rem;
-  font-size: 0.86rem;
-  line-height: 1.65;
-  overflow-x: auto;
-  box-shadow: var(--shadow-panel);
+/* Expressive Code takes its frame colours from Starlight's variables, and this
+   page does not load Starlight: unset, every snippet rendered with no panel and
+   an invisible copy button. The snippets are dark panels in both themes
+   (integrations/snippet-panels.mjs), so these are the panel tokens. */
+:root {
+  --sl-color-gray-5: var(--panel-edge);
+  --sl-color-gray-6: var(--panel);
+  --sl-color-black: var(--panel);
+  --sl-color-text: var(--panel-ink);
+  --sl-color-accent: var(--panel-accent);
+  --sl-color-accent-high: var(--panel-accent);
+  --sl-text-code: 0.86rem;
+  --sl-line-height: 1.65;
+}
+
+/* Unlayered, so these win over Starlight's layered EC styles on the same element. */
+.expressive-code {
+  --ec-brdRad: 12px;
+  --ec-frm-frameBoxShdCssVal: var(--shadow-panel);
+}
+
+@media (max-width: 560px) {
+  :root {
+    --sl-text-code: 0.78rem;
+  }
 }
 
 /* ---------------------------------------------------------------- motion */

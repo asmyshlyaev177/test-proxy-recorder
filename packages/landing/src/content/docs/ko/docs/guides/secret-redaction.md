@@ -2,16 +2,16 @@
 title: 비밀 정보 마스킹
 description: 마스킹은 기본적으로 활성화되어 있습니다. Authorization, Cookie, Set-Cookie가 디스크에 기록되기 전에 제거됩니다. 헤더 및 본문 패턴을 추가하거나, 쿠키를 허용 목록에 넣거나, 프로그래밍 방식으로 마스킹할 수 있습니다.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-기록은 git에 커밋되므로, 디스크에 쓰기 전에 비밀 정보가 제거됩니다. 마스킹은 **기본적으로 활성화**되어 있으며, 프록시는 다음 요청/응답 헤더의 값을 `[REDACTED]`로 바꿉니다.
+기록은 git에 커밋되므로, 디스크에 쓰기 전에 비밀 정보가 제거됩니다. 프록시를 CLI나 설정 파일로 실행하면(`init`이 설정하는 방식입니다) 마스킹은 **기본적으로 활성화**되어 있으며, 프록시는 다음 요청/응답 헤더의 값을 `[REDACTED]`로 바꿉니다.
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-이것은 안전합니다. 재생 매칭은 이 헤더들을 무시하므로 마스킹이 재생을 깨뜨리지 않습니다. `.mock.json` 기록, WebSocket 기록, `.har` 파일에 적용됩니다. 마스킹을 끄려면 CLI에서 `--no-redact`를 전달하거나 [설정](/ko/docs/guides/config/)에서 `redaction: false`로 설정하세요.
+이것은 안전합니다. 재생 매칭은 이 헤더들을 무시하므로 마스킹이 재생을 깨뜨리지 않습니다. `.mock.json` 기록, WebSocket 기록, `.har` 파일에 적용됩니다. 다만 프록시의 기록과 달리 `.har` 파일은 실행이 끝날 때까지 마스킹되지 않은 채 디스크에 있다가, 실행이 끝나면 전역 티어다운에서 `playwrightProxy.teardown()`이 마스킹합니다. 마스킹을 끄려면 CLI에서 `--no-redact`를 전달하거나 [설정](/ko/docs/guides/config/)에서 `redaction: false`로 설정하세요.
 
 일부 쿠키만 민감한 경우, 무해한 쿠키를 이름으로 허용 목록에 추가하세요(예: `theme` 또는 A/B 테스트 쿠키). 허용 목록의 쿠키는 `Cookie`/`Set-Cookie` 안에서 값을 유지하고, 나머지 쿠키는 여전히 마스킹됩니다.
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### 프로그래밍 방식
 
-`ProxyServer`를 직접 구성하는 경우:
+`ProxyServer`를 직접 구성하는 경우에는 CLI의 기본값이 적용되지 않습니다. 설정을 전달하지 않으면 마스킹은 꺼져 있습니다.
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

@@ -1,8 +1,8 @@
 ---
-title: test-proxy-recorder
-description: VCR para Playwright — grave as respostas reais da API uma vez e reproduza-as de forma determinística na CI. Cobre SSR do Next.js, navegador e tráfego WebSocket, sem backend e sem mocks escritos à mão.
+title: 'Grave e reproduza chamadas de API no Playwright: documentação'
+description: Grave respostas reais da API em testes do Playwright e reproduza-as na CI, incluindo buscas do lado do servidor do Next.js e do TanStack Start, chamadas do navegador e WebSockets.
 i18nSource: docs/index.mdx
-i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+i18nSourceBlob: a8464f5330d4b2dfa145f52ef441464ee96a9991
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
@@ -31,7 +31,7 @@ A pegada é pequena: uma dev-dependency e um proxy leve que roda **junto com a s
 - **Determinístico** — as mesmas respostas todas as vezes, sem rede instável.
 - **Suporte a WebSocket** — grava e reproduz conexões WebSocket.
 
-## Comparação
+## Comparação \{#comparison\}
 
 As ferramentas de mock são boas em trabalhos diferentes. O test-proxy-recorder é aquela que grava tráfego **real** em SSR, navegador e WebSockets sem mocks escritos à mão — essa combinação é a lacuna que as outras deixam em aberto.
 
@@ -41,10 +41,12 @@ As ferramentas de mock são boas em trabalhos diferentes. O test-proxy-recorder 
 | Lado do servidor (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | Lado do navegador | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Nativo do Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Nativo do Playwright | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Mantido | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ O Polly.js intercepta o HTTP do Node, então mockar SSR é possível dentro do processo da aplicação, mas não como parte de uma execução do Playwright. O MSW e o Mocky Balboa também reproduzem respostas reais — mas você escreve os mocks à mão em vez de gravá-los.
+> ⚠️ O Polly.js intercepta o HTTP do Node, então mockar SSR é possível dentro do processo da aplicação, mas não como parte de uma execução do Playwright. O MSW e o Mocky Balboa também mockam requisições do lado do servidor, mas você escreve as respostas à mão em vez de gravá-las.
+
+A [comparação completa](/pt-br/docs/reference/comparison/) acrescenta o modo de teste do Next.js, mockttp, scenarist, talkback e proxay, com uma fonte para cada célula.
 
 ### Quando optar por outra ferramenta
 

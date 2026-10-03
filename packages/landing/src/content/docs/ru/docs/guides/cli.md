@@ -2,7 +2,7 @@
 title: CLI
 description: Интерфейс командной строки test-proxy-recorder — опции, темп воспроизведения WebSocket и как сбросить зависший прокси.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## Темп воспроизведения WebSocket
+## Темп воспроизведения WebSocket {#websocket-replay-pacing}
 
 По умолчанию записанные серверные сообщения WebSocket воспроизводятся **пачкой** (`burst`) при подключении — это быстрее всего и полностью детерминированно, идеально для CI. Передайте `--ws-timing original` (или `websocket: { timing: 'original' }` в конфигурации), чтобы воспроизводить их по записанным меткам времени, так что сообщения приходят с их реальными интервалами; тогда тест занимает примерно столько же реального времени, сколько и запись.
 

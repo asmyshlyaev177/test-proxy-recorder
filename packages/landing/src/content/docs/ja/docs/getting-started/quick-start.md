@@ -2,7 +2,7 @@
 title: クイックスタート
 description: 1 つの init コマンドで test-proxy-recorder をセットアップします — AI エージェントで進めるのがベスト。アプリの API をプロキシに向け、一度記録し、CI で再生します。
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
+i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
 ---
 
 ## AI エージェントでセットアップする（推奨）
@@ -47,10 +47,11 @@ package.json             # + proxy / test:e2e scripts
 `init` が推測できない唯一のものは、API のベース URL を保持している環境変数です。レコーダーが有効な場合はプロキシを指し、それ以外の場合は実際のバックエンドを指すようにします — プロキシは本番では決して動きません:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // proxy address from `init`
+// TEST_PROXY_RECORDER_ENABLED is 'true' or '1' for the e2e run only.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // proxy address from `init`
+  : 'https://api.example.com';
 ```
 
 ### 2. サーバーサイドフェッチにタグ付けする（Next.js のみ）

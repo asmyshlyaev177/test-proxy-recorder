@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · Tiếng Việt
-<!-- i18n:meta locale=vi source=README.md source-blob=ab07eba11b40520200d2a07622c0c8cf4933d352 status=translated -->
+<!-- i18n:meta locale=vi source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -46,10 +46,10 @@ test-proxy-recorder là công cụ ghi lại traffic **thật** trên cả SSR, 
 | Phía máy chủ (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | Phía trình duyệt | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Thuần Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Thuần Playwright | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Được bảo trì | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js chặn HTTP của Node, nên việc mock SSR có thể thực hiện bên trong tiến trình ứng dụng, nhưng không phải như một phần của lần chạy Playwright. MSW và Mocky Balboa cũng phát lại các response thật — nhưng bạn phải viết mock bằng tay thay vì ghi lại chúng.
+> ⚠️ Polly.js chặn HTTP của Node, nên việc mock SSR có thể thực hiện bên trong tiến trình ứng dụng, nhưng không phải như một phần của lần chạy Playwright. MSW và Mocky Balboa cũng mock các request phía máy chủ, nhưng bạn viết các response bằng tay thay vì ghi lại chúng.
 
 Xem [so sánh đầy đủ trong tài liệu](https://test-proxy-recorder.dev/docs/#comparison) — bao gồm cả khi nào nên chọn thứ khác.
 
@@ -77,10 +77,11 @@ npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recor
 Điều duy nhất `init` không thể đoán là biến env nào chứa base URL API của bạn. Trỏ nó về proxy khi recorder được bật, về backend thật trong trường hợp còn lại — proxy không bao giờ chạy trong production:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // địa chỉ proxy từ `init`
+// TEST_PROXY_RECORDER_ENABLED là 'true' hoặc '1' chỉ trong lần chạy e2e.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // địa chỉ proxy
+  : 'https://api.example.com';
 ```
 
 Sau đó đặt `MODE = 'record'`, chạy một lần dựa trên API thật, lật sang `'replay'`, và commit `e2e/recordings/`. CI giờ chạy với backend đã tắt.

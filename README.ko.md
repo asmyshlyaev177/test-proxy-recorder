@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · 한국어 · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=ko source=README.md source-blob=ab07eba11b40520200d2a07622c0c8cf4933d352 status=translated -->
+<!-- i18n:meta locale=ko source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -46,10 +46,10 @@ test-proxy-recorder는 직접 작성한 목(mock) 없이 SSR, 브라우저, WebS
 | 서버 측(SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | 브라우저 측 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright 네이티브 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright 네이티브 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | 유지 관리됨 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js는 Node HTTP를 가로채므로 앱 프로세스 내부에서 SSR 모킹이 가능하지만, Playwright 실행의 일부로는 불가능합니다. MSW와 Mocky Balboa도 실제 응답을 재생하지만, 기록하는 대신 목(mock)을 직접 작성해야 합니다.
+> ⚠️ Polly.js는 Node HTTP를 가로채므로 앱 프로세스 내부에서 SSR 모킹이 가능하지만, Playwright 실행의 일부로는 불가능합니다. MSW와 Mocky Balboa도 서버 측 요청을 모킹하지만, 응답을 기록하는 대신 직접 작성해야 합니다.
 
 자세한 비교는 [문서의 전체 비교](https://test-proxy-recorder.dev/docs/#comparison)를 참조하세요. 다른 도구를 선택해야 하는 경우도 여기에 포함되어 있습니다.
 
@@ -77,10 +77,11 @@ npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recor
 `init`이 추측할 수 없는 유일한 것은 어떤 환경 변수가 API 기본 URL을 담고 있는지입니다. 레코더가 활성화되어 있으면 프록시를, 그렇지 않으면 실제 백엔드를 가리키세요. 프록시는 프로덕션에서 절대 실행되지 않습니다.
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // `init`에서의 프록시 주소
+// TEST_PROXY_RECORDER_ENABLED는 e2e 실행에서만 'true' 또는 '1'입니다.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // 프록시 주소
+  : 'https://api.example.com';
 ```
 
 그런 다음 `MODE = 'record'`로 설정하고 실제 API를 대상으로 한 번 실행한 뒤, `'replay'`로 전환하고 `e2e/recordings/`를 커밋하세요. 이제 CI는 백엔드를 끈 상태로 실행됩니다.

@@ -2,7 +2,7 @@
 title: Thiết lập thủ công
 description: Kết nối test-proxy-recorder vào một ứng dụng full-stack (SSR + browser) hoặc một SPA/extension chỉ chạy trên trình duyệt bằng tay, rồi ghi lại một lần và phát lại trên CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 Hầu hết mọi người nên chạy [`init`](/vi/docs/getting-started/quick-start/) — nó viết mọi file bên dưới cho bạn. Trang này là tài liệu tham chiếu về những gì `init` tạo ra, để bạn có thể tự kết nối bằng tay, bỏ qua phần tạo mã, hoặc hiểu từng thành phần.
@@ -28,10 +28,11 @@ Proxy là một tiến trình nhẹ mà bạn khởi động **song song với �
 Trong mã ứng dụng, trỏ base URL API về proxy khi recorder được bật, về backend thật trong trường hợp còn lại — proxy không bao giờ chạy trong production:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // địa chỉ proxy
+// TEST_PROXY_RECORDER_ENABLED là 'true' hoặc '1' chỉ trong lần chạy e2e.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // địa chỉ proxy
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` được đặt bởi các script `dev:proxy` / `serve:proxy` ở trên, và bởi các script do `init` tạo. Dùng bất kỳ biến env nào ứng dụng của bạn vốn dùng cho base URL API (ví dụ `API_URL`, `NEXT_PUBLIC_API_URL`) — điều kiện tương tự vẫn áp dụng.
@@ -185,8 +186,8 @@ CI giờ chạy mà không cần bất kỳ quyền truy cập mạng nào.
 Đừng **thêm** `e2e/recordings` vào `.gitignore`. Các bản ghi phải nằm trong git để CI có thể phát lại.
 :::
 
-Thêm dòng này vào `.gitattributes` để thu gọn các file bản ghi lớn trong diff của PR:
+Thêm dòng này vào `.gitattributes` để thu gọn các file bản ghi lớn trong diff của PR; GitHub vẫn hiển thị chúng chỉ với một cú nhấp, nên bạn vẫn review được một response đã thay đổi:
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

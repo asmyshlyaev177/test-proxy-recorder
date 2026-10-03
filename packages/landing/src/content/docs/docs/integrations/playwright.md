@@ -1,6 +1,8 @@
 ---
-title: Playwright
-description: Use test-proxy-recorder from Playwright tests — the before() session hook, the recommended global teardown, and where recording files land.
+title: 'Playwright setup: record and replay each test'
+description: Record and replay API calls in Playwright tests with test-proxy-recorder, using the before() session hook, the recommended global teardown, and per-test recording files.
+sidebar:
+  label: Playwright
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -22,11 +24,11 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **`url` pattern:** matches the real external domain that the browser calls. In record mode requests go to the real API and are saved to a `.har` file. In replay mode they are served from that file — no network needed. This pattern does **not** point to the proxy (`localhost:8100`).
 
-**Exception — full-stack apps:** when the browser also calls `localhost:8100` (because the frontend is configured with the proxy URL as its API base), use `/localhost:8100/` as the pattern.
+**Exception — full-stack apps:** when the browser also calls `localhost:8100` (because the frontend is configured with the proxy URL as its API base), use `/localhost:8100/` as the pattern. Those browser requests then pass through to the proxy, which records them in the test's `.mock.json` and replays them from it, so a missing one gets the proxy's 404 rather than a HAR abort (see [how replay matches requests](/docs/getting-started/how-it-works/#replay-matching)).
 
 Recording filenames are derived from test names (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-## Global teardown (recommended)
+## Global teardown (recommended) {#global-teardown-recommended}
 
 ```typescript
 // e2e/global-teardown.ts

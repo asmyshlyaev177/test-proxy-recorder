@@ -2,7 +2,7 @@
 title: CLI
 description: L'interface en ligne de commande de test-proxy-recorder — options, cadence de replay WebSocket et comment réinitialiser un proxy bloqué.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## Cadence de replay WebSocket
+## Cadence de replay WebSocket {#websocket-replay-pacing}
 
 Par défaut, les messages serveur WebSocket enregistrés sont rejoués en **rafale** (`burst`) à la connexion — le plus rapide et totalement déterministe, idéal pour la CI. Passez `--ws-timing original` (ou `websocket: { timing: 'original' }` dans la configuration) pour les rejouer selon les horodatages enregistrés, afin que les messages arrivent avec leurs intervalles réels ; un test dure alors à peu près le temps réel de l'enregistrement.
 

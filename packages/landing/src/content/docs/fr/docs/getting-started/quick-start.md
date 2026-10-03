@@ -2,7 +2,7 @@
 title: Démarrage rapide
 description: Configurez test-proxy-recorder avec une seule commande init — idéalement pilotée par un agent IA. Pointez votre API vers le proxy, enregistrez une fois, rejouez en CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
+i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
 ---
 
 ## Configurer avec un agent IA (recommandé)
@@ -47,10 +47,11 @@ package.json             # + scripts proxy / test:e2e
 La seule chose que `init` ne peut pas deviner : quelle variable d'environnement contient l'URL de base de votre API. Pointez-la vers le proxy lorsque le recorder est activé, vers le vrai backend sinon — le proxy ne tourne jamais en production :
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // adresse du proxy issue de `init`
+// TEST_PROXY_RECORDER_ENABLED vaut 'true' ou '1' uniquement pendant l'exécution e2e.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // adresse du proxy issue de `init`
+  : 'https://api.example.com';
 ```
 
 ### 2. Tagger les fetches côté serveur (Next.js uniquement)

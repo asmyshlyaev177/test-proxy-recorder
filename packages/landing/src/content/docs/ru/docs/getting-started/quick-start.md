@@ -2,7 +2,7 @@
 title: Быстрый старт
 description: Разверните test-proxy-recorder одной командой init — её лучше запускает AI-агент. Направьте ваш API на прокси, запишите один раз, воспроизводите в CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
+i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
 ---
 
 ## Настройка через AI-агента (рекомендуется)
@@ -47,10 +47,11 @@ package.json             # + скрипты proxy / test:e2e
 Единственное, что `init` не может угадать: какая переменная окружения хранит базовый URL вашего API. Направьте её на прокси, когда рекордер включён, на реальный бэкенд в остальных случаях — прокси никогда не запускается в продакшене:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // адрес прокси из `init`
+// TEST_PROXY_RECORDER_ENABLED имеет значение 'true' или '1' только во время e2e-прогона.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // адрес прокси из `init`
+  : 'https://api.example.com';
 ```
 
 ### 2. Тегируйте серверные fetch (только Next.js)

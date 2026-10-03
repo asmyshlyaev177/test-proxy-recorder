@@ -1,9 +1,13 @@
 ---
-title: Next.js
-description: Next.js のサーバーサイドフェッチに記録セッションヘッダーを付与し、SSR を記録・再生します — registerProxyFetch（推奨、任意のランタイム）、axios 向け registerProxyAxios、または 1 回ごとの createHeadersWithRecordingId で。ミドルウェアは任意です。
+title: Next.js の Playwright テストでサーバーサイドの fetch をモックする
+description: Next.js サーバーが行う fetch 呼び出し（Server Components、Route Handlers、Node と Edge）を、手書きのモックなしで Playwright テストの中で記録・再生します。
+sidebar:
+  label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
+i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
 ---
+
+Playwright のテストで `page.route()` が見るのはブラウザのリクエストだけで、Next.js サーバーがレンダリング中に行う `fetch` 呼び出しはそこに届きません。test-proxy-recorder は、こうしたサーバーサイドフェッチをプロキシ経由で、テストごとに 1 つの記録として記録・再生します。
 
 Next.js のような SSR フレームワークは、ブラウザのコンテキストなしでサーバーサイドの `fetch` 呼び出しを行い、それがプロキシを通過します。プロキシは `x-test-rcrd-id` ヘッダーによってそれらのリクエストがどのセッションに属するかを識別します。Playwright の `playwrightProxy.before()` はすでに SSR を引き起こすブラウザのナビゲーションにそれを設定しているため、id は `next/headers` で利用できます — 仕事は**送信するサーバーサイドリクエストにそれを付与すること**です。（ブラウザのみのテストにはこれらは不要です。プロキシはグローバルに設定されたセッションにフォールバックします。）
 

@@ -26,10 +26,11 @@ The proxy is a lightweight process you start **alongside your app for the test r
 In your app code, point the API base URL at the proxy when the recorder is enabled, at the real backend otherwise — the proxy never runs in production:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // proxy address
+// TEST_PROXY_RECORDER_ENABLED is 'true' or '1' for the e2e run only.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // proxy address
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` is set by the `dev:proxy` / `serve:proxy` scripts above, and by `init`'s generated scripts. Use whatever env var your app already uses for the API base URL (for example `API_URL`, `NEXT_PUBLIC_API_URL`) — the same conditional applies.
@@ -183,8 +184,8 @@ CI now runs without any network access.
 Do **not** add `e2e/recordings` to `.gitignore`. Recordings must be in git for CI replay.
 :::
 
-Add this to `.gitattributes` to collapse large recording files in PR diffs:
+Add this to `.gitattributes` to collapse large recording files in PR diffs; GitHub still shows them on one click, so a changed response stays reviewable:
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

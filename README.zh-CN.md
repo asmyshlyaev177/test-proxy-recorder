@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · 简体中文 · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=zh-CN source=README.md source-blob=ab07eba11b40520200d2a07622c0c8cf4933d352 status=translated -->
+<!-- i18n:meta locale=zh-CN source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -46,10 +46,10 @@ test-proxy-recorder 是唯一一个在不手写 mock 的情况下，跨 SSR、�
 | 服务端（SSR） | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | 浏览器端 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright 原生 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright 原生 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | 维护中 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js 拦截 Node HTTP，所以 SSR mock 可以在应用进程内部实现，但无法作为 Playwright 运行的一部分。MSW 和 Mocky Balboa 也能回放真实响应 —— 但你需要手写 mock，而不是录制它们。
+> ⚠️ Polly.js 拦截 Node HTTP，所以 SSR mock 可以在应用进程内部实现，但无法作为 Playwright 运行的一部分。MSW 和 Mocky Balboa 也能 mock 服务端请求，但你需要手工编写响应，而不是录制它们。
 
 参见[文档中的完整对比](https://test-proxy-recorder.dev/docs/#comparison) —— 包括何时改用其他工具。
 
@@ -77,10 +77,11 @@ npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recor
 `init` 唯一猜不到的事情是哪个环境变量保存着你的 API 基础 URL。在录制器启用时把它指向代理，其余情况指向真实后端 —— 代理绝不在生产环境中运行：
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // `init` 给出的代理地址
+// 只有 e2e 运行时，TEST_PROXY_RECORDER_ENABLED 才是 'true' 或 '1'。
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // 代理地址
+  : 'https://api.example.com';
 ```
 
 然后把 `MODE` 设为 `'record'`，针对真实 API 运行一次，翻转到 `'replay'`，再提交 `e2e/recordings/`。现在 CI 在后端关闭的情况下运行。

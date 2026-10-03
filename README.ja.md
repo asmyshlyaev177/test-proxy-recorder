@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · 日本語 · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=ja source=README.md source-blob=ab07eba11b40520200d2a07622c0c8cf4933d352 status=translated -->
+<!-- i18n:meta locale=ja source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -46,10 +46,10 @@ test-proxy-recorder は、手書きモックなしで SSR、ブラウザ、WebSo
 | サーバーサイド (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | ブラウザサイド | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright ネイティブ | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright ネイティブ | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | メンテナンス状況 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js は Node の HTTP を傍受するため、SSR のモックはアプリプロセス内では可能ですが、Playwright 実行の一部としてはできません。MSW と Mocky Balboa も実際のレスポンスを再生します — ただし記録するのではなくモックを手書きします。
+> ⚠️ Polly.js は Node の HTTP を傍受するため、SSR のモックはアプリプロセス内では可能ですが、Playwright 実行の一部としてはできません。MSW と Mocky Balboa もサーバーサイドのリクエストをモックできますが、レスポンスは記録するのではなく手で書きます。
 
 [ドキュメントの完全な比較](https://test-proxy-recorder.dev/docs/#comparison) — いつ他のツールを選ぶべきかも含めて — をご覧ください。
 
@@ -77,10 +77,11 @@ npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recor
 `init` が推測できない唯一のものは、API のベース URL を保持する環境変数です。レコーダーが有効な場合はプロキシを指し、それ以外の場合は実際のバックエンドを指します — プロキシは本番環境では決して動きません:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // `init` で指定したプロキシアドレス
+// TEST_PROXY_RECORDER_ENABLED は e2e 実行時にのみ 'true' または '1' になります。
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // プロキシアドレス
+  : 'https://api.example.com';
 ```
 
 その後、`MODE = 'record'` に設定し、実際の API に対して一度実行し、`'replay'` に切り替えて、`e2e/recordings/` をコミットします。CI はこれでバックエンドをオフにしたまま実行されます。

@@ -1,8 +1,10 @@
 ---
-title: Playwright
-description: Playwright 테스트에서 test-proxy-recorder를 사용하는 방법 — before() 세션 훅, 권장되는 전역 티어다운, 그리고 기록 파일이 저장되는 위치.
+title: 'Playwright 설정: 테스트마다 기록하고 재생하기'
+description: test-proxy-recorder로 Playwright 테스트의 API 호출을 기록하고 재생합니다. before() 세션 훅, 권장되는 전역 티어다운, 테스트별 기록 파일을 사용합니다.
+sidebar:
+  label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
+i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -24,11 +26,11 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **`url` 패턴:** 브라우저가 호출하는 실제 외부 도메인과 일치합니다. 기록 모드에서는 요청이 실제 API로 가서 `.har` 파일에 저장됩니다. 재생 모드에서는 그 파일에서 제공되므로 네트워크가 필요 없습니다. 이 패턴은 프록시(`localhost:8100`)를 가리키지 **않습니다**.
 
-**예외 — 풀스택 앱:** 프론트엔드가 프록시 URL을 API 기본값으로 사용해 브라우저도 `localhost:8100`을 호출하는 경우에는 `/localhost:8100/`을 패턴으로 사용하세요.
+**예외 — 풀스택 앱:** 프론트엔드가 프록시 URL을 API 기본값으로 사용해 브라우저도 `localhost:8100`을 호출하는 경우에는 `/localhost:8100/`을 패턴으로 사용하세요. 그러면 이 브라우저 요청은 프록시로 전달되고, 프록시가 테스트의 `.mock.json`에 기록하고 그 파일에서 재생합니다. 따라서 기록이 없는 요청은 HAR 중단이 아니라 프록시의 404를 받습니다([재생이 요청을 매칭하는 방식](/ko/docs/getting-started/how-it-works/#replay-matching) 참조).
 
 기록 파일 이름은 테스트 이름에서 파생됩니다(`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-## 전역 티어다운 (권장)
+## 전역 티어다운 (권장) {#global-teardown-recommended}
 
 ```typescript
 // e2e/global-teardown.ts

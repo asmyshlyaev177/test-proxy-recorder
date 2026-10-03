@@ -7,14 +7,17 @@
 import { Content as AiPromptSnippet } from '../snippets/ai-prompt.md';
 import { Content as InstallSnippet } from '../snippets/install.md';
 import { Content as ApiEnvSnippet } from '../snippets/api-env.md';
-import { Content as SsrTagSnippet } from '../snippets/register-proxy-fetch.md';
 import { Content as FixtureSnippet } from '../snippets/fixture.md';
-import { Content as RecordSnippet } from '../snippets/record.md';
 import { Content as AuthSetupSnippet } from '../snippets/auth-setup.md';
+import { Content as RecordingSnippet } from '../snippets/recording.md';
+import aiPromptSource from '../snippets/ai-prompt.md?raw';
+import CopyButton from './CopyButton.astro';
 import Layout from '../layouts/Layout.astro';
 import RecorderScene from './RecorderScene.astro';
 import type { HomeCopy } from '../i18n/home/types';
 import type { Locale } from '../../../../scripts/i18n/locales.mjs';
+import { localePrefix } from '../i18n';
+import { version } from '../../../test-proxy-recorder/package.json';
 
 // One implementation of the marketing page, rendered by both routes: the
 // unprefixed English `/`, which stays server-rendered so middleware can
@@ -27,8 +30,12 @@ interface Props {
 }
 
 const { copy: home, locale } = Astro.props;
+const aiPrompt = aiPromptSource.replace(/^```[^\n]*\n/, '').replace(/\n```\s*$/, '');
+const sample = home.recordingSample;
+const questions = home.replayQuestions;
 
 const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
+const docsBase = `${localePrefix(locale.code)}/docs/`;
 
 const installCmd = 'npm i -D test-proxy-recorder';
 
@@ -43,7 +50,8 @@ const compareRows: {
 }[] = [
   { tool: 'test-proxy-recorder', self: true, cells: ['y', 'y', 'y', 'y', 'y', 'y'] },
   { tool: 'Playwright routeFromHAR', cells: ['y', 'n', 'y', 'n', 'y', 'y'] },
-  { tool: 'MSW', cells: ['n', 'y', 'y', 'y', 'n', 'y'] },
+  // Playwright-native through the official @msw/playwright binding (browser requests).
+  { tool: 'MSW', cells: ['n', 'y', 'y', 'y', 'y', 'y'] },
   { tool: 'Polly.js', cells: ['y', 'p', 'y', 'n', 'n', 'n'] },
   { tool: 'playwright-network-cache', cells: ['y', 'n', 'y', 'n', 'y', 'y'] },
   { tool: 'Mocky Balboa', cells: ['n', 'y', 'y', 'n', 'y', 'y'] },
@@ -57,17 +65,15 @@ const markText = home.compare.markText;
   <section class="hero">
     <div class="container hero-grid">
       <div class="hero-copy">
-        <p class="hero-eyebrow">{home.hero.eyebrow}</p>
-        <h1>{home.hero.headlineTop}<br />{home.hero.headlineBottom}</h1>
+        <h1 class="hero-title">{home.hero.title}</h1>
+        <p class="hero-headline">{home.hero.headlineTop}<br />{home.hero.headlineBottom}</p>
         <p class="hero-sub">
           {home.hero.sub}
         </p>
         <div class="hero-actions">
           <span class="cmd">
             <code>{installCmd}</code>
-            <button class="copy-btn" type="button" data-copy={installCmd}>
-              <span class="copy-label">{home.hero.copyLabel}</span>
-            </button>
+            <CopyButton text={installCmd} label={home.hero.copyLabel} copiedLabel={home.chrome.copied} />
           </span>
           <a class="btn btn-ghost btn-star" href={`${repo}/stargazers`}>
             <span class="star-glyph" aria-hidden="true">★</span> {home.hero.starCta}
@@ -77,23 +83,23 @@ const markText = home.compare.markText;
                 fold that only delays the request, and the shift with it. */}
             <img
               class="star-count"
-              src="https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=flat&label=&color=%23eab308"
-              alt={home.hero.starCountAlt}
-              width="23"
+              src="https://img.shields.io/github/stars/asmyshlyaev177/test-proxy-recorder?style=flat&label=&color=%231e40af"
+              alt=""
+              width="31"
               height="20"
             />
           </a>
         </div>
         <p class="hero-fine">
-          {home.hero.fine}
+          v{version} · {home.hero.fine}
         </p>
       </div>
-      <RecorderScene />
+      <RecorderScene pauseLabel={home.hero.scenePause} playLabel={home.hero.scenePlay} />
     </div>
   </section>
 
   <!-- ============================================================ demo -->
-  <section class="demo" id="demo">
+  <section class="band demo" id="demo">
     <div class="container demo-inner">
       <h2>{home.demo.heading}</h2>
       <p class="section-sub">
@@ -102,11 +108,10 @@ const markText = home.compare.markText;
       <figure class="demo-frame">
         <video
           class="demo-video"
-          autoplay
           muted
           loop
           playsinline
-          preload="metadata"
+          preload="none"
           controls
           poster="/demo-poster.webp"
           aria-label={home.demo.videoLabel}
@@ -132,20 +137,27 @@ const markText = home.compare.markText;
             <code class="mech-ext">.mock.json</code>
           </header>
           <p class="mech-flow">{home.mechanisms.proxy.flow}</p>
+          <p class="mech-when">{home.mechanisms.proxy.when}</p>
           <p>
             {home.mechanisms.proxy.body}
           </p>
-          <p class="mech-when">{home.mechanisms.proxy.when}</p>
-          <a class="mech-example" href={`${repo}/tree/master/apps/example-nextjs16`}>
-            {home.mechanisms.proxy.exampleNextjs}
-          </a>
-          <a
-            class="mech-example"
-            href={`${repo}/tree/master/apps/example-tanstack-start`}
-            style="margin-left: 1rem;"
-          >
-            {home.mechanisms.proxy.exampleTanstack}
-          </a>
+          <p>{home.mechanisms.proxy.parallel}</p>
+          <p class="mech-links">
+            <a class="mech-guide" href={`${docsBase}integrations/nextjs/`}>
+              {home.mechanisms.proxy.guideNextjs}
+            </a>{' '}
+            <a class="mech-guide" href={`${docsBase}integrations/tanstack-start/`}>
+              {home.mechanisms.proxy.guideTanstack}
+            </a>
+          </p>
+          <p class="mech-links">
+            <a class="mech-example" href={`${repo}/tree/master/apps/example-nextjs16`}>
+              {home.mechanisms.proxy.exampleNextjs}
+            </a>{' '}
+            <a class="mech-example" href={`${repo}/tree/master/apps/example-tanstack-start`}>
+              {home.mechanisms.proxy.exampleTanstack}
+            </a>
+          </p>
         </article>
         <article class="mech">
           <header class="mech-head">
@@ -153,15 +165,66 @@ const markText = home.compare.markText;
             <code class="mech-ext">.har</code>
           </header>
           <p class="mech-flow">{home.mechanisms.har.flow}</p>
+          <p class="mech-when">{home.mechanisms.har.when}</p>
           <p>
-            {home.mechanisms.har.bodyStart} <code>fetch</code>
+            {home.mechanisms.har.bodyStart} <code>fetch</code>{' '}
             {home.mechanisms.har.bodyEnd}
           </p>
-          <p class="mech-when">{home.mechanisms.har.when}</p>
-          <a class="mech-example" href={`${repo}/tree/master/apps/example-extension`}>
-            {home.mechanisms.har.exampleExtension}
-          </a>
+          <p>{home.mechanisms.har.proxyNote}</p>
+          <p class="mech-links">
+            <a class="mech-guide" href={`${docsBase}integrations/playwright/`}>
+              {home.mechanisms.har.guidePlaywright}
+            </a>
+          </p>
+          <p class="mech-links">
+            <a class="mech-example" href={`${repo}/tree/master/apps/example-websocket`}>
+              {home.mechanisms.har.exampleVite}
+            </a>{' '}
+            <a class="mech-example" href={`${repo}/tree/master/apps/example-extension`}>
+              {home.mechanisms.har.exampleExtension}
+            </a>
+          </p>
         </article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ================================================ recording sample -->
+  {/* Right after the cards that introduce .mock.json, so the real file shows
+      where the page first names it. Only the facts the file itself shows sit
+      beside it: the edge cases, read here, came before any reason to try the
+      tool (2026-10-03 critique), so they wait until after Quick start. */}
+  <section class="band recording" id="recording">
+    <div class="container">
+      <h2>{sample.heading}</h2>
+      <div class="recording-grid">
+        <dl class="facts">
+          <div>
+            <dt>{sample.perTest.term}</dt>
+            <dd>
+              {sample.perTest.start} <code>npx playwright test -g "adds a todo"</code>{' '}
+              {sample.perTest.end}
+            </dd>
+          </div>
+          <div>
+            <dt>{sample.testId.term}</dt>
+            <dd>
+              {sample.testId.start} <code>x-test-rcrd-id</code> {sample.testId.mid}{' '}
+              <code>registerProxyFetch()</code> {sample.testId.end}
+            </dd>
+          </div>
+          <div>
+            <dt>{sample.secrets.term}</dt>
+            <dd>
+              {sample.secrets.body}{' '}
+              <a href={`${docsBase}guides/secret-redaction/`}>{sample.secrets.link}</a>
+            </dd>
+          </div>
+        </dl>
+        <figure class="sample" id="recording-sample">
+          <RecordingSnippet />
+          <figcaption>{sample.caption}</figcaption>
+        </figure>
       </div>
     </div>
   </section>
@@ -174,7 +237,7 @@ const markText = home.compare.markText;
         {home.compare.sub}
       </p>
 
-      <div class="compare-scroll">
+      <div class="compare-scroll" tabindex="0" role="region" aria-label={home.compare.tableCaption}>
         <table class="compare-table">
           <caption class="vh">
             {home.compare.tableCaption}
@@ -216,9 +279,11 @@ const markText = home.compare.markText;
       </div>
 
       <p class="compare-foot">
-        <span class="mark mark-p" aria-hidden="true">~</span> {home.compare.footStart}
-        <a href="/docs/#comparison">{home.compare.footLinkLabel}</a>{home.compare.footEnd}
+        <span class="mark mark-p" aria-hidden="true">~</span> {home.compare.footStart}{' '}
+        <a href={`${docsBase}reference/comparison/`}>{home.compare.footLinkLabel}</a>{home.compare.footEnd}
       </p>
+
+      <p class="compare-tradeoff">{home.compare.tradeoff}</p>
     </div>
   </section>
 
@@ -233,8 +298,8 @@ const markText = home.compare.markText;
         <AuthSetupSnippet />
       </div>
       <p class="auth-links">
-        <a href={`${repo}/tree/master/apps/example-auth-cognito`}>{home.auth.links.cognito}</a>
-        <a href={`${repo}/tree/master/apps/example-tanstack-start`}>{home.auth.links.tanstack}</a>
+        <a href={`${repo}/tree/master/apps/example-auth-cognito`}>{home.auth.links.cognito}</a>{' '}
+        <a href={`${repo}/tree/master/apps/example-tanstack-start`}>{home.auth.links.tanstack}</a>{' '}
         <a href={`${repo}/tree/master/apps/example-auth-mock`}>{home.auth.links.mock}</a>
       </p>
     </div>
@@ -242,66 +307,136 @@ const markText = home.compare.markText;
 
   <!-- ====================================================== quick start -->
   <section class="quick-start" id="quick-start">
-    <div class="container qs-inner">
+    <div class="container">
       <h2>{home.quickStart.heading}</h2>
       <p class="section-sub">
-        {home.quickStart.subStart} <code>init</code>
+        {home.quickStart.subStart} <code>init</code>{' '}
         {home.quickStart.subEnd}
       </p>
 
-      <div class="ai-setup">
-        <h3>{home.quickStart.ai.heading}</h3>
-        <p class="step-note">
-          {home.quickStart.ai.noteStart} <code>init</code>
-          {home.quickStart.ai.noteMid} <code>init</code>
-          {home.quickStart.ai.noteEnd}
-        </p>
-        <div class="ai-prompt">
-          <AiPromptSnippet />
-          <button class="copy-btn copy-btn--float" type="button" data-copy-pre>
-            <span class="copy-label">{home.quickStart.ai.copyLabel}</span>
+      {/* Labelled, because three bullets under "Quick start" read as the steps. */}
+      <h3 class="qs-changes-label">{home.quickStart.changes.label}</h3>
+      <ul class="qs-changes">
+        <li>{home.quickStart.changes.tests}</li>
+        <li>
+          {home.quickStart.changes.appStart} <code>registerProxyFetch()</code>{' '}
+          {home.quickStart.changes.appEnd}
+        </li>
+        <li>{home.quickStart.changes.agent}</li>
+        <li>{home.quickStart.changes.deployed}</li>
+      </ul>
+
+      {/* Two ways in, one shown at a time: with both open, "three steps" read as
+          ten (2026-10-03 critique). The agent path opens first because most
+          developers have a coding agent now (Alex). Without JavaScript both panels show. */}
+      <div class="setup-tabs" data-tabs>
+        <div class="tab-list" role="tablist" aria-label={home.quickStart.heading}>
+          <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="true">
+            {home.quickStart.tabs.agent}
+          </button>
+          <button type="button" role="tab" id="tab-manual" aria-controls="panel-manual" aria-selected="false" tabindex="-1">
+            {home.quickStart.tabs.manual}
           </button>
         </div>
+
+        <div class="tab-panel ai-setup" role="tabpanel" id="panel-agent" aria-labelledby="tab-agent">
+          <p class="step-note">
+            {home.quickStart.ai.noteStart} <code>init</code>{' '}
+            {home.quickStart.ai.noteEnd}
+          </p>
+          {/* A labelled button, because Expressive Code's icon shows only on hover
+              on desktop; the icon is hidden on this block so the prompt has one copy control. */}
+          <p class="ai-copy">
+            <CopyButton text={aiPrompt} label={home.quickStart.ai.copyLabel} copiedLabel={home.chrome.copied} />
+          </p>
+          <AiPromptSnippet />
+        </div>
+
+        <div class="tab-panel" role="tabpanel" id="panel-manual" aria-labelledby="tab-manual" hidden>
+          <ol class="steps">
+            <li class="step">
+              <h3>{home.quickStart.steps.install.title}</h3>
+              <p class="step-note">
+                <code>init</code> {home.quickStart.steps.install.noteStart}{' '}
+                <code>package.json</code> {home.quickStart.steps.install.noteEnd}
+              </p>
+              <InstallSnippet />
+            </li>
+            <li class="step">
+              <h3>{home.quickStart.steps.apiEnv.title}</h3>
+              <p class="step-note">
+                {home.quickStart.steps.apiEnv.noteStart} <code>init</code>{' '}
+                {home.quickStart.steps.apiEnv.noteEnd}
+              </p>
+              <ApiEnvSnippet />
+              <p class="step-note">
+                {home.quickStart.steps.apiEnv.ssrStart} <code>init</code>{' '}
+                {home.quickStart.steps.apiEnv.ssrAfterInit} <code>registerProxyFetch()</code>{' '}
+                {home.quickStart.steps.apiEnv.ssrAfterFn} <code>fetch</code>{' '}
+                {home.quickStart.steps.apiEnv.ssrEnd}
+              </p>
+              <p class="step-note">{home.quickStart.steps.apiEnv.browserOnly}</p>
+            </li>
+            <li class="step">
+              <h3>{home.quickStart.steps.record.title}</h3>
+              <p class="step-note">
+                {home.quickStart.steps.record.noteStart} <code>MODE = 'record'</code>{
+                  home.quickStart.steps.record.noteMid
+                } <code>'replay'</code>{' '}
+                {home.quickStart.steps.record.noteEnd}
+              </p>
+              <FixtureSnippet />
+            </li>
+          </ol>
+        </div>
       </div>
+      <noscript><style>.tab-panel[hidden] { display: block; }</style></noscript>
 
-      <p class="section-sub">{home.quickStart.manualIntro}</p>
+      <p class="qs-guide">
+        <a href={`${docsBase}getting-started/quick-start/`}>{home.quickStart.guideLink}</a>
+      </p>
+    </div>
+  </section>
 
-      <ol class="steps">
-        <li class="step">
-          <h3>{home.quickStart.steps.install.title}</h3>
-          <p class="step-note">
-            <code>init</code> {home.quickStart.steps.install.noteStart}
-            <code>package.json</code> {home.quickStart.steps.install.noteEnd}
-          </p>
-          <InstallSnippet />
-        </li>
-        <li class="step">
-          <h3>{home.quickStart.steps.apiEnv.title}</h3>
-          <p class="step-note">
-            {home.quickStart.steps.apiEnv.noteStart} <code>init</code>
-            {home.quickStart.steps.apiEnv.noteEnd}
-          </p>
-          <ApiEnvSnippet />
-          <p class="step-note">
-            {home.quickStart.steps.apiEnv.ssrStart} <code>init</code>
-            {home.quickStart.steps.apiEnv.ssrAfterInit} <code>registerProxyFetch()</code>
-            {home.quickStart.steps.apiEnv.ssrAfterFn} <code>fetch</code>
-            {home.quickStart.steps.apiEnv.ssrEnd}
-          </p>
-          <SsrTagSnippet />
-        </li>
-        <li class="step">
-          <h3>{home.quickStart.steps.record.title}</h3>
-          <p class="step-note">
-            {home.quickStart.steps.record.noteStart} <code>MODE = 'record'</code>{
-              home.quickStart.steps.record.noteMid
-            } <code>'replay'</code>
-            {home.quickStart.steps.record.noteEnd}
-          </p>
-          <FixtureSnippet />
-          <RecordSnippet />
-        </li>
-      </ol>
+  <!-- ======================================================= questions -->
+  <section class="band questions" id="questions">
+    <div class="container">
+      <h2>{questions.heading}</h2>
+      <dl class="facts">
+        <div>
+          <dt>{questions.matching.term}</dt>
+          <dd>
+            {questions.matching.body}{' '}
+            <a href={`${docsBase}getting-started/how-it-works/#replay-matching`}>{questions.matching.link}</a>
+          </dd>
+        </div>
+        <div>
+          <dt>{questions.misses.term}</dt>
+          <dd>
+            {questions.misses.start} <code>url</code> {questions.misses.mid} <code>before()</code>{' '}
+            {questions.misses.end}
+          </dd>
+        </div>
+        <div>
+          <dt>{questions.liveApi.term}</dt>
+          <dd>
+            {questions.liveApi.start} <code>teardown()</code>{questions.liveApi.end}{' '}
+            <a href={`${docsBase}reference/faq/#parallel-replay`}>{questions.liveApi.link}</a>
+          </dd>
+        </div>
+        <div>
+          <dt>{questions.drift.term}</dt>
+          <dd>{questions.drift.body}</dd>
+        </div>
+        <div>
+          <dt>{questions.overrides.term}</dt>
+          <dd>
+            {questions.overrides.start} <code>page.route()</code> {questions.overrides.mid}{' '}
+            <code>before()</code> {questions.overrides.end}{' '}
+            <a href={`${docsBase}reference/faq/#override-responses`}>{questions.overrides.link}</a>
+          </dd>
+        </div>
+      </dl>
     </div>
   </section>
 
@@ -315,22 +450,61 @@ const markText = home.compare.markText;
       <div class="cta-actions">
         <span class="cmd cmd-on-dark">
           <code>{installCmd}</code>
-          <button class="copy-btn" type="button" data-copy={installCmd}>
-            <span class="copy-label">{home.cta.copyLabel}</span>
-          </button>
+          <CopyButton text={installCmd} label={home.cta.copyLabel} copiedLabel={home.chrome.copied} />
         </span>
         <a class="btn btn-on-dark btn-star" href={`${repo}/stargazers`}>
           <span class="star-glyph" aria-hidden="true">★</span> {home.cta.starCta}
         </a>
       </div>
       <p class="cta-fine">
-        {home.cta.fineStart} <a href={`${repo}/issues/new`}>{home.cta.issueLabel}</a>
-        {home.cta.fineBetween}
+        {home.cta.fineStart} <a href={`${repo}/issues/new`}>{home.cta.issueLabel}</a>{' '}
+        {home.cta.fineBetween}{' '}
         <a href="https://discord.gg/w7rgYbY5zz">{home.cta.discordLabel}</a>{home.cta.fineEnd}
       </p>
     </div>
   </section>
 </Layout>
+
+<script>
+  // Tabs per the ARIA pattern: click or arrow keys switch, Tab moves into the panel.
+  document.querySelectorAll<HTMLElement>('[data-tabs]').forEach((root) => {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>('[role="tab"]')];
+    const select = (next: HTMLButtonElement) => {
+      for (const tab of tabs) {
+        const isSelected = tab === next;
+        tab.setAttribute('aria-selected', String(isSelected));
+        tab.tabIndex = isSelected ? 0 : -1;
+        const panel = root.querySelector<HTMLElement>(`#${tab.getAttribute('aria-controls')}`);
+        if (panel) panel.hidden = !isSelected;
+      }
+    };
+    tabs.forEach((tab, index) => {
+      tab.addEventListener('click', () => select(tab));
+      tab.addEventListener('keydown', (event) => {
+        const step = ({ ArrowRight: 1, ArrowLeft: -1 } as Record<string, number>)[event.key];
+        if (!step) return;
+        const next = tabs[(index + step + tabs.length) % tabs.length];
+        select(next);
+        next.focus();
+      });
+    });
+  });
+
+  // Plays only for readers who have not asked for less motion (PRODUCT.md), and
+  // only once half of it is on screen: it is 2.9 MB, and it used to buffer in
+  // full while the page sat at the top. The rest get the poster and the controls.
+  const demo = document.querySelector<HTMLVideoElement>('video.demo-video');
+  if (demo && matchMedia('(prefers-reduced-motion: no-preference)').matches) {
+    new IntersectionObserver(
+      ([entry]) => {
+        // A refused play() leaves the poster up, which is the reduced-motion state anyway.
+        if (entry.isIntersecting) demo.play().catch(() => undefined);
+        else demo.pause();
+      },
+      { threshold: 0.5 },
+    ).observe(demo);
+  }
+</script>
 
 <style>
   section {
@@ -363,8 +537,18 @@ const markText = home.compare.markText;
   /* --------------------------------------------------------- comparison */
 
   .compare-scroll {
+    /* The containing block for the cells' visually hidden labels: they are
+       absolutely positioned, and against the page they escaped this scroller
+       and widened a 390px phone to 707px. */
+    position: relative;
     margin-top: 2rem;
     overflow-x: auto;
+    /* Scroll shadows: a shade at an edge with more columns beyond it, covered
+       by the page colour once scrolled to that edge. On a phone four of the six
+       tools sat off-screen with no hint (2026-10-03 critique). */
+    background:
+      linear-gradient(to left, var(--bg) 40%, transparent) right / 2.5rem 100% no-repeat local,
+      radial-gradient(farthest-side at 100% 50%, oklch(0 0 0 / 0.2), transparent) right / 0.9rem 100% no-repeat scroll;
   }
 
   .compare-table {
@@ -425,9 +609,10 @@ const markText = home.compare.markText;
     line-height: 1;
   }
 
-  /* `--primary` is a fill: this glyph measured 2.92:1. `--link` and
-     `--accent-on-soft` both carry a checked floor, and one each keeps ✓ and ~
-     apart by hue as well as shape. */
+  /* `--primary` is a fill: this glyph measured 2.92:1. ✓ in `--link`, ~ in
+     `--ink`, ✕ in `--muted`: each has a checked floor, and the steps run from
+     most to least support. ~ was `--accent-on-soft`, whose red-orange read as
+     worse than ✕ (2026-10-03 critique). */
   .mark-y {
     color: var(--link);
     font-weight: 700;
@@ -439,7 +624,7 @@ const markText = home.compare.markText;
   }
 
   .mark-p {
-    color: var(--accent-on-soft);
+    color: var(--ink);
     font-weight: 700;
   }
 
@@ -447,7 +632,16 @@ const markText = home.compare.markText;
     margin-top: 1.1rem;
     color: var(--muted);
     font-size: 0.85rem;
-    max-width: 70ch;
+    max-width: 62ch;
+  }
+
+  /* On a phone the table scrolls; the row labels stay put so each mark keeps its meaning. */
+  .compare-table tbody th,
+  .compare-table thead th:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--bg);
   }
 
   .compare-foot .mark-p {
@@ -465,17 +659,19 @@ const markText = home.compare.markText;
     margin-top: 1.6rem;
   }
 
+  /* The global 62ch measure wrapped this row 2 + 1 at 1440. */
   .auth-links {
     display: flex;
     flex-wrap: wrap;
     gap: 1.4rem;
     margin-top: 1.4rem;
+    max-width: none;
   }
 
+  /* The guide links' style: a fourth "→" style was one too many (2026-10-03). */
   .auth-links a {
     color: var(--link);
-    font-family: var(--font-mono);
-    font-size: 0.85rem;
+    font-weight: 600;
   }
 
   /* ------------------------------------------------------------- hero */
@@ -491,18 +687,29 @@ const markText = home.compare.markText;
     align-items: center;
   }
 
-  .hero-eyebrow {
-    font-family: var(--font-mono);
-    font-size: 0.78rem;
-    font-weight: 600;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
+  /* The h1 says what the tool does in the words people search for; the
+     slogan under it keeps the display size the h1 used to have. */
+  .hero-title {
+    font-size: var(--step-1);
+    font-weight: 650;
+    letter-spacing: -0.005em;
+    line-height: 1.4;
     color: var(--primary);
-    margin-bottom: 0.9rem;
+    margin-bottom: 0.8rem;
   }
 
-  :global([data-theme='dark']) .hero-eyebrow {
+  /* The old eyebrow's colours: raters found the grey line duller (round 2). */
+  :global([data-theme='dark']) .hero-title {
     color: var(--link);
+  }
+
+  .hero-headline {
+    font-size: var(--step-hero);
+    font-weight: 760;
+    line-height: 1.12;
+    letter-spacing: -0.022em;
+    text-wrap: balance;
+    max-width: none;
   }
 
   .hero-sub {
@@ -546,50 +753,10 @@ const markText = home.compare.markText;
     color: var(--panel-muted);
   }
 
-  .copy-btn {
-    border: 1px solid var(--panel-edge);
-    background: oklch(0.27 0.045 262);
-    color: var(--panel-ink);
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    font-weight: 600;
-    border-radius: 6px;
-    padding: 0.3rem 0.6rem;
-    cursor: pointer;
-    transition: background-color 150ms var(--ease-out);
-  }
-
-  .copy-btn:hover {
-    background: oklch(0.32 0.05 262);
-  }
-
-  .copy-btn.copied {
-    background: oklch(0.42 0.1 150);
-    border-color: transparent;
-  }
-
-  .ai-prompt {
-    position: relative;
-  }
-
-  /* Floats over the rendered code block (top-right), like a typical
-     copy-to-clipboard affordance on a snippet. */
-  .copy-btn--float {
-    position: absolute;
-    top: 0.7rem;
-    right: 0.7rem;
-    z-index: 2;
-  }
-
-  /* EC renders its own copy button, but its icon color resolves to an undefined
-     Starlight var on this page (invisible). Hide it and use our labeled one. */
-  .ai-prompt :global(.copy) {
-    display: none;
-  }
-
   /* ------------------------------------------------------------- demo */
 
-  .demo {
+  /* The demo, the recording sample and the questions: the grey bands between the white sections. */
+  .band {
     background: var(--surface);
     border-block: 1px solid var(--line);
   }
@@ -668,27 +835,41 @@ const markText = home.compare.markText;
     color: var(--ink) !important;
   }
 
-  .mech-example {
-    display: inline-block;
+  .mech .mech-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
     margin-top: 1.1rem;
+  }
+
+  .mech .mech-links + .mech-links {
+    margin-top: 0.5rem;
+  }
+
+  .mech-guide,
+  .mech-example {
     font-size: 0.82rem;
     font-weight: 600;
     color: var(--primary);
+    text-decoration: none;
   }
 
+  .mech-example {
+    font-weight: 500;
+    color: var(--muted);
+  }
+
+  .mech-guide:hover,
   .mech-example:hover {
     text-decoration: underline;
   }
 
-  :global([data-theme='dark']) .mech-example {
+  :global([data-theme='dark']) .mech-guide {
     color: var(--link);
   }
 
   /* ------------------------------------------------------- quick start */
 
-  .qs-inner {
-    max-width: calc(46rem + 2 * var(--gutter));
-  }
 
   .steps {
     list-style: none;
@@ -703,6 +884,9 @@ const markText = home.compare.markText;
   .step {
     counter-increment: step;
     display: grid;
+    /* `minmax(0, …)`: an auto track grows to the longest code line, and the
+       page scrolled sideways on phones (812px wide at 390). */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.85rem;
   }
 
@@ -740,6 +924,153 @@ const markText = home.compare.markText;
     max-width: 58ch;
   }
 
+  .qs-changes-label {
+    margin-top: 1.6rem;
+    font-size: var(--step-0);
+    font-weight: 650;
+  }
+
+  .qs-changes {
+    display: grid;
+    gap: 0.45rem;
+    margin-top: 0.6rem;
+    padding-left: 1.1rem;
+    color: var(--muted);
+    font-size: var(--step--1);
+    max-width: 62ch;
+  }
+
+  .setup-tabs {
+    margin-top: 2.25rem;
+    max-width: 46rem;
+  }
+
+  .tab-list {
+    display: flex;
+    gap: 0.25rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .tab-list [role='tab'] {
+    font-weight: 600;
+    font-size: var(--step--1);
+    color: var(--muted);
+    background: none;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    padding: 0.6rem 0.9rem;
+    cursor: pointer;
+  }
+
+  .tab-list [role='tab'][aria-selected='true'] {
+    color: var(--ink);
+    border-bottom-color: var(--primary);
+  }
+
+  :global([data-theme='dark']) .tab-list [role='tab'][aria-selected='true'] {
+    border-bottom-color: var(--link);
+  }
+
+  .tab-panel {
+    padding-top: 1.4rem;
+  }
+
+  /* `display: grid` on .ai-setup would otherwise beat the UA's [hidden] rule. */
+  .tab-panel[hidden] {
+    display: none;
+  }
+
+  .tab-panel .steps {
+    margin-top: 0;
+  }
+
+  /* The list and the sample recording side by side where both fit, stacked
+     otherwise; the track minimum decides, not a breakpoint. Centred, with the
+     facts at body size (below): three short facts beside the tall recording left
+     an empty patch under them (2026-10-03 VisAWI, three of four raters). */
+  .recording-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+    gap: 1.5rem 2.5rem;
+    align-items: center;
+    margin-top: 1rem;
+  }
+
+  .facts {
+    display: grid;
+    gap: 0.95rem;
+    margin: 0;
+    font-size: var(--step--1);
+  }
+
+  .facts dt {
+    font-weight: 650;
+    color: var(--ink);
+  }
+
+  .facts dd {
+    margin: 0.1rem 0 0;
+    color: var(--muted);
+  }
+
+  .facts a {
+    color: var(--link);
+  }
+
+  .recording .facts {
+    font-size: var(--step-0);
+  }
+
+  /* Two columns of questions where they fit, so the section doesn't leave the
+     right half of a wide screen empty. */
+  .questions .facts {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr));
+    gap: 1.4rem 2.5rem;
+    margin-top: 1rem;
+  }
+
+  .sample {
+    margin: 0;
+    min-width: 0;
+  }
+
+  .sample figcaption {
+    margin-top: 0.6rem;
+    color: var(--muted);
+    font-size: 0.85rem;
+  }
+
+  .ai-copy {
+    margin: 0;
+  }
+
+  .ai-setup :global(.expressive-code .copy) {
+    display: none;
+  }
+
+  .qs-guide {
+    margin-top: 1.2rem;
+    font-weight: 600;
+  }
+
+  .qs-guide a {
+    color: var(--link);
+  }
+
+  .compare-tradeoff {
+    margin-top: 1.4rem;
+    color: var(--ink);
+    max-width: 62ch;
+  }
+
+  .ai-setup {
+    display: grid;
+    /* As with .step: an auto track would grow to the prompt's longest line. */
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.85rem;
+  }
+
   /* -------------------------------------------------------------- cta */
 
   .cta {
@@ -759,6 +1090,14 @@ const markText = home.compare.markText;
 
   .cta h2 {
     color: oklch(1 0 0);
+  }
+
+  /* The light ring is `--primary`, this band's own fill. Set as the inherited
+     token, not on :focus-visible here, so it reaches the copy button inside
+     its own component; the command box would otherwise take the panel's. */
+  .cta,
+  .cta .cmd {
+    --focus-ring: oklch(1 0 0);
   }
 
   .cta-sub {
@@ -832,17 +1171,11 @@ const markText = home.compare.markText;
 
   @media (max-width: 880px) {
     .hero-grid {
-      grid-template-columns: 1fr;
+      grid-template-columns: minmax(0, 1fr);
     }
 
     .hero-sub {
       max-width: 52ch;
-    }
-  }
-
-  @media (max-width: 560px) {
-    .step :global(.astro-code) {
-      font-size: 0.78rem;
     }
   }
 </style>

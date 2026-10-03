@@ -1,11 +1,15 @@
 ---
-title: Next.js
-description: Тегируйте серверные fetch в Next.js заголовком recording-session, чтобы SSR записывался и воспроизводился — через registerProxyFetch (рекомендуется, любой runtime), registerProxyAxios для axios или createHeadersWithRecordingId на каждый вызов. Middleware опционален.
+title: Мокирование серверного fetch в тестах Playwright для Next.js
+description: Записывайте и воспроизводите в тестах Playwright вызовы fetch, которые делает сервер Next.js (Server Components, Route Handlers, Node и Edge), без моков, написанных вручную.
+sidebar:
+  label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
+i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
 ---
 
-SSR-фреймворки вроде Next.js делают серверные вызовы `fetch`, которые проходят через прокси без контекста браузера. Прокси определяет, какой сессии принадлежат эти запросы, по заголовку `x-test-rcrd-id`. `playwrightProxy.before()` Playwright уже устанавливает его на навигацию браузера, которая трегерит SSR, поэтому id доступен в `next/headers` — задача в том, чтобы **прикрепить его к исходящим серверным запросам**. (Тестам только в браузере всё это не нужно; прокси откатывается к глобально заданной сессии.)
+В тесте Playwright `page.route()` видит только запросы браузера; вызовы `fetch`, которые ваш сервер Next.js делает во время рендеринга, до него никогда не доходят. test-proxy-recorder записывает и воспроизводит эти серверные fetch через свой прокси, по одной записи на тест.
+
+SSR-фреймворки вроде Next.js делают серверные вызовы `fetch`, которые проходят через прокси без контекста браузера. Прокси определяет, какой сессии принадлежат эти запросы, по заголовку `x-test-rcrd-id`. `playwrightProxy.before()` Playwright уже устанавливает его на навигацию браузера, которая запускает SSR, поэтому id доступен в `next/headers` — задача в том, чтобы **прикрепить его к исходящим серверным запросам**. (Тестам только в браузере всё это не нужно; прокси откатывается к глобально заданной сессии.)
 
 :::tip
 [`test-proxy-recorder init`](/ru/docs/getting-started/quick-start/) детектит Next.js и подключает рекомендованный ниже подход в ваш root layout автоматически.

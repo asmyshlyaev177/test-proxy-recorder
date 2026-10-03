@@ -2,7 +2,7 @@
 title: Configuración manual
 description: Integra test-proxy-recorder a mano en una app full-stack (SSR + navegador) o en una SPA o extensión solo de navegador, luego graba una vez y reproduce en CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 La mayoría debería ejecutar [`init`](/es/docs/getting-started/quick-start/) — escribe por ti todos los archivos de abajo. Esta página es la referencia de lo que `init` genera, para que puedas cablearlo a mano, omitir el codegen o entender cada pieza.
@@ -28,10 +28,11 @@ El proxy es un proceso ligero que arrancas **junto a tu app para la ejecución d
 En el código de tu app, apunta la URL base de la API al proxy cuando el recorder está activado, y al backend real en caso contrario — el proxy nunca se ejecuta en producción:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // dirección del proxy
+// TEST_PROXY_RECORDER_ENABLED vale 'true' o '1' solo en la ejecución e2e.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // dirección del proxy
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` lo establecen los scripts `dev:proxy` / `serve:proxy` de arriba, y los scripts generados por `init`. Usa la variable de entorno que tu app ya use para la URL base de la API (por ejemplo `API_URL`, `NEXT_PUBLIC_API_URL`) — la misma condicional aplica.
@@ -185,8 +186,8 @@ CI ahora se ejecuta sin ningún acceso a la red.
 **No** añadas `e2e/recordings` a `.gitignore`. Las grabaciones deben estar en git para la reproducción en CI.
 :::
 
-Añade esto a `.gitattributes` para colapsar archivos de grabación grandes en los diffs de PR:
+Añade esto a `.gitattributes` para colapsar archivos de grabación grandes en los diffs de PR; GitHub sigue mostrándolos con un clic, así que una respuesta que cambie se puede seguir revisando:
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

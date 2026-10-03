@@ -2,16 +2,16 @@
 title: Loại bỏ bí mật
 description: Việc loại bỏ bí mật bật theo mặc định — Authorization, Cookie, và Set-Cookie bị loại bỏ khỏi các bản ghi trước khi được ghi ra đĩa. Thêm các pattern cho header và body, allow-list cookie, hoặc loại bỏ theo lập trình.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-Các bản ghi được commit vào git, nên bí mật bị loại bỏ trước khi bất cứ thứ gì được ghi ra đĩa. Việc loại bỏ bí mật **bật theo mặc định**; proxy thay giá trị của các header request/response sau bằng `[REDACTED]`:
+Các bản ghi được commit vào git, nên bí mật bị loại bỏ trước khi bất cứ thứ gì được ghi ra đĩa. Việc loại bỏ bí mật **bật theo mặc định** mỗi khi proxy chạy từ CLI hoặc từ file cấu hình, và đó là cách `init` thiết lập nó; proxy thay giá trị của các header request/response sau bằng `[REDACTED]`:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-Điều này an toàn: việc khớp khi phát lại bỏ qua các header này, nên việc loại bỏ không bao giờ làm hỏng việc phát. Nó áp dụng cho các bản ghi `.mock.json`, các bản ghi WebSocket, và các file `.har`. Để tắt việc loại bỏ, truyền `--no-redact` trên CLI hoặc đặt `redaction: false` trong [cấu hình](/vi/docs/guides/config/).
+Điều này an toàn: việc khớp khi phát lại bỏ qua các header này, nên việc loại bỏ không bao giờ làm hỏng việc phát. Nó áp dụng cho các bản ghi `.mock.json`, các bản ghi WebSocket, và các file `.har`. Khác với các bản ghi của proxy, các file `.har` nằm trên đĩa mà chưa được loại bỏ bí mật cho tới khi lần chạy kết thúc, lúc `playwrightProxy.teardown()` loại bỏ bí mật khỏi chúng từ global teardown của bạn. Để tắt việc loại bỏ, truyền `--no-redact` trên CLI hoặc đặt `redaction: false` trong [cấu hình](/vi/docs/guides/config/).
 
 Khi chỉ *một số* cookie nhạy cảm, hãy allow-list những cookie vô hại theo tên (ví dụ cookie `theme` hoặc A/B-test). Các cookie được allow-list giữ nguyên giá trị bên trong `Cookie`/`Set-Cookie`; mọi cookie khác vẫn bị loại bỏ.
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### Theo lập trình
 
-Khi khởi tạo `ProxyServer` trực tiếp:
+Khi bạn tự khởi tạo `ProxyServer`, mặc định của CLI không áp dụng: việc loại bỏ bí mật bị tắt trừ khi bạn truyền một cấu hình.
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

@@ -1,6 +1,6 @@
 ---
-title: test-proxy-recorder
-description: VCR for Playwright — record real API responses once, replay them deterministically on CI. Covers Next.js SSR, browser, and WebSocket traffic, with no backend and no hand-written mocks.
+title: 'Record and replay API calls in Playwright: docs'
+description: Record real API responses in Playwright tests and replay them on CI, including Next.js and TanStack Start server-side fetches, browser calls and WebSockets.
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
@@ -29,7 +29,7 @@ The footprint is small: one dev-dependency and a lightweight proxy that runs **a
 - **Deterministic** — the same responses every time, with no flaky network.
 - **WebSocket support** — records and replays WebSocket connections.
 
-## Comparison
+## Comparison \{#comparison\}
 
 The mocking tools are good at different jobs. test-proxy-recorder is the one that records **real** traffic across SSR, browser, and WebSockets without hand-written mocks — that combination is the gap the others leave open.
 
@@ -39,10 +39,12 @@ The mocking tools are good at different jobs. test-proxy-recorder is the one tha
 | Server-side (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | Browser-side | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright-native | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright-native | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Maintained | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js intercepts Node HTTP, so SSR mocking is possible inside the app process, but not as part of a Playwright run. MSW and Mocky Balboa replay real responses too — but you hand-write the mocks rather than recording them.
+> ⚠️ Polly.js intercepts Node HTTP, so SSR mocking is possible inside the app process, but not as part of a Playwright run. MSW and Mocky Balboa mock server-side requests too, but you write the responses by hand rather than recording them.
+
+The [full comparison](/docs/reference/comparison/) adds Next.js test mode, mockttp, scenarist, talkback and proxay, with a source for every cell.
 
 ### When to reach for something else
 

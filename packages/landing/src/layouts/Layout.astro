@@ -3,12 +3,12 @@ import schibstedUrl from '@fontsource-variable/schibsted-grotesk/files/schibsted
 import splineItalicUrl from '@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-wght-italic.woff2?url';
 import splineUrl from '@fontsource-variable/spline-sans-mono/files/spline-sans-mono-latin-wght-normal.woff2?url';
 import '../styles/global.css';
+import LanguagePicker from '../components/LanguagePicker.astro';
 import ThemeToggle from '../components/ThemeToggle.astro';
 // Read from the package being documented so `softwareVersion` in the JSON-LD
 // can't drift from what npm actually serves.
 import { version as pkgVersion } from '../../../test-proxy-recorder/package.json';
 import {
-  ALL_LOCALES,
   alternates,
   dateLocale,
   localePrefix,
@@ -70,8 +70,15 @@ const fontFaceCss = `
 @font-face{font-family:'Spline Sans Mono Variable';font-style:italic;font-display:swap;font-weight:300 700;src:url(${splineItalicUrl}) format('woff2-variations');unicode-range:${latinRange}}
 `;
 
-const jsonLd = {
-  '@context': 'https://schema.org',
+// The WebSite node carries the site name, so the <title> can spend its ~60
+// characters on what the tool does instead of on the brand.
+const webSite = {
+  '@type': 'WebSite',
+  name: 'test-proxy-recorder',
+  url: new URL('/', Astro.site).href,
+};
+
+const softwareApplication = {
   '@type': 'SoftwareApplication',
   name: 'test-proxy-recorder',
   description,
@@ -91,13 +98,15 @@ const jsonLd = {
   installUrl: npmUrl,
   sameAs: [repo, npmUrl],
   keywords:
-    'vcr for playwright, playwright, e2e testing, api mocking, record replay, HAR, deterministic tests, test proxy, man-in-the-middle proxy, mitm proxy, http recording proxy, mock server, network stubbing, api fixtures, flaky tests, ssr mocking, nextjs, websocket',
+    'vcr for playwright, playwright, e2e testing, api mocking, record replay, HAR, deterministic tests, test proxy, http recording proxy, mock server, network stubbing, api fixtures, flaky tests, ssr mocking, server-side mocking, nextjs, websocket',
   author: {
     '@type': 'Person',
     name: 'asmyshlyaev177',
     url: authorUrl,
   },
 };
+
+const jsonLd = { '@context': 'https://schema.org', '@graph': [webSite, softwareApplication] };
 ---
 
 <!doctype html>
@@ -212,28 +221,14 @@ const jsonLd = {
           test-proxy-recorder
         </a>
         <nav aria-label="Site">
-          <a href="#quick-start">{copy.chrome.navQuickStart}</a>
+          <a class="nav-extra" href="#quick-start">{copy.chrome.navQuickStart}</a>
           <a href={`${base}${prefix}/docs/`}>{copy.chrome.navDocs}</a>
-          <a href={npmUrl}>npm</a>
+          <a class="nav-extra" href={npmUrl}>npm</a>
           <a href={repo}>GitHub</a>
-          <a href={discordUrl}>Discord</a>
-          {/* A plain <select> rather than a scripted menu: it is one control,
-              it is keyboard- and screen-reader-native, and it costs four lines
-              of inline script instead of a component. Options carry endonyms —
-              a reader looking for their language scans for "日本語", not for
-              "Japanese". */}
-          <label class="lang-picker">
-            <span class="visually-hidden">{copy.chrome.languageLabel}</span>
-            <select data-lang-picker>
-              {
-                ALL_LOCALES.map((l) => (
-                  <option value={`${base}${localePrefix(l.code)}/`} selected={l.code === locale.code}>
-                    {l.label}
-                  </option>
-                ))
-              }
-            </select>
-          </label>
+          <a class="nav-extra" href={discordUrl}>Discord</a>
+          <span class="header-lang">
+            <LanguagePicker locale={locale} label={copy.chrome.languageLabel} variant="menu" />
+          </span>
           <ThemeToggle />
         </nav>
       </div>
@@ -249,8 +244,19 @@ const jsonLd = {
           © {copyrightYear} <a href="https://asmyshlyaev177.dev">asmyshlyaev177</a>. {
             copy.chrome.licensed
           } {copy.chrome.updated} <time datetime={lastModified.toISOString()}>{lastModifiedLabel}</time
-          >. <a href="/llms.txt">llms.txt</a>
+          >.
         </p>
+        {/* The header drops these on a phone, so the footer is where they stay reachable. */}
+        <nav class="footer-nav" aria-label="Footer">
+          <a href={`${base}${prefix}/docs/`}>{copy.chrome.navDocs}</a>
+          <a href={repo}>GitHub</a>
+          <a href={npmUrl}>npm</a>
+          <a href={discordUrl}>Discord</a>
+          <a href="/llms.txt">llms.txt</a>
+          <span class="footer-lang">
+            <LanguagePicker locale={locale} label={copy.chrome.languageLabel} variant="list" />
+          </span>
+        </nav>
         <a
           class="open-launch-badge"
           href="https://open-launch.com/projects/test-proxy-recorder"
@@ -286,53 +292,56 @@ const jsonLd = {
     <script is:inline async src="https://asmyshlyaev177.dev/for-hire-badge.js"
     ></script>
 
-    <script>
-      // The language picker navigates on change. Its options carry the target
-      // path as their value, so this needs to know nothing about the locale
-      // table — and with JS off it degrades to an inert select rather than to
-      // a broken link, which is why the header also carries no other switcher.
-      document
-        .querySelector<HTMLSelectElement>('[data-lang-picker]')
-        ?.addEventListener('change', (event) => {
-          location.href = (event.currentTarget as HTMLSelectElement).value;
-        });
-    </script>
+    {/* Announces a successful copy; the button's own text change is not read out. */}
+    <p id="copy-status" class="copy-status" role="status"></p>
 
     <script>
-      // `data-copy` carries inline text; `data-copy-pre` copies the rendered
-      // code block (<pre>) inside the button's container — `innerText` preserves
-      // the line breaks that `textContent` would collapse.
-      const copyButtons = document.querySelectorAll<HTMLButtonElement>(
-        '[data-copy], [data-copy-pre]',
-      );
-      copyButtons.forEach((btn) => {
+      // The copy buttons (CopyButton.astro); the code blocks use Expressive Code's own.
+      const copyStatus = document.getElementById('copy-status');
+      document.querySelectorAll<HTMLButtonElement>('[data-copy]').forEach((btn) => {
         btn.addEventListener('click', async () => {
-          const pre = btn.parentElement?.querySelector('pre');
-          const text = btn.dataset.copy ?? pre?.innerText ?? '';
-          await navigator.clipboard.writeText(text);
+          try {
+            await navigator.clipboard.writeText(btn.dataset.copy ?? '');
+          } catch {
+            // Denied clipboard: claim nothing; the command stays selectable on screen.
+            return;
+          }
           btn.classList.add('copied');
-          const label = btn.querySelector('.copy-label');
-          if (label) label.textContent = 'Copied';
+          if (copyStatus) copyStatus.textContent = btn.querySelector('.copy-done')?.textContent ?? '';
           setTimeout(() => {
             btn.classList.remove('copied');
-            if (label) label.textContent = 'Copy';
+            if (copyStatus) copyStatus.textContent = '';
           }, 1600);
         });
       });
     </script>
 
     <style>
+      .copy-status {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
       .site-header {
         position: sticky;
         top: 0;
         z-index: var(--z-sticky);
-        background: color-mix(in oklch, var(--bg) 88%, transparent);
+        /* At 88% a dark code panel scrolling underneath showed through the nav
+           as a grey smear (2026-10-03 VisAWI). */
+        background: color-mix(in oklch, var(--bg) 96%, transparent);
         backdrop-filter: blur(10px);
         border-bottom: 1px solid var(--line);
       }
 
       .header-row {
         display: flex;
+        /* At 320px the nav drops under the wordmark instead of widening the page. */
+        flex-wrap: wrap;
+        row-gap: 0.4rem;
         align-items: center;
         justify-content: space-between;
         gap: 1rem;
@@ -341,6 +350,7 @@ const jsonLd = {
 
       .wordmark {
         display: inline-flex;
+        white-space: nowrap;
         align-items: center;
         gap: 0.55rem;
         font-family: var(--font-mono);
@@ -352,6 +362,7 @@ const jsonLd = {
       }
 
       .wordmark-dot {
+        flex-shrink: 0;
         width: 0.55rem;
         height: 0.55rem;
         border-radius: 50%;
@@ -359,48 +370,21 @@ const jsonLd = {
         box-shadow: 0 0 0 3px var(--panel-rec-soft);
       }
 
-      nav {
+      .site-header nav {
         display: flex;
         align-items: center;
         gap: clamp(0.75rem, 2.5vw, 1.5rem);
       }
 
-      nav a {
+      .site-header nav a {
         font-size: var(--step--1);
         font-weight: 600;
         color: var(--ink);
         text-decoration: none;
       }
 
-      nav a:hover {
+      .site-header nav a:hover {
         color: var(--link);
-      }
-
-      .lang-picker select {
-        font: inherit;
-        font-size: var(--step--1);
-        font-weight: 600;
-        color: var(--ink);
-        background: transparent;
-        border: 1px solid var(--line);
-        border-radius: 0.375rem;
-        padding: 0.15rem 0.35rem;
-        cursor: pointer;
-      }
-
-      .lang-picker select:hover {
-        color: var(--link);
-      }
-
-      /* The picker's own label: needed by screen readers, redundant on screen
-         where the selected language is the visible value. */
-      .visually-hidden {
-        position: absolute;
-        width: 1px;
-        height: 1px;
-        overflow: hidden;
-        clip-path: inset(50%);
-        white-space: nowrap;
       }
 
       .site-footer {
@@ -419,6 +403,17 @@ const jsonLd = {
 
       .footer-row a {
         color: inherit;
+      }
+
+      .footer-nav {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.4rem 1.1rem;
+      }
+
+      .footer-lang {
+        display: none;
       }
 
       .footer-meta {
@@ -449,9 +444,17 @@ const jsonLd = {
         display: inline-block;
       }
 
-      @media (max-width: 640px) {
-        nav a:not(:last-of-type) {
+      /* Below 800px the full nav overflowed (641-699px) or wrapped "Quick start";
+         the header keeps the wordmark, Docs, GitHub and the theme toggle, and the
+         rest, the language menu included, is in the footer. */
+      @media (max-width: 800px) {
+        .nav-extra,
+        .header-lang {
           display: none;
+        }
+
+        .footer-lang {
+          display: inline-flex;
         }
       }
     </style>

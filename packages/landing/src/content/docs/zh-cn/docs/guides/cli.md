@@ -2,7 +2,7 @@
 title: CLI
 description: test-proxy-recorder 的命令行界面 —— 选项、WebSocket 回放节奏，以及如何重置卡住的代理。
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## WebSocket 回放节奏
+## WebSocket 回放节奏 {#websocket-replay-pacing}
 
 默认情况下，录制的 WebSocket 服务端消息会在连接时以**突发**（`burst`）方式回放 —— 最快且完全确定，非常适合 CI。传入 `--ws-timing original`（或配置中的 `websocket: { timing: 'original' }`）可改为按录制的时间戳重新排期，使消息以真实的间隔到达；这样一个测试大致会耗费录制的真实时长。
 

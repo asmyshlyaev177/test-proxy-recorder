@@ -1,9 +1,14 @@
 ---
-title: Next.js
-description: Gắn thẻ cho các fetch phía máy chủ của Next.js bằng session header của bản ghi để SSR được ghi lại và phát lại — qua registerProxyFetch (khuyến nghị, mọi runtime), registerProxyAxios cho axios, hoặc createHeadersWithRecordingId cho từng lời gọi. Middleware là tùy chọn.
+title: Mock fetch phía máy chủ trong test Playwright cho Next.js
+description: Ghi lại và phát lại các lời gọi fetch mà máy chủ Next.js thực hiện (Server Components, Route Handlers, Node và Edge) trong test Playwright, không cần mock viết tay.
+sidebar:
+  label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
+i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
 ---
+
+Trong một test Playwright, `page.route()` chỉ thấy các request của trình duyệt; các lời gọi `fetch` mà máy chủ Next.js của bạn thực hiện trong lúc render không bao giờ tới được nó. test-proxy-recorder ghi lại và phát lại các fetch phía máy chủ đó qua proxy của mình, mỗi test một bản ghi.
+
 
 Các framework SSR như Next.js thực hiện các lời gọi `fetch` phía máy chủ đi qua proxy mà không có browser context. Proxy xác định các request đó thuộc session nào qua header `x-test-rcrd-id`. `playwrightProxy.before()` của Playwright đã đặt nó lên navigation của trình duyệt kích hoạt SSR, nên id có sẵn trong `next/headers` — việc cần làm là **gắn nó vào các request phía máy chủ đi ra ngoài**. (Các test chỉ chạy trên trình duyệt không cần gì trong số này; proxy rơi về session được đặt toàn cục.)
 

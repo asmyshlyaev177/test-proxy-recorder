@@ -2,16 +2,16 @@
 title: Enmascaramiento de secretos
 description: El enmascaramiento está activado por defecto — Authorization, Cookie y Set-Cookie se eliminan de las grabaciones antes de llegar al disco. Añade patrones de cabecera y cuerpo, permite cookies o enmascara programáticamente.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-Las grabaciones se hacen commit a git, así que los secretos se eliminan antes de escribir nada en disco. El enmascaramiento está **activado por defecto**; el proxy reemplaza los valores de estas cabeceras de petición/respuesta con `[REDACTED]`:
+Las grabaciones se hacen commit a git, así que los secretos se eliminan antes de escribir nada en disco. El enmascaramiento está **activado por defecto** siempre que el proxy se ejecuta desde la CLI o desde el archivo de configuración, que es como lo configura `init`; el proxy reemplaza los valores de estas cabeceras de petición/respuesta con `[REDACTED]`:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-Esto es seguro: el emparejamiento de reproducción ignora estas cabeceras, así que el enmascaramiento nunca rompe la reproducción. Se aplica a las grabaciones `.mock.json`, a las grabaciones de WebSocket y a los archivos `.har`. Para desactivar el enmascaramiento, pasa `--no-redact` en la CLI o establece `redaction: false` en la [configuración](/es/docs/guides/config/).
+Esto es seguro: el emparejamiento de reproducción ignora estas cabeceras, así que el enmascaramiento nunca rompe la reproducción. Se aplica a las grabaciones `.mock.json`, a las grabaciones de WebSocket y a los archivos `.har`. A diferencia de las grabaciones del proxy, los archivos `.har` permanecen en disco sin enmascarar hasta que termina la ejecución, cuando `playwrightProxy.teardown()` los enmascara desde tu teardown global. Para desactivar el enmascaramiento, pasa `--no-redact` en la CLI o establece `redaction: false` en la [configuración](/es/docs/guides/config/).
 
 Cuando solo *algunas* cookies son sensibles, permite las inofensivas por nombre (por ejemplo una cookie de `theme` o de test A/B). Las cookies permitidas conservan sus valores dentro de `Cookie`/`Set-Cookie`; cualquier otra cookie sigue enmascarándose.
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### Programáticamente
 
-Al construir `ProxyServer` directamente:
+Cuando construyes `ProxyServer` tú mismo, el valor por defecto de la CLI no se aplica: el enmascaramiento está desactivado salvo que pases una configuración.
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

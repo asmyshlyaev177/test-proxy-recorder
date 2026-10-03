@@ -1,9 +1,14 @@
 ---
-title: Next.js
-description: 기록 세션 헤더로 Next.js 서버 측 fetch에 태깅하여 SSR을 기록하고 재생합니다. registerProxyFetch(권장, 모든 런타임), axios용 registerProxyAxios, 또는 호출별 createHeadersWithRecordingId를 통해 가능합니다. 미들웨어는 선택 사항입니다.
+title: Next.js Playwright 테스트에서 서버 측 fetch 모킹
+description: Playwright 테스트에서 Next.js 서버가 보내는 fetch 호출(서버 컴포넌트, 라우트 핸들러, Node 및 Edge)을 직접 작성한 목(mock) 없이 기록하고 재생합니다.
+sidebar:
+  label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
+i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
 ---
+
+Playwright 테스트에서 `page.route()`는 브라우저의 요청만 봅니다. Next.js 서버가 렌더링 중에 보내는 `fetch` 호출은 `page.route()`에 닿지 않습니다. test-proxy-recorder는 이런 서버 측 fetch를 프록시를 통해 기록하고 재생하며, 기록은 테스트마다 하나씩 만들어집니다.
+
 
 Next.js 같은 SSR 프레임워크는 브라우저 컨텍스트 없이 프록시를 통과하는 서버 측 `fetch` 호출을 수행합니다. 프록시는 `x-test-rcrd-id` 헤더를 통해 그 요청들이 어떤 세션에 속하는지 식별합니다. Playwright의 `playwrightProxy.before()`가 SSR을 트리거하는 브라우저 내비게이션에 이미 설정해 두므로 id가 `next/headers`에 있습니다. 해야 할 일은 **나가는 서버 측 요청에 id를 붙이는 것**뿐입니다. (브라우저 전용 테스트는 이 모든 것이 필요 없습니다. 프록시가 전역으로 설정된 세션으로 폴백합니다.)
 

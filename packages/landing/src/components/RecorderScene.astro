@@ -1,10 +1,26 @@
-<figure class="scene" aria-label="Diagram: in record mode requests flow from your app through the proxy to the real API and are saved to disk; in replay mode the proxy serves the saved responses from disk with no network.">
+---
+interface Props {
+  pauseLabel: string;
+  playLabel: string;
+}
+
+const { pauseLabel, playLabel } = Astro.props;
+---
+
+<figure class="scene" aria-label="Diagram: in record mode requests flow from your app's server through the proxy to the real API and are saved to disk; in replay mode the proxy serves the saved responses from disk without calling the API.">
   <div class="scene-bar" aria-hidden="true">
     <span class="bar-dot"></span>
     <span class="bar-dot"></span>
     <span class="bar-dot"></span>
     <span class="bar-title">npx playwright test</span>
   </div>
+  {/* WCAG 2.2.2: the loop runs longer than five seconds beside other content. */}
+  <button
+    class="scene-toggle"
+    type="button"
+    data-pause-label={pauseLabel}
+    data-play-label={playLabel}>{pauseLabel}</button
+  >
 
   <div class="phase">
     <p class="phase-head rec-head">
@@ -12,7 +28,7 @@
       REC <span class="phase-meta">· MODE=record · local run</span>
     </p>
     <div class="track" aria-hidden="true">
-      <span class="node">your app</span>
+      <span class="node">app server</span>
       <span class="wire">
         <span class="lane lane-1"><i class="packet packet-app"></i></span>
         <span class="lane lane-7"><i class="packet packet-play"></i></span>
@@ -26,7 +42,7 @@
     </div>
     <p class="result">
       <span class="glyph-rec" aria-hidden="true">⤓</span>
-      saved&ensp;<span class="result-file">e2e/recordings/todos.GET.mock.json</span>
+      saved&ensp;<span class="result-file">todos__adds-a-todo.mock.json</span>
     </p>
   </div>
 
@@ -38,7 +54,7 @@
       REPLAY <span class="phase-meta">· MODE=replay · CI</span>
     </p>
     <div class="track" aria-hidden="true">
-      <span class="node">your app</span>
+      <span class="node">app server</span>
       <span class="wire">
         <span class="lane lane-3"><i class="packet packet-play"></i></span>
         <span class="lane lane-5"><i class="packet packet-ok"></i></span>
@@ -49,13 +65,54 @@
     </div>
     <p class="result">
       <span class="glyph-play" aria-hidden="true">✓</span>
-      200 OK · 3 ms · <span class="result-strong">zero network</span>
+      200 OK · 3 ms · <span class="result-strong">from disk</span>
     </p>
   </div>
 </figure>
 
+<script>
+  document.querySelectorAll<HTMLButtonElement>('.scene-toggle').forEach((button) => {
+    // The label names the action, so no aria-pressed: with both, a screen
+    // reader announced "Play, toggle button, pressed" (2026-10-03 critique).
+    button.addEventListener('click', () => {
+      const scene = button.closest('.scene');
+      const paused = !scene?.hasAttribute('data-paused');
+      scene?.toggleAttribute('data-paused', paused);
+      button.textContent = (paused ? button.dataset.playLabel : button.dataset.pauseLabel) ?? '';
+    });
+  });
+</script>
+
 <style>
+  .scene-toggle {
+    position: absolute;
+    top: 0.62rem;
+    right: 1rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--panel-muted);
+    background: transparent;
+    border: 1px solid var(--panel-edge);
+    border-radius: 6px;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+  }
+
+  .scene-toggle:hover {
+    color: var(--panel-ink);
+  }
+
+  .scene[data-paused] .packet {
+    animation-play-state: paused;
+  }
+
   .scene {
+    position: relative;
+    /* The packets travel past the wire ends mid-animation; unclipped, they
+       widened the page to 875px at 768. */
+    overflow: clip;
+    container-type: inline-size;
+    --cycle: 6s;
     background: var(--panel);
     border: 1px solid var(--panel-edge);
     border-radius: 14px;
@@ -115,9 +172,9 @@
     width: 0.62rem;
     height: 0.62rem;
     border-radius: 50%;
+    /* Steady and unlit: PRODUCT.md rules out the glow hero, and a pulsing dot
+       was the Impeccable detector's one error (2026-10-03). */
     background: var(--panel-rec);
-    box-shadow: 0 0 8px 1px oklch(0.62 0.21 29 / 0.55);
-    animation: lamp-pulse 1.6s var(--ease-out) infinite;
   }
 
   .play-glyph {
@@ -133,6 +190,7 @@
 
   .node {
     flex-shrink: 0;
+    min-width: 0;
     font-size: 0.74rem;
     padding: 0.32rem 0.62rem;
     border: 1px solid var(--panel-edge);
@@ -174,85 +232,82 @@
 
   .packet-rec {
     background: var(--panel-rec);
-    box-shadow: 0 0 7px 1px oklch(0.62 0.21 29 / 0.6);
   }
 
   .packet-app {
     background: oklch(0.95 0.008 262);
-    box-shadow: 0 0 7px 1px oklch(0.9 0.02 262 / 0.55);
   }
 
   .packet-play {
     background: oklch(0.78 0.12 262);
-    box-shadow: 0 0 7px 1px oklch(0.7 0.15 262 / 0.6);
   }
 
   .packet-ok {
     background: oklch(0.8 0.13 150);
-    box-shadow: 0 0 7px 1px oklch(0.75 0.14 150 / 0.6);
   }
 
   .lane-1 {
-    animation: travel-a 9s linear infinite;
+    animation: travel-a var(--cycle) linear infinite;
   }
 
   .lane-2 {
-    animation: travel-b 9s linear infinite;
+    animation: travel-b var(--cycle) linear infinite;
   }
 
   .lane-6 {
-    animation: travel-f 9s linear infinite;
+    animation: travel-f var(--cycle) linear infinite;
   }
 
   .lane-7 {
-    animation: travel-g 9s linear infinite;
+    animation: travel-g var(--cycle) linear infinite;
   }
 
   .lane-3 {
-    animation: travel-c 9s linear infinite;
+    animation: travel-c var(--cycle) linear infinite;
   }
 
   .lane-4 {
-    animation: travel-d 9s linear infinite;
+    animation: travel-d var(--cycle) linear infinite;
   }
 
   .lane-5 {
-    animation: travel-e 9s linear infinite;
+    animation: travel-e var(--cycle) linear infinite;
   }
 
   .lane-1 .packet {
-    animation: blink-1 9s linear infinite;
+    animation: blink-1 var(--cycle) linear infinite;
   }
 
   .lane-2 .packet {
-    animation: blink-2 9s linear infinite;
+    animation: blink-2 var(--cycle) linear infinite;
   }
 
   .lane-6 .packet {
-    animation: blink-6 9s linear infinite;
+    animation: blink-6 var(--cycle) linear infinite;
   }
 
   .lane-7 .packet {
-    animation: blink-7 9s linear infinite;
+    animation: blink-7 var(--cycle) linear infinite;
   }
 
   .lane-3 .packet {
-    animation: blink-3 9s linear infinite;
+    animation: blink-3 var(--cycle) linear infinite;
   }
 
   .lane-4 .packet {
-    animation: blink-4 9s linear infinite;
+    animation: blink-4 var(--cycle) linear infinite;
   }
 
   .lane-5 .packet {
-    animation: blink-5 9s linear infinite;
+    animation: blink-5 var(--cycle) linear infinite;
   }
 
   .result {
     display: flex;
     align-items: baseline;
     gap: 0.5rem;
-    font-size: 0.74rem;
+    /* The replay line is the page's promise; at 11.8px it read as fine print. */
+    font-size: 0.8125rem;
     color: var(--panel-muted);
     white-space: nowrap;
     overflow: hidden;
@@ -281,91 +336,90 @@
     margin-block: 1.25rem;
   }
 
-  /* one 9s cycle. Record half: request app→proxy→real API, response
-     comes back api→proxy where it's saved. Replay half: request
-     app→proxy, response served fast disk→proxy, handed back proxy→app. */
+  /* One 6s cycle, timed so the hops differ in kind: app↔proxy is a local
+     350ms hop in both halves, proxy↔API a 550ms network hop with a 300ms wait
+     at the API, and replay's disk hop 120ms, so REPLAY finishes in about a
+     third of REC's time. With every hop near 900ms the motion contradicted
+     "3 ms · from disk" (2026-10-03 critique). 1% = 60ms. */
   @keyframes travel-a {
-    0%, 4% { transform: translateX(0); }
-    14%, 100% { transform: translateX(100%); }
+    0%, 5% { transform: translateX(0); }
+    10.83%, 100% { transform: translateX(100%); }
   }
 
   @keyframes travel-b {
-    0%, 16% { transform: translateX(0); }
-    26%, 100% { transform: translateX(100%); }
+    0%, 12.5% { transform: translateX(0); }
+    21.67%, 100% { transform: translateX(100%); }
   }
 
   @keyframes travel-f {
-    0%, 30% { transform: translateX(100%); }
-    38%, 100% { transform: translateX(0); }
+    0%, 26.67% { transform: translateX(100%); }
+    35.83%, 100% { transform: translateX(0); }
   }
 
   @keyframes travel-g {
-    0%, 41% { transform: translateX(100%); }
-    49%, 100% { transform: translateX(0); }
+    0%, 37.5% { transform: translateX(100%); }
+    43.33%, 100% { transform: translateX(0); }
   }
 
-  /* replay choreography: request app→proxy (travel-c), response served
-     fast disk→proxy (travel-d), then handed back proxy→app (travel-e) */
+  /* Replay: request app→proxy (travel-c), the response from disk→proxy
+     (travel-d), handed back proxy→app (travel-e). */
   @keyframes travel-c {
-    0%, 54% { transform: translateX(0); }
-    64%, 100% { transform: translateX(100%); }
+    0%, 60% { transform: translateX(0); }
+    65.83%, 100% { transform: translateX(100%); }
   }
 
   @keyframes travel-d {
-    0%, 70% { transform: translateX(100%); }
-    77%, 100% { transform: translateX(0); }
+    0%, 67.5% { transform: translateX(100%); }
+    69.5%, 100% { transform: translateX(0); }
   }
 
   @keyframes travel-e {
-    0%, 82% { transform: translateX(100%); }
-    92%, 100% { transform: translateX(0); }
+    0%, 71.17% { transform: translateX(100%); }
+    77%, 100% { transform: translateX(0); }
   }
 
+  /* Each packet fades in over the 60ms before its hop and out over the 60ms
+     after; the disk packet's fades are shorter so its neighbours never overlap it. */
   @keyframes blink-1 {
-    0%, 3% { opacity: 0; }
-    5%, 13% { opacity: 1; }
-    15%, 100% { opacity: 0; }
+    0%, 4% { opacity: 0; }
+    5%, 10.83% { opacity: 1; }
+    11.83%, 100% { opacity: 0; }
   }
 
   @keyframes blink-2 {
-    0%, 15% { opacity: 0; }
-    17%, 25% { opacity: 1; }
-    27%, 100% { opacity: 0; }
+    0%, 11.5% { opacity: 0; }
+    12.5%, 21.67% { opacity: 1; }
+    22.67%, 100% { opacity: 0; }
   }
 
   @keyframes blink-6 {
-    0%, 29.5% { opacity: 0; }
-    31%, 37% { opacity: 1; }
-    38.5%, 100% { opacity: 0; }
+    0%, 25.67% { opacity: 0; }
+    26.67%, 35.83% { opacity: 1; }
+    36.83%, 100% { opacity: 0; }
   }
 
   @keyframes blink-7 {
-    0%, 40.5% { opacity: 0; }
-    42%, 48% { opacity: 1; }
-    49.5%, 100% { opacity: 0; }
+    0%, 36.5% { opacity: 0; }
+    37.5%, 43.33% { opacity: 1; }
+    44.33%, 100% { opacity: 0; }
   }
 
   @keyframes blink-3 {
-    0%, 53% { opacity: 0; }
-    55%, 63% { opacity: 1; }
-    65%, 100% { opacity: 0; }
+    0%, 59% { opacity: 0; }
+    60%, 65.83% { opacity: 1; }
+    66.83%, 100% { opacity: 0; }
   }
 
   @keyframes blink-4 {
-    0%, 69.5% { opacity: 0; }
-    71%, 76% { opacity: 1; }
-    77.5%, 100% { opacity: 0; }
+    0%, 66.83% { opacity: 0; }
+    67.5%, 69.5% { opacity: 1; }
+    70.17%, 100% { opacity: 0; }
   }
 
   @keyframes blink-5 {
-    0%, 81.5% { opacity: 0; }
-    83%, 91% { opacity: 1; }
-    92.5%, 100% { opacity: 0; }
-  }
-
-  @keyframes lamp-pulse {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
+    0%, 70.17% { opacity: 0; }
+    71.17%, 77% { opacity: 1; }
+    78%, 100% { opacity: 0; }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -373,8 +427,9 @@
       opacity: 0;
     }
 
-    .lamp {
-      animation: none;
+    /* Nothing moves, so there is nothing to pause. */
+    .scene-toggle {
+      display: none;
     }
   }
 
@@ -389,7 +444,35 @@
     }
 
     .result {
-      font-size: 0.68rem;
+      font-size: 0.75rem;
+    }
+  }
+
+  /* Below about 384px of viewport the 0.68rem row cut "proxy" to "pro…"
+     (2026-10-03 critique); smaller nodes and wires keep every label whole
+     down to 320px. */
+  @container (max-width: 20rem) {
+    .track {
+      gap: 0.4rem;
+    }
+
+    .node {
+      font-size: 0.6rem;
+      padding: 0.26rem 0.38rem;
+    }
+
+    .wire {
+      min-width: 0.75rem;
+    }
+  }
+
+  /* WCAG reflow at 320px: an unshrinkable row of nodes made the page 359px
+     wide. A last resort; the container query above keeps labels whole. */
+  @media (max-width: 320px) {
+    .node {
+      flex-shrink: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 </style>

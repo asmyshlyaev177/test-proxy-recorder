@@ -37,13 +37,14 @@ export default defineConfig({
 
   projects: [
     { name: 'a11y', testMatch: /a11y\.spec\.ts/ },
+    { name: 'homepage', testMatch: /homepage\.spec\.ts/ },
     // Held back so the audits get the box: two Chrome instances measuring at
     // once score the test runner, not the site. `workers` stays at the default
     // — the spec's serial describe pins them to one anyway.
     {
       name: 'lighthouse',
       testMatch: /lighthouse\.spec\.ts/,
-      dependencies: ['a11y'],
+      dependencies: ['a11y', 'homepage'],
     },
   ],
 

@@ -2,16 +2,16 @@
 title: シークレットのマスキング
 description: マスキング（redaction）はデフォルトで有効 — Authorization、Cookie、Set-Cookie はディスクに書き込まれる前に記録から取り除かれます。ヘッダーやボディのパターン追加、Cookie の許可、プログラムからのマスキングが可能です。
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-記録は git にコミットされるため、シークレットはディスクへ何かを書き込む前に取り除かれます。マスキングは**デフォルトで有効**です。プロキシは次のリクエスト/レスポンスヘッダーの値を `[REDACTED]` に置き換えます:
+記録は git にコミットされるため、シークレットはディスクへ何かを書き込む前に取り除かれます。プロキシを CLI または設定ファイルから起動する場合（`init` もこの方法でセットアップします）、マスキングは**デフォルトで有効**です。プロキシは次のリクエスト/レスポンスヘッダーの値を `[REDACTED]` に置き換えます:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-これは安全です: 再生時のマッチングはこれらのヘッダーを無視するため、マスキングが再生を壊すことはありません。`.mock.json` の記録、WebSocket の記録、`.har` ファイルに適用されます。マスキングを無効にするには、CLI で `--no-redact` を渡すか、[設定](/ja/docs/guides/config/)で `redaction: false` を設定します。
+これは安全です: 再生時のマッチングはこれらのヘッダーを無視するため、マスキングが再生を壊すことはありません。`.mock.json` の記録、WebSocket の記録、`.har` ファイルに適用されます。プロキシの記録とは異なり、`.har` ファイルは実行が終わるまでマスキングされないままディスク上に置かれ、実行の終了時にグローバルティアダウンから呼ばれる `playwrightProxy.teardown()` がマスキングします。マスキングを無効にするには、CLI で `--no-redact` を渡すか、[設定](/ja/docs/guides/config/)で `redaction: false` を設定します。
 
 *一部*の Cookie だけが機微な場合は、無害なものを名前で許可します（例: `theme` や A/B テストの Cookie）。許可された Cookie は `Cookie`/`Set-Cookie` 内で値を保持し、それ以外の Cookie は引き続きマスキングされます。
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### プログラムから
 
-`ProxyServer` を直接構築する場合:
+`ProxyServer` を自分で構築する場合、CLI のデフォルトは適用されません。設定を渡さない限り、マスキングは無効です。
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

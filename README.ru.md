@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · Русский · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=ru source=README.md source-blob=ab07eba11b40520200d2a07622c0c8cf4933d352 status=translated -->
+<!-- i18n:meta locale=ru source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -46,10 +46,10 @@ test-proxy-recorder — единственный, кто записывает **
 | Серверная сторона (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | Сторона браузера | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Нативно для Playwright | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Нативно для Playwright | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Поддерживается | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js перехватывает HTTP в Node, поэтому мокинг SSR возможен внутри процесса приложения, но не как часть прогона Playwright. MSW и Mocky Balboa тоже воспроизводят реальные ответы — но моки вы пишете вручную, а не записываете.
+> ⚠️ Polly.js перехватывает HTTP в Node, поэтому мокинг SSR возможен внутри процесса приложения, но не как часть прогона Playwright. MSW и Mocky Balboa тоже мокают серверные запросы, но ответы вы пишете вручную, а не записываете.
 
 См. [полное сравнение в документации](https://test-proxy-recorder.dev/docs/#comparison) — в том числе когда стоит выбрать что-то другое.
 
@@ -77,10 +77,11 @@ npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recor
 Единственное, что `init` не может угадать, — какая переменная окружения хранит базовый URL вашего API. Направьте её на прокси, когда рекордер включён, на реальный бэкенд в остальных случаях — прокси никогда не запускается в продакшене:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // адрес прокси из `init`
+// TEST_PROXY_RECORDER_ENABLED имеет значение 'true' или '1' только во время e2e-прогона.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // адрес прокси
+  : 'https://api.example.com';
 ```
 
 Затем задайте `MODE = 'record'`, запустите один раз против реального API, переключите на `'replay'` и закоммитьте `e2e/recordings/`. Теперь CI работает с выключенным бэкендом.

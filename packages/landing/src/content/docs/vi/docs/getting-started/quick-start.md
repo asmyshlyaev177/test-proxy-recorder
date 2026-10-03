@@ -2,7 +2,7 @@
 title: Bắt đầu nhanh
 description: Thiết lập test-proxy-recorder bằng một lệnh init duy nhất — tốt nhất là để AI agent điều khiển. Trỏ API của bạn về proxy, ghi lại một lần, phát lại trên CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 1f0c3114d600fcebf0696c67788cd60c9b6558db
+i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
 ---
 
 ## Thiết lập bằng AI agent (khuyến nghị)
@@ -47,10 +47,11 @@ package.json             # + script proxy / test:e2e
 Điều duy nhất `init` không đoán được: biến env nào chứa base URL API của bạn. Trỏ nó về proxy khi recorder được bật, về backend thật trong trường hợp còn lại — proxy không bao giờ chạy trong production:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // địa chỉ proxy từ `init`
+// TEST_PROXY_RECORDER_ENABLED là 'true' hoặc '1' chỉ trong lần chạy e2e.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // địa chỉ proxy từ `init`
+  : 'https://api.example.com';
 ```
 
 ### 2. Gắn thẻ cho các fetch phía máy chủ (chỉ Next.js)

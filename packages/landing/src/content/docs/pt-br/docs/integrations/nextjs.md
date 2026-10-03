@@ -1,9 +1,14 @@
 ---
-title: Next.js
-description: Marque as buscas do lado do servidor do Next.js com o header de sessão de gravação para que o SSR seja gravado e reproduzido — via registerProxyFetch (recomendado, qualquer runtime), registerProxyAxios para axios ou createHeadersWithRecordingId por chamada. O middleware é opcional.
+title: Mock de fetch do lado do servidor em testes do Playwright com Next.js
+description: Grave e reproduza as chamadas fetch que um servidor Next.js faz (Server Components, Route Handlers, Node e Edge) em testes do Playwright, sem mocks escritos à mão.
+sidebar:
+  label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 5cf29035e538718ddd86bfc78d782a0468c8c3f7
+i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
 ---
+
+Em um teste do Playwright, o `page.route()` só vê as requisições do navegador; as chamadas `fetch` que o seu servidor Next.js faz durante a renderização nunca chegam até ele. O test-proxy-recorder grava e reproduz essas buscas do lado do servidor passando-as pelo proxy, com uma gravação por teste.
+
 
 Frameworks SSR como o Next.js fazem chamadas `fetch` do lado do servidor que passam pelo proxy sem um contexto de navegador. O proxy identifica a qual sessão essas requisições pertencem por meio do header `x-test-rcrd-id`. O `playwrightProxy.before()` do Playwright já o define na navegação do navegador que dispara o SSR, então o id fica disponível em `next/headers` — o trabalho é **anexá-lo às requisições do lado do servidor de saída**. (Testes somente de navegador não precisam de nada disso; o proxy recai na sessão definida globalmente.)
 

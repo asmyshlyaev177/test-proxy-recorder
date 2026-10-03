@@ -1,7 +1,12 @@
 ---
-title: Next.js
-description: Tag Next.js server-side fetches with the recording-session header so SSR is recorded and replayed — via registerProxyFetch (recommended, any runtime), registerProxyAxios for axios, or createHeadersWithRecordingId per call. The middleware is optional.
+title: Mock server-side fetch in Next.js Playwright tests
+description: Record and replay the fetch calls a Next.js server makes (Server Components, Route Handlers, Node and Edge) in Playwright tests, with no hand-written mocks.
+sidebar:
+  label: Next.js
 ---
+
+In a Playwright test, `page.route()` sees only the browser's requests; the `fetch` calls your Next.js server makes while rendering never reach it. test-proxy-recorder records and replays those server-side fetches through its proxy, one recording per test.
+
 
 SSR frameworks like Next.js make server-side `fetch` calls that go through the proxy without a browser context. The proxy identifies which session those requests belong to via the `x-test-rcrd-id` header. Playwright's `playwrightProxy.before()` already sets it on the browser navigation that triggers SSR, so the id is available in `next/headers` — the job is to **attach it to outgoing server-side requests**. (Browser-only tests need none of this; the proxy falls back to the globally set session.)
 

@@ -1,8 +1,8 @@
 ---
-title: test-proxy-recorder
-description: 面向 Playwright 的 VCR —— 真实 API 响应只录制一次，即可在 CI 中确定性地回放。覆盖 Next.js SSR、浏览器和 WebSocket 流量。无需后端，无需手写 mock。
+title: '在 Playwright 中录制与回放 API 调用：文档'
+description: 在 Playwright 测试中录制真实的 API 响应并在 CI 中回放，覆盖 Next.js 与 TanStack Start 的服务端 fetch、浏览器调用和 WebSocket。
 i18nSource: docs/index.mdx
-i18nSourceBlob: 6d60d56ad8e15af3849f760e659931b463d03b8c
+i18nSourceBlob: a8464f5330d4b2dfa145f52ef441464ee96a9991
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
@@ -29,7 +29,7 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 - **确定性** —— 每次都是相同的响应，没有不稳定的网络。
 - **支持 WebSocket** —— 录制并回放 WebSocket 连接。
 
-## 对比
+## 对比 \{#comparison\}
 
 各类 mock 工具各有所长。test-proxy-recorder 是唯一一个无需手写 mock 即可跨 SSR、浏览器和 WebSocket 录制**真实**流量的工具 —— 这一组合正是其他工具留下的空白。
 
@@ -39,10 +39,12 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 | 服务端 (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | 浏览器端 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright 原生 | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright 原生 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | 仍在维护 | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js 拦截 Node 的 HTTP，因此在应用进程内可以 mock SSR，但无法作为 Playwright 运行的一部分。MSW 和 Mocky Balboa 也会回放真实响应 —— 但你需要手写 mock，而不是录制。
+> ⚠️ Polly.js 拦截 Node 的 HTTP，因此在应用进程内可以 mock SSR，但无法作为 Playwright 运行的一部分。MSW 和 Mocky Balboa 也能 mock 服务端请求，但你需要手工编写响应，而不是录制。
+
+[完整对比](/zh-cn/docs/reference/comparison/)还加入了 Next.js test mode、mockttp、scenarist、talkback 和 proxay，并为每个单元格注明了来源。
 
 ### 何时选择其他工具
 

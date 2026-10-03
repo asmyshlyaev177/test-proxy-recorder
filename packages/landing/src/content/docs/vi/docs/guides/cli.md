@@ -2,7 +2,7 @@
 title: CLI
 description: Giao diện dòng lệnh của test-proxy-recorder — các tùy chọn, nhịp phát lại WebSocket, và cách reset một proxy bị kẹt.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## Nhịp phát lại WebSocket
+## Nhịp phát lại WebSocket {#websocket-replay-pacing}
 
 Theo mặc định, các message WebSocket từ máy chủ đã ghi được phát lại theo kiểu **burst** khi kết nối — nhanh nhất và hoàn toàn tất định, lý tưởng cho CI. Truyền `--ws-timing original` (hoặc `websocket: { timing: 'original' }` trong cấu hình) để thay vào đó tái lập nhịp dựa trên timestamp đã ghi, sao cho các message đến với đúng khoảng cách thực giữa chúng; một test khi đó sẽ mất khoảng thời gian thực tương ứng với bản ghi.
 

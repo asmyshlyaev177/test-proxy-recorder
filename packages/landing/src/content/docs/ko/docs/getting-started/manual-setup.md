@@ -2,7 +2,7 @@
 title: 수동 설정
 description: test-proxy-recorder를 풀스택(SSR + 브라우저) 앱이나 브라우저 전용 SPA 또는 확장 프로그램에 직접 연결한 뒤, 한 번 기록하고 CI에서 재생하는 방법을 설명합니다.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 대부분은 [`init`](/ko/docs/getting-started/quick-start/)을 실행하는 편이 좋습니다. 아래 모든 파일을 대신 작성해 줍니다. 이 페이지는 `init`이 생성하는 내용의 참조 자료이므로, 직접 연결하거나 코드 생성을 버리거나 각 부분을 이해하는 데 쓸 수 있습니다.
@@ -28,10 +28,11 @@ i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 앱 코드에서, 레코더가 활성화되어 있으면 API 기본 URL을 프록시로, 그렇지 않으면 실제 백엔드로 연결하세요. 프록시는 프로덕션에서 절대 실행되지 않습니다.
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // 프록시 주소
+// TEST_PROXY_RECORDER_ENABLED는 e2e 실행에서만 'true' 또는 '1'입니다.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // 프록시 주소
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED`는 위의 `dev:proxy` / `serve:proxy` 스크립트와 `init`이 생성한 스크립트가 설정합니다. 앱이 이미 API 기본 URL에 사용하는 환경 변수(예: `API_URL`, `NEXT_PUBLIC_API_URL`)를 그대로 사용하면 됩니다. 동일한 조건부가 적용됩니다.
@@ -185,8 +186,8 @@ git commit -m "add e2e recordings"
 `e2e/recordings`를 `.gitignore`에 추가하지 **마세요**. CI 재생을 위해서는 기록이 git에 있어야 합니다.
 :::
 
-PR diff에서 큰 기록 파일을 접히게 하려면 `.gitattributes`에 이것을 추가하세요.
+PR diff에서 큰 기록 파일을 접히게 하려면 `.gitattributes`에 이것을 추가하세요. GitHub에서는 한 번 클릭하면 여전히 볼 수 있으므로, 바뀐 응답을 계속 리뷰할 수 있습니다.
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

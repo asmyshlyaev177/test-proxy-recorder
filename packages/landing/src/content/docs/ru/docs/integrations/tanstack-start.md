@@ -1,8 +1,10 @@
 ---
-title: TanStack Start
-description: Помечайте серверные fetch-запросы TanStack Start заголовком сессии записи, чтобы записывать и воспроизводить SSR — через registerProxyFetch (рекомендуется) или createHeadersWithRecordingId для каждого вызова.
+title: Запись серверных запросов TanStack Start в тестах Playwright
+description: Записывайте и воспроизводите в тестах Playwright вызовы fetch, которые делают loaders и server functions TanStack Start, с помощью registerProxyFetch или createHeadersWithRecordingId.
+sidebar:
+  label: TanStack Start
 i18nSource: docs/integrations/tanstack-start.md
-i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
+i18nSourceBlob: 384a8dedd3160993f23c90648890d6dfb62e1367
 ---
 
 TanStack Start выполняет loaders и server functions на сервере, поэтому их вызовы `fetch` идут через прокси без контекста браузера — та же ситуация, что и с [SSR в Next.js](/ru/docs/integrations/nextjs/). Прокси определяет, какой сессии принадлежат эти запросы, по заголовку `x-test-rcrd-id`. `playwrightProxy.before()` из Playwright уже устанавливает его на навигацию браузера, запускающую SSR, поэтому id приходит во входящем серверном запросе — задача в том, чтобы **прикрепить его к исходящим серверным запросам**. (Тестам только для браузера это не нужно; прокси откатывается к глобально заданной сессии.)

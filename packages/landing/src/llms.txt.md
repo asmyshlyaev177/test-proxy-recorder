@@ -49,7 +49,7 @@ A record/replay HTTP + WebSocket proxy for deterministic end-to-end tests. It si
                  (.mock.json)                              (.mock.json)
 ```
 
-Record real traffic once, commit the recordings, then replay them byte-for-byte on CI with no backend and no network. Requests are keyed per Playwright test via the `x-test-rcrd-id` session header so parallel tests stay isolated.
+Record real traffic once, commit the recordings, then replay them byte-for-byte on CI with the backend off. Requests are keyed per Playwright test via the `x-test-rcrd-id` session header so parallel tests stay isolated.
 
 ## Requirements
 

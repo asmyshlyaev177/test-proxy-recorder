@@ -1,4 +1,6 @@
 // @ts-check
+import { existsSync } from 'node:fs';
+
 import cloudflare from '@astrojs/cloudflare';
 import { unified } from '@astrojs/markdown-remark';
 import sitemap from '@astrojs/sitemap';
@@ -12,6 +14,7 @@ import {
   preTabIndex,
   rehypeScrollableTables,
 } from './integrations/expressive-code-a11y.mjs';
+import { darkSnippetPanels } from './integrations/snippet-panels.mjs';
 import { LOCALES } from '../../scripts/i18n/locales.mjs';
 
 // URL prefixes of the translations kept out of the index (`indexed: false`).
@@ -30,6 +33,20 @@ const repo = 'https://github.com/asmyshlyaev177/test-proxy-recorder';
 // collection ids and URLs are); `code` is the BCP 47 tag that goes in
 // <html lang> and hreflang. They differ only for zh-CN and pt-BR.
 const localeDirs = LOCALES.map((l) => l.dir);
+
+// A locale docs URL with no source file is Starlight's English fallback, which
+// src/starlightRouteData.ts marks `noindex`; the sitemap must not list it.
+const docsContent = new URL('./src/content/docs/', import.meta.url);
+/** @param {string} slug */
+const hasSource = (slug) =>
+  ['.md', '.mdx', '/index.md', '/index.mdx'].some((ending) =>
+    existsSync(new URL(`${slug}${ending}`, docsContent)),
+  );
+/** @param {string} pathname */
+const isFallbackUrl = (pathname) => {
+  const slug = pathname.replace(/^\/|\/$/g, '');
+  return localeDirs.some((dir) => slug.startsWith(`${dir}/docs`)) && !hasSource(slug);
+};
 
 // Starlight: English is the unprefixed root locale, each translation a
 // directory under it.
@@ -109,7 +126,10 @@ export default defineConfig({
       // An unindexed locale is `noindex` on every page; listing it here would
       // ask for the opposite. The integration builds each URL's hreflang
       // cluster from the filtered set, so they drop out of those too.
-      filter: (url) => !unindexedPrefixes.some((prefix) => new URL(url).pathname.startsWith(prefix)),
+      filter: (url) => {
+        const { pathname } = new URL(url);
+        return !unindexedPrefixes.some((prefix) => pathname.startsWith(prefix)) && !isFallbackUrl(pathname);
+      },
       // Emit <lastmod> per URL, from the newest commit touching that page's
       // source. Without it all ~265 URLs are dateless and search engines get
       // no signal about what changed.
@@ -137,14 +157,14 @@ export default defineConfig({
     starlight({
       title: 'test-proxy-recorder',
       description:
-        'VCR for Playwright — record real API responses once, replay them deterministically on CI. SSR proxy, browser HAR, and WebSockets.',
+        'Record real API responses in Playwright tests and replay them on CI: server-side requests through a proxy, browser calls through HAR, and WebSockets.',
       // Decorative: the site title renders the same words beside it, and an alt
       // repeating them is `image-redundant-alt`.
       logo: { src: './public/favicon.svg', alt: '' },
       // Both for `tests/a11y.spec.ts` — see the integration.
       expressiveCode: {
         customizeTheme: liftThemeContrast,
-        plugins: [preTabIndex],
+        plugins: [preTabIndex, darkSnippetPanels],
       },
       // Adds a per-page <link> to that page's own `.md` mirror, ahead of the
       // site-wide llms.txt link below. See the component for why.
@@ -215,6 +235,7 @@ export default defineConfig({
         {
           ...sidebarLabel('guides'),
           items: [
+            { slug: 'docs/guides/server-side-mocking' },
             { slug: 'docs/guides/cli' },
             { slug: 'docs/guides/config' },
             { slug: 'docs/guides/secret-redaction' },
@@ -236,6 +257,7 @@ export default defineConfig({
             { slug: 'docs/reference/examples' },
             typeDocSidebarGroup,
             { slug: 'docs/reference/ai-agent-skills' },
+            { slug: 'docs/reference/comparison' },
             { slug: 'docs/reference/faq' },
           ],
         },

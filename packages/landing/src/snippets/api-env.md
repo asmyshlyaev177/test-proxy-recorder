@@ -1,10 +1,10 @@
 ```ts
-// Point your app at the proxy when the recorder is enabled, at the real backend otherwise.
-// The proxy never runs in production — TEST_PROXY_RECORDER_ENABLED is set only for e2e.
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // proxy address from `init`
+// The proxy during e2e runs, the real backend everywhere else.
+// TEST_PROXY_RECORDER_ENABLED is 'true' or '1' for the e2e run only.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // proxy address from `init`
+  : 'https://api.example.com';
 
 const res = await fetch(`${API_BASE}/todos`);
 ```

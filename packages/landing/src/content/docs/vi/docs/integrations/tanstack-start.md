@@ -1,8 +1,10 @@
 ---
-title: TanStack Start
-description: Gắn thẻ cho các fetch phía máy chủ của TanStack Start bằng session header của bản ghi để SSR được ghi lại và phát lại — qua registerProxyFetch (khuyến nghị) hoặc createHeadersWithRecordingId cho từng lời gọi.
+title: Ghi lại request phía máy chủ của TanStack Start trong test Playwright
+description: Ghi lại và phát lại các lời gọi fetch mà loaders và server functions của TanStack Start thực hiện, trong test Playwright, bằng registerProxyFetch hoặc createHeadersWithRecordingId.
+sidebar:
+  label: TanStack Start
 i18nSource: docs/integrations/tanstack-start.md
-i18nSourceBlob: 6367cedc46bf4ac859e573ca269e63e8d98be33a
+i18nSourceBlob: 384a8dedd3160993f23c90648890d6dfb62e1367
 ---
 
 TanStack Start chạy loaders và server functions trên máy chủ, nên các lời gọi `fetch` của chúng đi qua proxy mà không có browser context — tình huống tương tự [SSR của Next.js](/vi/docs/integrations/nextjs/). Proxy xác định các request đó thuộc session nào qua header `x-test-rcrd-id`. `playwrightProxy.before()` của Playwright đã đặt nó lên navigation của trình duyệt kích hoạt SSR, nên id đến trên request máy chủ vào — việc cần làm là **gắn nó vào các request phía máy chủ đi ra ngoài**. (Các test chỉ chạy trên trình duyệt không cần gì trong số này; proxy rơi về session được đặt toàn cục.)

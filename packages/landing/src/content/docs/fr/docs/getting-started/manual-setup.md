@@ -2,7 +2,7 @@
 title: Configuration manuelle
 description: Branchez test-proxy-recorder à la main dans une app full-stack (SSR + navigateur) ou une SPA/extension navigateur uniquement, puis enregistrez une fois et rejouez en CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 La plupart des gens devraient lancer [`init`](/fr/docs/getting-started/quick-start/) — il écrit pour vous chaque fichier ci-dessous. Cette page est la référence de ce que `init` génère, pour pouvoir tout brancher à la main, déposer du codegen, ou comprendre chaque pièce.
@@ -28,10 +28,11 @@ Le proxy est un processus léger que vous lancez **à côté de votre app pour l
 Dans le code de votre app, pointez l'URL de base de l'API vers le proxy lorsque le recorder est activé, vers le vrai backend sinon — le proxy ne tourne jamais en production :
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // adresse du proxy
+// TEST_PROXY_RECORDER_ENABLED vaut 'true' ou '1' uniquement pendant l'exécution e2e.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // adresse du proxy
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` est défini par les scripts `dev:proxy` / `serve:proxy` ci-dessus, et par les scripts générés par `init`. Utilisez la variable d'environnement que votre app utilise déjà pour l'URL de base de l'API (par exemple `API_URL`, `NEXT_PUBLIC_API_URL`) — la même condition s'applique.
@@ -185,8 +186,8 @@ La CI tourne désormais sans aucun accès réseau.
 N'ajoutez **pas** `e2e/recordings` à `.gitignore`. Les enregistrements doivent être dans git pour le replay en CI.
 :::
 
-Ajoutez ceci à `.gitattributes` pour replier les gros fichiers d'enregistrement dans les diffs de PR :
+Ajoutez ceci à `.gitattributes` pour replier les gros fichiers d'enregistrement dans les diffs de PR ; GitHub les affiche toujours en un clic, donc une réponse modifiée reste vérifiable en revue :
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```

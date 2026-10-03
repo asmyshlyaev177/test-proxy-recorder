@@ -1,8 +1,10 @@
 ---
-title: Playwright
-description: Usa test-proxy-recorder desde pruebas de Playwright — el hook de sesión before(), el teardown global recomendado y dónde acaban los archivos de grabación.
+title: 'Configuración de Playwright: graba y reproduce cada prueba'
+description: Graba y reproduce llamadas a la API en pruebas de Playwright con test-proxy-recorder, usando el hook de sesión before(), el teardown global recomendado y archivos de grabación por prueba.
+sidebar:
+  label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
+i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -24,11 +26,11 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Patrón `url`:** coincide con el dominio externo real que llama el navegador. En modo record las peticiones van a la API real y se guardan en un archivo `.har`. En modo replay se sirven desde ese archivo — sin red. Este patrón **no** apunta al proxy (`localhost:8100`).
 
-**Excepción — apps full-stack:** cuando el navegador también llama a `localhost:8100` (porque el frontend está configurado con la URL del proxy como su base de API), usa `/localhost:8100/` como patrón.
+**Excepción — apps full-stack:** cuando el navegador también llama a `localhost:8100` (porque el frontend está configurado con la URL del proxy como su base de API), usa `/localhost:8100/` como patrón. Esas peticiones del navegador pasan entonces al proxy, que las graba en el `.mock.json` de la prueba y las reproduce desde él, así que una que falte recibe el 404 del proxy en lugar de que HAR la aborte (mira [cómo se emparejan las peticiones al reproducir](/es/docs/getting-started/how-it-works/#replay-matching)).
 
 Los nombres de archivo de grabación se derivan de los nombres de las pruebas (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-## Teardown global (recomendado)
+## Teardown global (recomendado) {#global-teardown-recommended}
 
 ```typescript
 // e2e/global-teardown.ts

@@ -4,7 +4,7 @@ import { test, expect } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
 // Full-stack: the browser also talks to the proxy, so match its URL.
-// (Browser-only app? Match your real API domain instead, e.g. /api\.example\.com/.)
+// Browser-only app? Match your real API domain, e.g. /api\.example\.com/.
 const CLIENT_SIDE_URL = /localhost:8100/;
 
 // 'record' hits the real API and saves responses.

@@ -2,16 +2,16 @@
 title: Masquage des secrets
 description: Le masquage est activé par défaut — Authorization, Cookie et Set-Cookie sont retirés des enregistrements avant d'atteindre le disque. Ajoutez des motifs d'en-tête et de corps, autorisez des cookies, ou masquez par programme.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-Les enregistrements sont committés dans git, donc les secrets sont retirés avant d'écrire quoi que ce soit sur le disque. Le masquage est **activé par défaut** ; le proxy remplace les valeurs de ces en-têtes de requête/réponse par `[REDACTED]` :
+Les enregistrements sont committés dans git, donc les secrets sont retirés avant d'écrire quoi que ce soit sur le disque. Le masquage est **activé par défaut** dès que le proxy est lancé depuis la CLI ou le fichier de configuration, comme le prévoit la configuration générée par `init` ; le proxy remplace les valeurs de ces en-têtes de requête/réponse par `[REDACTED]` :
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-C'est sûr : la correspondance de replay ignore ces en-têtes, donc le masquage ne casse jamais la lecture. Il s'applique aux enregistrements `.mock.json`, aux enregistrements WebSocket et aux fichiers `.har`. Pour désactiver le masquage, passez `--no-redact` en CLI ou définissez `redaction: false` dans la [configuration](/fr/docs/guides/config/).
+C'est sûr : la correspondance de replay ignore ces en-têtes, donc le masquage ne casse jamais la lecture. Il s'applique aux enregistrements `.mock.json`, aux enregistrements WebSocket et aux fichiers `.har`. Contrairement aux enregistrements du proxy, les fichiers `.har` restent non masqués sur le disque jusqu'à la fin de l'exécution, quand `playwrightProxy.teardown()` les masque depuis votre teardown global. Pour désactiver le masquage, passez `--no-redact` en CLI ou définissez `redaction: false` dans la [configuration](/fr/docs/guides/config/).
 
 Quand seuls *certains* cookies sont sensibles, autorisez les inoffensifs par nom (par exemple un cookie de `theme` ou de test A/B). Les cookies autorisés conservent leurs valeurs dans `Cookie`/`Set-Cookie` ; tout autre cookie reste masqué.
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### Par programme
 
-En construisant `ProxyServer` directement :
+Quand vous construisez `ProxyServer` vous-même, la valeur par défaut de la CLI ne s'applique pas : le masquage est désactivé, sauf si vous passez une configuration.
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

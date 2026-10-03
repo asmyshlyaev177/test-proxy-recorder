@@ -53,3 +53,6 @@ packages/test-proxy-recorder/README.md
 # data-store (megabytes), and dev/preview server pid+port state. `astro build`
 # rewrites them, and landing has no typecheck job that runs without a build.
 packages/landing/.astro/
+
+landing-review/
+.impeccable/critique/

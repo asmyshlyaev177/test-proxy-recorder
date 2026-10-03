@@ -2,7 +2,7 @@
 title: CLI
 description: test-proxy-recorder のコマンドラインインターフェース — オプション、WebSocket の再生ペース、スタックしたプロキシのリセット方法。
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 354b4fe6118719c0fdbfe91d37a9c3db2ab33bd7
+i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
 ---
 
 ```bash
@@ -26,7 +26,7 @@ test-proxy-recorder http://localhost:8000
 test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 ```
 
-## WebSocket の再生ペース
+## WebSocket の再生ペース {#websocket-replay-pacing}
 
 デフォルトでは、記録された WebSocket のサーバーメッセージは接続時に**バースト**（`burst`）で再生されます — 最速で完全に決定論的、CI に最適です。`--ws-timing original`（または設定の `websocket: { timing: 'original' }`）を渡すと、記録されたタイムスタンプを使って再生し、メッセージは実際のメッセージ間隔で届きます。その場合テストは概ね記録の実時間分かかります。
 

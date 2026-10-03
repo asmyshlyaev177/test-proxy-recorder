@@ -2,16 +2,16 @@
 title: 机密涂抹
 description: 涂抹默认开启 —— Authorization、Cookie 和 Set-Cookie 会在写入磁盘前从录制中去除。可添加 header 和 body 模式、放行 cookie，或以编程方式涂抹。
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: 1b03e54f96e418edf62ea8dd611fcc2fc4f30bbc
+i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 ---
 
-录制会被提交到 git，所以在向磁盘写入任何内容之前会先去除机密。涂抹**默认开启**；代理会把下列请求/响应 header 的值替换为 `[REDACTED]`：
+录制会被提交到 git，所以在向磁盘写入任何内容之前会先去除机密。只要代理通过 CLI 或配置文件运行（`init` 正是这样设置的），涂抹就**默认开启**；代理会把下列请求/响应 header 的值替换为 `[REDACTED]`：
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-这是安全的：回放时的匹配会忽略这些 header，所以涂抹绝不会破坏回放。它适用于 `.mock.json` 录制、WebSocket 录制和 `.har` 文件。要关闭涂抹，在 CLI 上传入 `--no-redact`，或在[配置](/zh-cn/docs/guides/config/)中设置 `redaction: false`。
+这是安全的：回放时的匹配会忽略这些 header，所以涂抹绝不会破坏回放。它适用于 `.mock.json` 录制、WebSocket 录制和 `.har` 文件。与代理的录制不同，`.har` 文件在运行结束之前都以未涂抹的状态留在磁盘上；运行结束时，`playwrightProxy.teardown()` 会在你的全局 teardown 中涂抹它们。要关闭涂抹，在 CLI 上传入 `--no-redact`，或在[配置](/zh-cn/docs/guides/config/)中设置 `redaction: false`。
 
 当只有*部分* cookie 敏感时，按名称放行无害的那些（例如 `theme` 或 A/B 测试 cookie）。被放行的 cookie 会在 `Cookie`/`Set-Cookie` 中保留其值；其余 cookie 仍会被涂抹。
 
@@ -50,7 +50,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### 以编程方式
 
-当直接构造 `ProxyServer` 时：
+当你自己构造 `ProxyServer` 时，CLI 的默认设置不适用：除非传入配置，否则涂抹处于关闭状态。
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

@@ -1,8 +1,10 @@
 ---
-title: Playwright
-description: Используйте test-proxy-recorder из тестов Playwright — хук сессии before(), рекомендуемый global teardown и где появляются файлы записей.
+title: 'Настройка Playwright: запись и воспроизведение каждого теста'
+description: Записывайте и воспроизводите вызовы API в тестах Playwright с test-proxy-recorder, используя хук сессии before(), рекомендуемый global teardown и файлы записей для каждого теста.
+sidebar:
+  label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
+i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -24,11 +26,11 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Шаблон `url`:** совпадает с реальным внешним доменом, который вызывает браузер. В режиме record запросы идут на реальный API и сохраняются в файл `.har`. В режиме replay они отдаются из этого файла — без сети. Этот шаблон **не** указывает на прокси (`localhost:8100`).
 
-**Исключение — full-stack приложения:** когда браузер тоже вызывает `localhost:8100` (потому что фронтенд настроен с URL прокси как базой API), используйте в качестве шаблона `/localhost:8100/`.
+**Исключение — full-stack приложения:** когда браузер тоже вызывает `localhost:8100` (потому что фронтенд настроен с URL прокси как базой API), используйте в качестве шаблона `/localhost:8100/`. Тогда эти запросы браузера проходят к прокси, который записывает их в `.mock.json` теста и воспроизводит оттуда, поэтому на отсутствующий запрос приходит 404 от прокси, а не прерывание HAR (см. [как воспроизведение сопоставляет запросы](/ru/docs/getting-started/how-it-works/#replay-matching)).
 
 Имена файлов записей выводятся из имён тестов (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-## Global teardown (рекомендуется)
+## Global teardown (рекомендуется) {#global-teardown-recommended}
 
 ```typescript
 // e2e/global-teardown.ts

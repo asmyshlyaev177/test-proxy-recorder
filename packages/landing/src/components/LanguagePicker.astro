@@ -1,0 +1,164 @@
+---
+import { ALL_LOCALES, localePrefix, type Locale } from '../i18n';
+
+interface Props {
+  locale: Locale;
+  label: string;
+  /** `menu` in the header, `list` in the footer where there is room for every name. */
+  variant: 'menu' | 'list';
+}
+
+const { locale, label, variant } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const current = ALL_LOCALES.find((l) => l.code === locale.code) ?? ALL_LOCALES[0];
+---
+
+{/* Links, not a <select> that navigates on `change`: on Windows one arrow key
+    on a closed select fires `change` and left the page (WCAG 3.2.2). Names are
+    endonyms — a reader looking for their language scans for "日本語". */}
+{
+  variant === 'menu' ? (
+    <details class="lang-menu">
+      <summary>
+        <span class="visually-hidden">{label}: </span>
+        {current.label}
+      </summary>
+      <ul>
+        {ALL_LOCALES.map((l) => (
+          <li>
+            <a
+              href={`${base}${localePrefix(l.code)}/`}
+              lang={l.code}
+              hreflang={l.code}
+              aria-current={l.code === locale.code ? 'page' : undefined}
+            >
+              {l.label}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  ) : (
+    <p class="lang-list">
+      <span class="lang-label">{label}:</span>
+      {ALL_LOCALES.map((l) => (
+        <a
+          href={`${base}${localePrefix(l.code)}/`}
+          lang={l.code}
+          hreflang={l.code}
+          aria-current={l.code === locale.code ? 'page' : undefined}
+        >
+          {l.label}
+        </a>
+      ))}
+    </p>
+  )
+}
+
+<script>
+  // An open menu closes on a click elsewhere or on Escape, as a native menu would.
+  const openMenus = () => document.querySelectorAll<HTMLDetailsElement>('details.lang-menu[open]');
+  document.addEventListener('click', (event) => {
+    for (const menu of openMenus()) if (!menu.contains(event.target as Node)) menu.open = false;
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    for (const menu of openMenus()) {
+      menu.open = false;
+      menu.querySelector('summary')?.focus();
+    }
+  });
+</script>
+
+<style>
+  .lang-menu {
+    position: relative;
+  }
+
+  .lang-menu summary {
+    list-style: none;
+    font-size: var(--step--1);
+    font-weight: 600;
+    color: var(--ink);
+    border: 1px solid var(--line);
+    border-radius: 0.375rem;
+    padding: 0.15rem 0.5rem;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .lang-menu summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .lang-menu summary::after {
+    /* Empty alt text: the arrow is decoration, not part of the menu's name. */
+    content: '▾' / '';
+    margin-left: 0.35rem;
+    color: var(--muted);
+  }
+
+  .lang-menu summary:hover {
+    color: var(--link);
+  }
+
+  .lang-menu ul {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 0.4rem);
+    z-index: 1;
+    min-width: 11rem;
+    margin: 0;
+    padding: 0.35rem;
+    list-style: none;
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow-panel);
+  }
+
+  .lang-menu a,
+  .lang-list a {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .lang-menu a {
+    display: block;
+    padding: 0.35rem 0.6rem;
+    border-radius: 0.35rem;
+    font-size: var(--step--1);
+  }
+
+  .lang-menu a:hover,
+  .lang-list a:hover {
+    color: var(--link);
+  }
+
+  .lang-menu a[aria-current='page'],
+  .lang-list a[aria-current='page'] {
+    font-weight: 700;
+  }
+
+  .lang-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 0.9rem;
+    max-width: none;
+  }
+
+  .lang-label {
+    color: var(--muted);
+  }
+
+  /* The trigger's own label: needed by screen readers, redundant on screen
+     where the current language is the visible text. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

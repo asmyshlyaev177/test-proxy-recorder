@@ -3,13 +3,13 @@ title: Secret redaction
 description: Redaction is on by default — Authorization, Cookie, and Set-Cookie are stripped from recordings before they hit disk. Add header and body patterns, allow-list cookies, or redact programmatically.
 ---
 
-Recordings get committed to git, so secrets are stripped before anything is written to disk. Redaction is **on by default**; the proxy replaces the values of these request/response headers with `[REDACTED]`:
+Recordings get committed to git, so secrets are stripped before anything is written to disk. Redaction is **on by default** whenever the proxy runs from the CLI or the config file, which is how `init` sets it up; the proxy replaces the values of these request/response headers with `[REDACTED]`:
 
 - `Authorization`
 - `Cookie`
 - `Set-Cookie`
 
-This is safe: replay matching ignores these headers, so redaction never breaks playback. It applies to `.mock.json` recordings, WebSocket recordings, and `.har` files. To turn redaction off, pass `--no-redact` on the CLI or set `redaction: false` in the [config](/docs/guides/config/).
+This is safe: replay matching ignores these headers, so redaction never breaks playback. It applies to `.mock.json` recordings, WebSocket recordings, and `.har` files. Unlike the proxy's recordings, `.har` files sit on disk unredacted until the run ends, when `playwrightProxy.teardown()` redacts them from your global teardown. To turn redaction off, pass `--no-redact` on the CLI or set `redaction: false` in the [config](/docs/guides/config/).
 
 When only *some* cookies are sensitive, allow-list the harmless ones by name (for example a `theme` or A/B-test cookie). Allow-listed cookies keep their values inside `Cookie`/`Set-Cookie`; every other cookie is still redacted.
 
@@ -48,7 +48,7 @@ test-proxy-recorder http://localhost:8000 \
 
 ### Programmatic
 
-When constructing `ProxyServer` directly:
+When you construct `ProxyServer` yourself, the CLI's default does not apply: redaction is off unless you pass a config.
 
 ```typescript
 import { ProxyServer } from 'test-proxy-recorder';

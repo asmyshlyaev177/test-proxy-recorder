@@ -1,8 +1,10 @@
 ---
-title: Playwright
-description: Dùng test-proxy-recorder từ test Playwright — hook session before(), global teardown được khuyến nghị, và nơi các file bản ghi được lưu.
+title: 'Thiết lập Playwright: ghi lại và phát lại từng test'
+description: Ghi lại và phát lại lời gọi API trong test Playwright với test-proxy-recorder, dùng hook session before(), global teardown được khuyến nghị, và file bản ghi riêng cho từng test.
+sidebar:
+  label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 1f1c2b10ddff1657ae98b71b6961c9311f30b52f
+i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -24,11 +26,11 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Pattern `url`:** khớp với domain bên ngoài thực mà trình duyệt gọi. Ở chế độ ghi lại, các request đi tới API thật và được lưu vào một file `.har`. Ở chế độ phát lại, chúng được trả về từ file đó — không cần mạng. Pattern này **không** trỏ tới proxy (`localhost:8100`).
 
-**Ngoại lệ — các ứng dụng full-stack:** khi trình duyệt cũng gọi `localhost:8100` (vì frontend được cấu hình với URL proxy làm base API), hãy dùng `/localhost:8100/` làm pattern.
+**Ngoại lệ — các ứng dụng full-stack:** khi trình duyệt cũng gọi `localhost:8100` (vì frontend được cấu hình với URL proxy làm base API), hãy dùng `/localhost:8100/` làm pattern. Khi đó các request trình duyệt này đi thẳng tới proxy, nơi ghi chúng vào `.mock.json` của test và phát lại chúng từ file đó, nên một request bị thiếu sẽ nhận 404 của proxy thay vì bị HAR hủy (xem [cách phát lại khớp request](/vi/docs/getting-started/how-it-works/#replay-matching)).
 
 Tên file bản ghi được sinh từ tên test (`"create a user"` → `create-a-user.mock.json` / `.har`).
 
-## Global teardown (khuyến nghị)
+## Global teardown (khuyến nghị) {#global-teardown-recommended}
 
 ```typescript
 // e2e/global-teardown.ts

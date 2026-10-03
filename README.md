@@ -46,10 +46,10 @@ test-proxy-recorder is the one that records **real** traffic across SSR, browser
 | Server-side (SSR) | ✅ | ❌ | ✅ | ⚠️ | ❌ | ✅ |
 | Browser-side | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | WebSocket | ✅ | ❌ | ✅ | ❌ | ❌ | ❌ |
-| Playwright-native | ✅ | ✅ | ❌ | ❌ | ✅ | ✅ |
+| Playwright-native | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 | Maintained | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ |
 
-> ⚠️ Polly.js intercepts Node HTTP, so SSR mocking is possible inside the app process, but not as part of a Playwright run. MSW and Mocky Balboa replay real responses too — but you hand-write the mocks rather than recording them.
+> ⚠️ Polly.js intercepts Node HTTP, so SSR mocking is possible inside the app process, but not as part of a Playwright run. MSW and Mocky Balboa mock server-side requests too, but you write the responses by hand rather than recording them.
 
 See the [full comparison in the docs](https://test-proxy-recorder.dev/docs/#comparison) — including when to reach for something else.
 
@@ -77,10 +77,11 @@ npx test-proxy-recorder init http://localhost:3002 --port 8100 --dir ./e2e/recor
 The one thing `init` can't guess is which env var holds your API base URL. Point it at the proxy when the recorder is enabled, at the real backend otherwise — the proxy never runs in production:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // proxy address from `init`
+// TEST_PROXY_RECORDER_ENABLED is 'true' or '1' for the e2e run only.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // proxy address
+  : 'https://api.example.com';
 ```
 
 Then set `MODE = 'record'`, run once against the real API, flip to `'replay'`, and commit `e2e/recordings/`. CI now runs with the backend off.

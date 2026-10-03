@@ -27,21 +27,25 @@ export interface HomeCopy {
     licensed: string;
     /** aria-label on the language menu. */
     languageLabel: string;
+    /** A copy button's label for a moment after a successful copy. */
+    copied: string;
   };
 
   hero: {
-    eyebrow: string;
-    /** First line of the h1; the markup breaks the line between the two. */
+    /** The page's <h1>: what the tool does, in the words people search for. */
+    title: string;
+    /** The display line under the h1; the markup breaks the line between the two. */
     headlineTop: string;
     headlineBottom: string;
     sub: string;
     /** Label on the copy-to-clipboard button beside the install command. */
     copyLabel: string;
     starCta: string;
-    /** alt for the third-party star-count badge image. */
-    starCountAlt: string;
     /** One-line list of licence, language and supported stacks under the CTAs. */
     fine: string;
+    /** The hero animation's pause control, and its label while paused. */
+    scenePause: string;
+    scenePlay: string;
   };
 
   demo: {
@@ -61,6 +65,10 @@ export interface HomeCopy {
       body: string;
       /** Bold one-liner: which kind of app this mechanism is for. */
       when: string;
+      /** How a server-side request is tied to its test under parallel workers. */
+      parallel: string;
+      guideNextjs: string;
+      guideTanstack: string;
       exampleNextjs: string;
       exampleTanstack: string;
     };
@@ -71,7 +79,11 @@ export interface HomeCopy {
       bodyStart: string;
       bodyEnd: string;
       when: string;
+      /** What the HAR path adds over plain routeFromHAR. */
+      proxyNote: string;
+      guidePlaywright: string;
       exampleExtension: string;
+      exampleVite: string;
     };
   };
 
@@ -90,6 +102,8 @@ export interface HomeCopy {
     footStart: string;
     footLinkLabel: string;
     footEnd: string;
+    /** The honest cost, under the table: a more involved first setup. */
+    tradeoff: string;
   };
 
   auth: {
@@ -102,21 +116,86 @@ export interface HomeCopy {
     };
   };
 
+  /** After the mechanisms: a real recording beside the three facts it shows. */
+  recordingSample: {
+    heading: string;
+    perTest: {
+      term: string;
+      /** start + `npx playwright test -g "adds a todo"` + end */
+      start: string;
+      end: string;
+    };
+    testId: {
+      term: string;
+      /** start + `x-test-rcrd-id` + mid + `registerProxyFetch()` + end */
+      start: string;
+      mid: string;
+      end: string;
+    };
+    /** `link` labels a link to the docs page that covers the row, as in replayQuestions. */
+    secrets: { term: string; body: string; link: string };
+    /** Under the sample recording. */
+    caption: string;
+  };
+
+  /** After Quick start: where replay stops being exact, one question per row. */
+  replayQuestions: {
+    heading: string;
+    matching: { term: string; body: string; link: string };
+    misses: {
+      term: string;
+      /** start + `url` + mid + `before()` + end */
+      start: string;
+      mid: string;
+      end: string;
+    };
+    liveApi: {
+      term: string;
+      /** start + `teardown()` + end */
+      start: string;
+      end: string;
+      link: string;
+    };
+    drift: { term: string; body: string };
+    overrides: {
+      term: string;
+      /** start + `page.route()` + mid + `before()` + end */
+      start: string;
+      mid: string;
+      end: string;
+      link: string;
+    };
+  };
+
   quickStart: {
     heading: string;
     /** subStart + `init` + subEnd */
     subStart: string;
     subEnd: string;
+    /** The two setup tabs. */
+    tabs: {
+      agent: string;
+      manual: string;
+    };
     ai: {
-      heading: string;
-      /** noteStart + `init` + noteMid + `init` + noteEnd */
+      /** noteStart + `init` + noteEnd */
       noteStart: string;
-      noteMid: string;
       noteEnd: string;
+      /** The button that copies the prompt. */
       copyLabel: string;
     };
-    /** Lead-in to the numbered steps, under the AI shortcut. */
-    manualIntro: string;
+    /** Who has to change what: the test suite, and the app (only for SSR). */
+    changes: {
+      /** Heading over the three bullets, so they don't read as the setup steps. */
+      label: string;
+      tests: string;
+      /** appStart + `registerProxyFetch()` + appEnd */
+      appStart: string;
+      appEnd: string;
+      /** The one write the agent path adds: @tanstack/intent's guidance in the agent's config. */
+      agent: string;
+      deployed: string;
+    };
     steps: {
       install: {
         title: string;
@@ -134,6 +213,8 @@ export interface HomeCopy {
         ssrAfterInit: string;
         ssrAfterFn: string;
         ssrEnd: string;
+        /** When a browser-only app can skip the step. */
+        browserOnly: string;
       };
       record: {
         title: string;
@@ -143,6 +224,8 @@ export interface HomeCopy {
         noteEnd: string;
       };
     };
+    /** Link to the full setup guide in the docs, under the tabs. */
+    guideLink: string;
   };
 
   cta: {

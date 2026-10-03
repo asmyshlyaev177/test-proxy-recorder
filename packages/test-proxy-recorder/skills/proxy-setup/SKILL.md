@@ -165,7 +165,7 @@ Recording files must be committed — do not add `e2e/recordings/` to
 
 ```text
 # .gitattributes
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```
 
 ### Config file

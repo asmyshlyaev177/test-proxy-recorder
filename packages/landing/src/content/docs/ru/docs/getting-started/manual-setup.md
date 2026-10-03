@@ -2,7 +2,7 @@
 title: Ручная настройка
 description: Подключите test-proxy-recorder вручную в full-stack (SSR + браузер) приложение или в SPA/расширение только для браузера, затем запишите один раз и воспроизводите в CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
+i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
 ---
 
 Большинство людей должно запустить [`init`](/ru/docs/getting-started/quick-start/) — он записывает все файлы ниже за вас. Эта страница — справочник того, что генерирует `init`, чтобы вы могли подключить всё вручную, убрать codegen или понимать каждую часть.
@@ -28,10 +28,11 @@ i18nSourceBlob: e501bd33c560757d3deacdb3ff90681668099473
 В коде приложения направьте базовый URL API на прокси, когда recorder включён, и на реальный бэкенд в остальных случаях — прокси никогда не запускается в продакшене:
 
 ```ts
-const API_BASE =
-  process.env.NODE_ENV === 'production' && !process.env.TEST_PROXY_RECORDER_ENABLED
-    ? 'https://api.example.com'
-    : 'http://localhost:8100'; // адрес прокси
+// TEST_PROXY_RECORDER_ENABLED имеет значение 'true' или '1' только во время e2e-прогона.
+const recorderEnv = process.env.TEST_PROXY_RECORDER_ENABLED ?? '';
+const API_BASE = ['true', '1'].includes(recorderEnv)
+  ? 'http://localhost:8100' // адрес прокси
+  : 'https://api.example.com';
 ```
 
 `TEST_PROXY_RECORDER_ENABLED` устанавливается скриптами `dev:proxy` / `serve:proxy` выше, а также скриптами, сгенерированными `init`. Используйте ту переменную окружения, которую ваше приложение уже использует для базового URL API (например `API_URL`, `NEXT_PUBLIC_API_URL`) — то же условие применяется.
@@ -185,8 +186,8 @@ git commit -m "add e2e recordings"
 **Не** добавляйте `e2e/recordings` в `.gitignore`. Записи должны быть в git для воспроизведения в CI.
 :::
 
-Добавьте это в `.gitattributes`, чтобы сворачивать крупные файлы записей в diff'ах PR:
+Добавьте это в `.gitattributes`, чтобы сворачивать крупные файлы записей в diff'ах PR; GitHub всё равно показывает их по одному клику, так что изменённый ответ остаётся доступным для ревью:
 
 ```text
-/e2e/recordings/** binary
+/e2e/recordings/** linguist-generated=true
 ```
