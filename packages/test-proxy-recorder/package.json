@@ -54,7 +54,7 @@
     "test:run": "vitest run",
     "test:coverage": "vitest run --coverage",
     "prepare": "tsup",
-    "sync-readme": "cp ../../README.md README.md",
+    "sync-readme": "node scripts/sync-readme.mjs",
     "prepack": "pnpm sync-readme",
     "postpack": "rm -f README.md"
   },
@@ -100,7 +100,8 @@
     "commander": "^12.0.0",
     "filenamify": "^7.0.1",
     "http-proxy": "^1.18.1",
-    "jiti": "^2.7.0"
+    "jiti": "^2.7.0",
+    "ws": "^8.18.3"
   },
   "peerDependencies": {
     "@playwright/test": ">=1.0.0"
@@ -121,11 +122,11 @@
     "eslint-plugin-simple-import-sort": "^12.1.1",
     "eslint-plugin-sonarjs": "^3.0.5",
     "eslint-plugin-unicorn": "^62.0.0",
+    "fast-check": "^4.10.2",
     "prettier": "^3.6.2",
     "tsup": "^8.5.0",
     "tsx": "^4.19.0",
     "typescript": "^5.6.0",
-    "vitest": "^4.0.8",
-    "ws": "^8.18.3"
+    "vitest": "^4.0.8"
   }
 }

@@ -2,7 +2,7 @@
 title: AI 代理技能
 description: 安装 test-proxy-recorder 的技能，让 AI 编码代理（Claude Code、Cursor、Copilot）生成正确的 proxy、fixture 和 SSR 配置代码。
 i18nSource: docs/reference/ai-agent-skills.md
-i18nSourceBlob: 2622ae8f436b9a9a1d57fdf8831308a039a8981d
+i18nSourceBlob: 8214769e2ee6aa9a875b70e13d00aeee8c361beb
 ---
 
 如果你使用 AI 编码代理（Claude Code、Cursor、Copilot 等），请设置技能加载，让代理生成正确的配置代码。这些技能通过 [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent) 随 `test-proxy-recorder` 包一起发布，并跟随你常规的包管理器更新一同分发。
@@ -20,6 +20,8 @@ npx @tanstack/intent@latest install
 ```
 
 如果你更希望在 agent 配置中显式写入任务到技能的映射，而不是通用的发现指引，可传入 `--map`。
+
+`install` 需要交互式终端。没有交互式终端的 agent 可以从 `node_modules/test-proxy-recorder/skills/*/SKILL.md` 读取技能。
 
 随后 agent 无需任何指引即可掌握正确的代理/fixture 配置、录制与回放工作流，以及 Next.js 的 SSR header 模式。
 

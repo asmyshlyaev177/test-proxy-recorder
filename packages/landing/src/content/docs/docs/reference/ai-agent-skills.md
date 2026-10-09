@@ -19,6 +19,8 @@ npx @tanstack/intent@latest install
 
 Pass `--map` if you'd rather write explicit task-to-skill mappings into your agent config instead of generic discovery guidance.
 
+`install` needs an interactive terminal. An agent running without one can read the skills from `node_modules/test-proxy-recorder/skills/*/SKILL.md`.
+
 The agent will then know the correct proxy/fixture setup, the record vs. replay workflow, and the Next.js SSR header patterns without needing guidance.
 
 ## The skills

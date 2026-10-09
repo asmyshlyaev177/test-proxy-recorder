@@ -1,17 +1,18 @@
-import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import {
   existsSync,
+  mkdirSync,
   mkdtempSync,
   readFileSync,
   readdirSync,
   rmSync,
   writeFileSync,
-} from 'node:fs';
-import http from 'node:http';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+} from "node:fs";
+import http from "node:http";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
 /**
  * Truly black-box e2e test for `test-proxy-recorder init`.
@@ -29,24 +30,23 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
  * exactly as it would in a real consumer project.
  */
 
-const APP_DIR = path.dirname(fileURLToPath(import.meta.url)).replace(
-  /\/e2e$/,
-  '',
-);
-const REPO_ROOT = path.resolve(APP_DIR, '..', '..');
+const APP_DIR = path
+  .dirname(fileURLToPath(import.meta.url))
+  .replace(/\/e2e$/, "");
+const REPO_ROOT = path.resolve(APP_DIR, "..", "..");
 const CLI_BIN = path.join(
   REPO_ROOT,
-  'packages',
-  'test-proxy-recorder',
-  'dist',
-  'proxy.js',
+  "packages",
+  "test-proxy-recorder",
+  "dist",
+  "proxy.js",
 );
 
 const PROXY_PORT = 8233;
 const BACKEND_PORT = 8234;
 const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
-const SESSION_ID = 'init-smoke';
-const RECORDED_BODY = JSON.stringify({ todos: ['scaffolded'] });
+const SESSION_ID = "init-smoke";
+const RECORDED_BODY = JSON.stringify({ todos: ["scaffolded"] });
 
 let workDir: string;
 let backend: http.Server | null = null;
@@ -58,25 +58,25 @@ beforeAll(() => {
   // so the test is self-contained.
   if (!existsSync(CLI_BIN)) {
     const build = spawnSync(
-      'pnpm',
-      ['--filter', 'test-proxy-recorder', 'build'],
-      { cwd: REPO_ROOT, stdio: 'inherit' },
+      "pnpm",
+      ["--filter", "test-proxy-recorder", "build"],
+      { cwd: REPO_ROOT, stdio: "inherit" },
     );
     expect(build.status).toBe(0);
   }
 
-  workDir = mkdtempSync(path.join(APP_DIR, '.tmp-init-'));
+  workDir = mkdtempSync(path.join(APP_DIR, ".tmp-init-"));
 
   backend = http.createServer((_req, res) => {
     backendHits += 1;
-    res.writeHead(200, { 'content-type': 'application/json' });
+    res.writeHead(200, { "content-type": "application/json" });
     res.end(RECORDED_BODY);
   });
 });
 
 afterAll(async () => {
   if (proxy && proxy.exitCode === null) {
-    proxy.kill('SIGKILL');
+    proxy.kill("SIGKILL");
   }
   if (backend) {
     await new Promise<void>((resolve) => backend!.close(() => resolve()));
@@ -86,24 +86,24 @@ afterAll(async () => {
   }
 });
 
-describe('test-proxy-recorder init -> config -> record/replay', () => {
-  it('scaffolds a config the proxy can auto-discover and replay from', async () => {
+describe("test-proxy-recorder init -> config -> record/replay", () => {
+  it("scaffolds a config the proxy can auto-discover and replay from", async () => {
     // Seed an existing project: a package.json (one of whose scripts must be
     // preserved) and a Playwright config that init has to edit in place. This
     // exercises the modify-existing paths, not just file creation.
     writeFileSync(
-      path.join(workDir, 'package.json'),
+      path.join(workDir, "package.json"),
       JSON.stringify(
         {
-          name: 'tmp-consumer',
-          scripts: { build: 'echo build', dev: 'echo running-app' },
+          name: "tmp-consumer",
+          scripts: { build: "echo build", dev: "echo running-app" },
         },
         null,
         2,
-      ) + '\n',
+      ) + "\n",
     );
     writeFileSync(
-      path.join(workDir, 'playwright.config.ts'),
+      path.join(workDir, "playwright.config.ts"),
       `import { defineConfig } from '@playwright/test';\n\nexport default defineConfig({\n  testDir: './e2e',\n  fullyParallel: true,\n});\n`,
     );
 
@@ -111,74 +111,80 @@ describe('test-proxy-recorder init -> config -> record/replay', () => {
     //    the Playwright CLI (no browser download in CI); the existing config is
     //    edited in place instead.
     const init = spawnSync(
-      'node',
+      "node",
       [
         CLI_BIN,
-        'init',
+        "init",
         BACKEND_URL,
-        '--port',
+        "--port",
         String(PROXY_PORT),
-        '--dir',
-        './recordings',
-        '--no-install',
+        "--dir",
+        "./recordings",
+        "--no-install",
       ],
-      { cwd: workDir, encoding: 'utf8' },
+      { cwd: workDir, encoding: "utf8" },
     );
 
     expect(init.status, init.stderr).toBe(0);
-    const configPath = path.join(workDir, 'test-proxy-recorder.config.ts');
+    const configPath = path.join(workDir, "test-proxy-recorder.config.ts");
     expect(existsSync(configPath)).toBe(true);
-    const configSrc = readFileSync(configPath, 'utf8');
+    const configSrc = readFileSync(configPath, "utf8");
     expect(configSrc).toContain(`target: '${BACKEND_URL}'`);
     expect(configSrc).toContain(`port: ${PROXY_PORT}`);
 
     // The existing Playwright config was edited in place: proxy wiring added,
     // original content kept.
     const pwSrc = readFileSync(
-      path.join(workDir, 'playwright.config.ts'),
-      'utf8',
+      path.join(workDir, "playwright.config.ts"),
+      "utf8",
     );
-    expect(pwSrc).toContain('fullyParallel: true');
+    expect(pwSrc).toContain("fullyParallel: true");
     expect(pwSrc).toContain("command: 'test-proxy-recorder'");
     expect(pwSrc).toContain(`http://localhost:${PROXY_PORT}/__control`);
 
     // package.json gained the proxy scripts without losing the existing one.
     const pkg = JSON.parse(
-      readFileSync(path.join(workDir, 'package.json'), 'utf8'),
+      readFileSync(path.join(workDir, "package.json"), "utf8"),
     );
-    expect(pkg.scripts.build).toBe('echo build');
-    expect(pkg.scripts.proxy).toBe('test-proxy-recorder');
-    expect(pkg.scripts['test:e2e']).toBe('playwright test');
+    expect(pkg.scripts.build).toBe("echo build");
+    expect(pkg.scripts.proxy).toBe("test-proxy-recorder");
+    expect(pkg.scripts["test:e2e"]).toBe("playwright test");
     // The dev script is wrapped: original preserved as dev:app, dev runs both.
-    expect(pkg.scripts['dev:app']).toBe('echo running-app');
-    expect(pkg.scripts.dev).toContain('concurrently');
-    expect(pkg.scripts.dev).toContain('proxy');
+    expect(pkg.scripts["dev:app"]).toBe("echo running-app");
+    expect(pkg.scripts.dev).toContain("concurrently");
+    expect(pkg.scripts.dev).toContain("proxy");
 
     // init prints the one manual step it can't automate: routing the app's
     // backend calls through the proxy, in dev/test only.
-    expect(init.stdout).toContain('Point your app');
-    expect(init.stdout).toContain('dev/test only');
+    // --no-install leaves concurrently uninstalled, so the install command is
+    // the first step rather than an optional hint.
+    expect(init.stdout).toMatch(
+      /0\. Run `\w+ install`: init added concurrently to devDependencies/,
+    );
+    expect(init.stdout).toContain("Point your app");
+    expect(init.stdout).toContain("dev/test only");
     expect(init.stdout).toContain(`http://localhost:${PROXY_PORT}`);
+    expect(init.stdout).toMatch(/^ {5}With no test recording or replaying/m);
 
     // 2. Start the backend and the proxy. The proxy gets NO arguments, so every
     //    setting (target, port, dir) must come from the generated config.
     await listen(backend!, BACKEND_PORT);
-    proxy = spawn('node', [CLI_BIN], {
+    proxy = spawn("node", [CLI_BIN], {
       cwd: workDir,
-      stdio: ['ignore', 'inherit', 'inherit'],
+      stdio: ["ignore", "inherit", "inherit"],
     });
     await waitForControl(PROXY_PORT);
 
     // 3. Record a request through the proxy.
-    await setMode(PROXY_PORT, 'record', SESSION_ID);
-    const recorded = await proxyGet(PROXY_PORT, '/api/todos');
+    await setMode(PROXY_PORT, "record", SESSION_ID);
+    const recorded = await proxyGet(PROXY_PORT, "/api/todos");
     expect(recorded.status).toBe(200);
     expect(recorded.body).toBe(RECORDED_BODY);
     expect(backendHits).toBe(1);
 
     // Flush the session to disk by leaving record mode.
-    await setMode(PROXY_PORT, 'transparent', SESSION_ID);
-    const recordingsDir = path.join(workDir, 'recordings');
+    await setMode(PROXY_PORT, "transparent", SESSION_ID);
+    const recordingsDir = path.join(workDir, "recordings");
     expect(readdirSync(recordingsDir)).toContain(`${SESSION_ID}.mock.json`);
 
     // 4. Replay with the backend shut down: served entirely from the recording.
@@ -186,12 +192,109 @@ describe('test-proxy-recorder init -> config -> record/replay', () => {
     backend = null;
     const hitsBeforeReplay = backendHits;
 
-    await setMode(PROXY_PORT, 'replay', SESSION_ID);
-    const replayed = await proxyGet(PROXY_PORT, '/api/todos');
+    await setMode(PROXY_PORT, "replay", SESSION_ID);
+    const replayed = await proxyGet(PROXY_PORT, "/api/todos");
     expect(replayed.status).toBe(200);
     expect(replayed.body).toBe(RECORDED_BODY);
     // Backend is down and was never called again — proof it came from disk.
     expect(backendHits).toBe(hitsBeforeReplay);
+  });
+});
+
+describe("test-proxy-recorder init with installs enabled", () => {
+  it("installs concurrently after wrapping the dev script", () => {
+    const projectDir = mkdtempSync(path.join(APP_DIR, ".tmp-init-install-"));
+    // A stub npm on PATH records what init asks the package manager to do.
+    const binDir = path.join(projectDir, "stub-bin");
+    const callsFile = path.join(projectDir, "npm-calls.txt");
+    try {
+      mkdirSync(binDir);
+      writeFileSync(
+        path.join(binDir, "npm"),
+        `#!/bin/sh\necho "$@" >> '${callsFile}'\n`,
+        { mode: 0o755 },
+      );
+      writeFileSync(
+        path.join(projectDir, "package.json"),
+        JSON.stringify({
+          name: "tmp-consumer",
+          scripts: { dev: "echo app" },
+          devDependencies: { "@playwright/test": "^1.50.0" },
+        }),
+      );
+      // An existing Playwright config with @playwright/test declared keeps init
+      // from installing Playwright.
+      writeFileSync(
+        path.join(projectDir, "playwright.config.ts"),
+        `import { defineConfig } from '@playwright/test';\n\nexport default defineConfig({});\n`,
+      );
+
+      const init = spawnSync("node", [CLI_BIN, "init", BACKEND_URL], {
+        cwd: projectDir,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          npm_config_user_agent: "npm/11.0.0",
+        },
+      });
+
+      expect(init.status, init.stderr).toBe(0);
+      expect(readFileSync(callsFile, "utf8").trim()).toBe("install");
+      expect(init.stdout).not.toContain("0. Run `npm install`");
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("test-proxy-recorder init in a project without Playwright", () => {
+  it("adds @playwright/test and Chromium, then writes its own config", () => {
+    const projectDir = mkdtempSync(path.join(APP_DIR, ".tmp-init-no-pw-"));
+    // Stub npm and npx on PATH record what init asks them to do.
+    const binDir = path.join(projectDir, "stub-bin");
+    const callsFile = path.join(projectDir, "calls.txt");
+    try {
+      mkdirSync(binDir);
+      for (const bin of ["npm", "npx"]) {
+        writeFileSync(
+          path.join(binDir, bin),
+          `#!/bin/sh\necho "${bin} $@" >> '${callsFile}'\n`,
+          { mode: 0o755 },
+        );
+      }
+      writeFileSync(
+        path.join(projectDir, "package.json"),
+        JSON.stringify({ name: "tmp-consumer", scripts: { dev: "echo app" } }),
+      );
+
+      const init = spawnSync("node", [CLI_BIN, "init", BACKEND_URL], {
+        cwd: projectDir,
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          PATH: `${binDir}${path.delimiter}${process.env.PATH ?? ""}`,
+          npm_config_user_agent: "npm/11.0.0",
+        },
+      });
+
+      expect(init.status, init.stderr).toBe(0);
+      // create-playwright wrote its own config (testDir ./tests, a commented
+      // webServer) that init then refused to edit, and example tests.
+      expect(readFileSync(callsFile, "utf8").trim().split("\n")).toEqual([
+        "npm install -D @playwright/test",
+        "npx playwright install chromium",
+        "npm install",
+      ]);
+      const config = readFileSync(
+        path.join(projectDir, "playwright.config.ts"),
+        "utf8",
+      );
+      expect(config).toContain("command: 'test-proxy-recorder'");
+      expect(config).toContain("testDir: './e2e'");
+    } finally {
+      rmSync(projectDir, { recursive: true, force: true });
+    }
   });
 });
 
@@ -205,23 +308,23 @@ async function waitForControl(port: number): Promise<void> {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
     try {
-      const res = await proxyRequest(port, 'GET', '/__control');
+      const res = await proxyRequest(port, "GET", "/__control");
       if (res.status === 200) return;
     } catch {
       // proxy not up yet
     }
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
-  throw new Error('proxy /__control never became ready');
+  throw new Error("proxy /__control never became ready");
 }
 
 async function setMode(port: number, mode: string, id: string): Promise<void> {
   const res = await proxyRequest(
     port,
-    'POST',
-    '/__control',
+    "POST",
+    "/__control",
     JSON.stringify({ mode, id }),
-    { 'content-type': 'application/json' },
+    { "content-type": "application/json" },
   );
   if (res.status !== 200) {
     throw new Error(`setMode ${mode} failed: ${res.status} ${res.body}`);
@@ -229,7 +332,7 @@ async function setMode(port: number, mode: string, id: string): Promise<void> {
 }
 
 function proxyGet(port: number, urlPath: string) {
-  return proxyRequest(port, 'GET', urlPath);
+  return proxyRequest(port, "GET", urlPath);
 }
 
 function proxyRequest(
@@ -241,16 +344,16 @@ function proxyRequest(
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const req = http.request(
-      { hostname: 'localhost', port, path: urlPath, method, headers },
+      { hostname: "localhost", port, path: urlPath, method, headers },
       (res) => {
-        let data = '';
-        res.on('data', (chunk) => (data += chunk));
-        res.on('end', () =>
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () =>
           resolve({ status: res.statusCode ?? 0, body: data }),
         );
       },
     );
-    req.on('error', reject);
+    req.on("error", reject);
     if (body) req.write(body);
     req.end();
   });

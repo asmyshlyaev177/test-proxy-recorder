@@ -2,7 +2,7 @@
 title: CLI
 description: L'interface en ligne de commande de test-proxy-recorder — options, cadence de replay WebSocket et comment réinitialiser un proxy bloqué.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
+i18nSourceBlob: 1b481900a2093001d8adee923a7a37c4db3294f4
 ---
 
 ```bash
@@ -12,7 +12,7 @@ test-proxy-recorder <target-url> [options]
 | Option           | Défaut         | Description                         |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(requis)*     | URL du backend à proxifier          |
-| `--port, -p`     | `8000`         | Port d'écoute du proxy              |
+| `--port, -p`     | `8100`         | Port d'écoute du proxy, également lu depuis `TEST_PROXY_RECORDER_PORT` |
 | `--dir, -d`      | `./recordings` | Répertoire des fichiers d'enregistrement |
 | `--timeout, -t`  | `120000`       | Timeout de réinitialisation auto de session (ms) |
 | `--config, -c`   | *(auto)*       | Chemin vers un fichier de configuration |
@@ -40,7 +40,7 @@ Le proxy revient automatiquement à `transparent` après le timeout de chaque se
 test-proxy-recorder reset    # or: npm run proxy:reset
 ```
 
-Cela envoie un POST `{ "mode": "transparent" }` à `/__control` — le remplacement pris en charge et compatible parallèle de la réinitialisation manuelle avec `curl`. C'est sûr à tout moment : un proxy injoignable est traité comme un no-op. Le port est résolu ainsi : **flag `--port` → env `TEST_PROXY_RECORDER_PORT` → fichier de configuration → `8000`**, donc il cible le port sur lequel le proxy a été démarré (passez `--port` / `--config` pour remplacer). `init` le génère comme le script `proxy:reset`.
+Cela envoie un POST `{ "mode": "transparent" }` à `/__control` — le remplacement pris en charge et compatible parallèle de la réinitialisation manuelle avec `curl`. C'est sûr à tout moment : un proxy injoignable est traité comme un no-op. Le port est résolu ainsi : **flag `--port` → env `TEST_PROXY_RECORDER_PORT` → fichier de configuration → `8100`**, donc il cible le port sur lequel le proxy a été démarré (passez `--port` / `--config` pour remplacer). `init` le génère comme le script `proxy:reset`.
 
 ## `init` — générer la configuration
 

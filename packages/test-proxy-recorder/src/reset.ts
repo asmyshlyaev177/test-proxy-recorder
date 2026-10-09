@@ -1,11 +1,13 @@
 import { Command } from 'commander';
 
 import { loadConfig } from './config-loader.js';
-import { CONTROL_ENDPOINT } from './constants.js';
+import {
+  CONTROL_ENDPOINT,
+  DEFAULT_PROXY_PORT,
+  PROXY_PORT_ENV,
+} from './constants.js';
 import { Modes } from './types.js';
 
-/** Fallback port, matching the proxy's own default in {@link parseCliArgs}. */
-const DEFAULT_PORT = 8000;
 const MIN_PORT = 1025;
 const MAX_PORT = 65_535;
 
@@ -35,7 +37,7 @@ export function resolveResetPort(opts: {
   } else if (envPort !== undefined && envPort !== '') {
     value = Number.parseInt(envPort, 10);
   } else {
-    value = configPort ?? DEFAULT_PORT;
+    value = configPort ?? DEFAULT_PROXY_PORT;
   }
 
   if (Number.isNaN(value) || value < MIN_PORT || value > MAX_PORT) {
@@ -116,7 +118,7 @@ export async function resetCommand(
     .description('Reset a running proxy back to transparent mode')
     .option(
       '-p, --port <number>',
-      'Proxy port (default: TEST_PROXY_RECORDER_PORT env, then the config file, then 8000)',
+      `Proxy port (default: ${PROXY_PORT_ENV} env, then the config file, then ${DEFAULT_PROXY_PORT})`,
     )
     .option(
       '-c, --config <path>',
@@ -142,7 +144,7 @@ export async function resetCommand(
   try {
     port = resolveResetPort({
       cliPort: opts.port,
-      envPort: process.env.TEST_PROXY_RECORDER_PORT,
+      envPort: process.env[PROXY_PORT_ENV],
       configPort,
     });
   } catch (error) {

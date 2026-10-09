@@ -2,7 +2,7 @@
 title: Démarrage rapide
 description: Configurez test-proxy-recorder avec une seule commande init — idéalement pilotée par un agent IA. Pointez votre API vers le proxy, enregistrez une fois, rejouez en CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## Configurer avec un agent IA (recommandé)
@@ -73,17 +73,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-Vous utilisez axios pour les appels côté serveur ? Utilisez `registerProxyAxios(instance)` à la place.
-Enregistrez contre un build de production (`next build && next start`), pas `next dev`.
-Les apps navigateur uniquement (SPA, extension) peuvent sauter cette étape.
+Vous utilisez axios pour les appels côté serveur ? Utilisez `registerProxyAxios(instance)` à la place. Enregistrez contre un build de production (`next build && next start`), pas `next dev`. Les apps navigateur uniquement (SPA, extension) peuvent sauter cette étape.
 
 ### 3. Enregistrer une fois, rejouer à l'infini
 
+Les tests utilisent votre backend de développement et sa base de données. Les scripts `test:e2e` testent un build de production de l'app lorsque `init` en a trouvé un (un script `preview`, ou `start` de Next.js), et un simple `npx playwright test` ou `--ui` utilise votre serveur de développement, ce qui vous permet de relancer à la main un test en échec et de reproduire le bug dans le navigateur. Avant d'enregistrer, lancez `dev` et mettez la base de données de développement dans l'état attendu par les tests avec votre propre script de peuplement (seed).
+
 ```bash
-# fixtures.ts: MODE = 'record' — capturer les vraies réponses
+# Définit RECORD_MODE=1 — capturer les vraies réponses
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — puis committer les enregistrements
+# Puis committer les enregistrements, que npm run test:e2e rejoue
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 

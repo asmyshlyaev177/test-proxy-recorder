@@ -2,7 +2,7 @@
 title: Preguntas frecuentes
 description: Preguntas comunes sobre test-proxy-recorder — reproducción en paralelo, commit de grabaciones a git, el destino del proxy para grabación HAR, el servidor de desarrollo de Next.js y actualización de grabaciones.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## Mis pruebas de reproducción en paralelo a veces llaman al backend real — ¿por qué? {#parallel-replay}
@@ -52,7 +52,7 @@ Para mantener una prueba fuera de la red, amplía `url` para que el HAR cubra el
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // El HAR también graba y reproduce la CDN.
@@ -73,7 +73,7 @@ Prefiere `next build` + `next start` antes que `next dev` para grabar y reproduc
 
 ## ¿Cómo actualizo una grabación?
 
-Vuelve a ejecutar en modo record (pon `MODE = 'record'` en tu fixture, o `RECORD_MODE=1`) contra la API real, luego vuelve a replay y haz commit de los archivos actualizados en `e2e/recordings/`.
+Vuelve a ejecutar en modo record (`RECORD_MODE=1`, el script `test:e2e:record`) contra la API real y luego haz commit de los archivos actualizados en `e2e/recordings/`.
 
 ## ¿Puedo forzar un error, una lista vacía o una respuesta lenta en una prueba reproducida? {#override-responses}
 

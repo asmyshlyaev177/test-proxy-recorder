@@ -9,16 +9,21 @@ import {
 } from './index.js';
 
 // Mock the filesystem so HAR redaction can be observed without touching disk.
-const { mockReadFile, mockWriteFile, mockReaddir } = vi.hoisted(() => ({
-  mockReadFile: vi.fn(),
-  mockWriteFile: vi.fn().mockResolvedValue(undefined),
-  mockReaddir: vi.fn().mockResolvedValue([]),
-}));
+const { mockReadFile, mockWriteFile, mockReaddir, mockAccess } = vi.hoisted(
+  () => ({
+    mockReadFile: vi.fn(),
+    mockWriteFile: vi.fn().mockResolvedValue(undefined),
+    mockReaddir: vi.fn().mockResolvedValue([]),
+    // No recording exists unless a test says otherwise.
+    mockAccess: vi.fn().mockRejectedValue(new Error('ENOENT')),
+  }),
+);
 vi.mock('node:fs', () => ({
   promises: {
     readFile: mockReadFile,
     writeFile: mockWriteFile,
     readdir: mockReaddir,
+    access: mockAccess,
   },
 }));
 
@@ -44,6 +49,8 @@ const createMockPage = () => {
 
   return {
     setExtraHTTPHeaders: vi.fn().mockResolvedValue(undefined),
+    close: vi.fn().mockResolvedValue(undefined),
+    once: vi.fn(),
     route: vi.fn().mockResolvedValue(undefined),
     routeFromHAR: vi.fn().mockResolvedValue(undefined),
     context: vi.fn(() => mockContext),
@@ -61,12 +68,126 @@ const createMockPage = () => {
 describe('Playwright Integration', () => {
   beforeEach(() => {
     mockFetch.mockReset();
+    mockAccess.mockReset().mockRejectedValue(new Error('ENOENT'));
+    __resetProxyCachesForTests();
     // Set default port via environment variable
     process.env.TEST_PROXY_RECORDER_PORT = '8100';
   });
 
   afterEach(() => {
     delete process.env.TEST_PROXY_RECORDER_PORT;
+  });
+
+  describe('replay of recordings named before describe titles counted', () => {
+    const testInfo: PlaywrightTestInfo = {
+      title: 'renders',
+      titlePath: ['todos.spec.ts', 'alpha block', 'renders'],
+    };
+
+    beforeEach(() => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 204,
+        json: async () => ({ recordingsDir: '/rec' }),
+      });
+    });
+
+    it('replays the old file name when only that recording exists', async () => {
+      mockAccess.mockImplementation(async (file: string) => {
+        if (file !== '/rec/todos__renders.mock.json') throw new Error('ENOENT');
+      });
+      const page = createMockPage();
+
+      await playwrightProxy.before(page as unknown as Page, testInfo, 'replay');
+
+      expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+        'x-test-rcrd-id': 'todos__renders',
+      });
+    });
+
+    it('prefers the new file name once it is recorded', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      const page = createMockPage();
+
+      await playwrightProxy.before(page as unknown as Page, testInfo, 'replay');
+
+      expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+        'x-test-rcrd-id': 'todos__alpha-block__renders',
+      });
+    });
+
+    it('records under the new name even when an old recording exists', async () => {
+      mockAccess.mockResolvedValue(undefined);
+      const page = createMockPage();
+
+      await playwrightProxy.before(page as unknown as Page, testInfo, 'record');
+
+      expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+        'x-test-rcrd-id': 'todos__alpha-block__renders',
+      });
+    });
+  });
+
+  describe('missing recordings in replay', () => {
+    const testInfo: PlaywrightTestInfo = {
+      title: 'loads',
+      titlePath: ['home.spec.ts', 'loads'],
+    };
+    const isMissingRecordingPoll = (url: unknown) =>
+      String(url).includes('/__control/missing-recording?id=home__loads');
+
+    it('closes the page with the reason the proxy reports', async () => {
+      const message = 'No recording for GET /api/todos (session: home__loads)';
+      mockFetch.mockImplementation(async (url: unknown) =>
+        isMissingRecordingPoll(url)
+          ? { ok: true, status: 200, json: async () => ({ message }) }
+          : { ok: true, status: 200, json: async () => ({ success: true }) },
+      );
+      const page = createMockPage();
+
+      await playwrightProxy.before(page as unknown as Page, testInfo, 'replay');
+
+      await vi.waitFor(() =>
+        expect(page.close).toHaveBeenCalledWith({
+          reason: expect.stringContaining(message),
+        }),
+      );
+    });
+
+    it('does not watch when failOnMissingRecording is false', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      });
+      const page = createMockPage();
+
+      await playwrightProxy.before(
+        page as unknown as Page,
+        testInfo,
+        'replay',
+        {
+          failOnMissingRecording: false,
+        },
+      );
+
+      const urls = mockFetch.mock.calls.map(([url]) => url);
+      expect(urls.some((url) => isMissingRecordingPoll(url))).toBe(false);
+    });
+
+    it('does not watch while recording', async () => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ success: true }),
+      });
+      const page = createMockPage();
+
+      await playwrightProxy.before(page as unknown as Page, testInfo, 'record');
+
+      const urls = mockFetch.mock.calls.map(([url]) => url);
+      expect(urls.some((url) => isMissingRecordingPoll(url))).toBe(false);
+    });
   });
 
   describe('playwrightProxy.before', () => {
@@ -129,7 +250,8 @@ describe('Playwright Integration', () => {
         'replay',
       );
 
-      expect(mockFetch).toHaveBeenCalledTimes(1);
+      // The mode switch, then the missing-recording long-poll.
+      expect(mockFetch).toHaveBeenCalledTimes(2);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8100/__control',
         {
@@ -600,6 +722,30 @@ describe('generateSessionId', () => {
 
     const sessionId = generateSessionId(testInfo);
     expect(sessionId).toBe('Simple__simple-test');
+  });
+
+  it('includes describe titles so equal test titles in one file get separate recordings', () => {
+    const inAlpha = generateSessionId({
+      title: 'renders',
+      titlePath: ['todos.spec.ts', 'alpha block', 'renders'],
+    });
+    const inBravo = generateSessionId({
+      title: 'renders',
+      titlePath: ['todos.spec.ts', 'bravo block', 'renders'],
+    });
+
+    expect(inAlpha).toBe('todos__alpha-block__renders');
+    expect(inBravo).toBe('todos__bravo-block__renders');
+  });
+
+  it('prefixes the file name for any JS or TS test file', () => {
+    const name = (file: string) =>
+      generateSessionId({ title: 'logs in', titlePath: [file, 'logs in'] });
+
+    expect(name('app/Login.spec.tsx')).toBe('app/Login__logs-in');
+    expect(name('smoke.e2e.ts')).toBe('smoke.e2e__logs-in');
+    expect(name('Login.test.mjs')).toBe('Login__logs-in');
+    expect(name(String.raw`jobs\Create.spec.ts`)).toBe('jobs/Create__logs-in');
   });
 
   it('should handle nested folders with .test.ts extension', () => {

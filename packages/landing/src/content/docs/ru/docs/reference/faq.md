@@ -2,7 +2,7 @@
 title: Частые вопросы
 description: Частые вопросы о test-proxy-recorder — параллельное воспроизведение, коммит записей в git, цель прокси для записи HAR, dev-сервер Next.js и обновление записей.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## Мои параллельные тесты воспроизведения иногда обращаются к реальному бэкенду — почему? {#parallel-replay}
@@ -52,7 +52,7 @@ Playwright их не перехватывает, поэтому они уход�
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // HAR также записывает и воспроизводит CDN.
@@ -73,7 +73,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 ## Как обновить запись?
 
-Снова запустите в режиме record (задайте `MODE = 'record'` в фикстуре или `RECORD_MODE=1`) против реального API, затем вернитесь в replay и закоммитьте обновлённые файлы в `e2e/recordings/`.
+Снова запустите в режиме record (`RECORD_MODE=1`, скрипт `test:e2e:record`) против реального API, затем закоммитьте обновлённые файлы в `e2e/recordings/`.
 
 ## Можно ли в воспроизводимом тесте принудительно вернуть ошибку, пустой список или медленный ответ? {#override-responses}
 

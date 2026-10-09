@@ -6,11 +6,14 @@ import { Command } from 'commander';
 
 import type { Config } from './config.js';
 import { loadConfig } from './config-loader.js';
-import { DEFAULT_TIMEOUT_MS } from './constants.js';
+import {
+  DEFAULT_PROXY_PORT,
+  DEFAULT_TIMEOUT_MS,
+  PROXY_PORT_ENV,
+} from './constants.js';
 import type { WebSocketReplayConfig } from './types.js';
 import type { RedactionConfig } from './utils/redact.js';
 
-const DEFAULT_PORT = 8000;
 const DEFAULT_RECORDINGS_DIR = './recordings';
 
 /** Parse a comma-separated CLI option into a trimmed, non-empty list. */
@@ -139,13 +142,23 @@ export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
     .description(
       'Development proxy server with recording and replay capabilities',
     )
+    // init and reset are dispatched in proxy-cli.ts before this parser runs.
+    .addHelpText(
+      'after',
+      [
+        '',
+        'Commands:',
+        '  init [target]  Scaffold the config, a Playwright fixture, teardown and scripts (init --help)',
+        '  reset          Return a running proxy to transparent mode (reset --help)',
+      ].join('\n'),
+    )
     .argument(
       '[target]',
       'Target API service URL (e.g., http://localhost:3000). Overrides `target` from the config file.',
     )
     .option(
       '-c, --config <path>',
-      'Path to a config file (default: auto-detect test-proxy-recorder.config.{ts,js,mjs} in the current directory)',
+      'Path to a config file (default: auto-detect test-proxy-recorder.config.{ts,js,mjs,cjs} in the current directory)',
     )
     .option('-p, --port <number>', 'Port number for the proxy server')
     .option(
@@ -205,10 +218,11 @@ export async function parseCliArgs(argv?: string[]): Promise<CliOptions> {
     program.help();
   }
 
+  // The env var sits between flag and config, as in `reset`.
   const port = resolveNumber(
-    options.port,
+    options.port ?? (process.env[PROXY_PORT_ENV] || undefined),
     config?.port,
-    DEFAULT_PORT,
+    DEFAULT_PROXY_PORT,
     (n) => n >= 1025 && n <= 65_535,
     'Error: Invalid port number. Must be between 1025 and 65535',
   );

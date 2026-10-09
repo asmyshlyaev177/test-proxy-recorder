@@ -11,7 +11,18 @@ function getRecordingIdFromHeader(req: http.IncomingMessage): string | null {
   if (!headerValue) {
     return null;
   }
-  return Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  const value = Array.isArray(headerValue) ? headerValue[0] : headerValue;
+  return value === undefined ? null : decodeUtf8Header(value);
+}
+
+/**
+ * Browsers send header values as UTF-8 and Node reads them as latin1, so a
+ * non-ASCII id (a describe title such as 'Корзина') arrives garbled; read its
+ * bytes back as UTF-8. A value that isn't valid UTF-8 is kept as it is.
+ */
+function decodeUtf8Header(value: string): string {
+  const decoded = Buffer.from(value, 'latin1').toString('utf8');
+  return decoded.includes('\uFFFD') ? value : decoded;
 }
 
 /**

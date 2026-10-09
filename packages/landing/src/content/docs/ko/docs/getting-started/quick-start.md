@@ -2,7 +2,7 @@
 title: 빠른 시작
 description: 하나의 init 명령으로 test-proxy-recorder를 설정합니다. AI 에이전트로 진행하는 것이 가장 좋습니다. API를 프록시로 연결하고, 한 번 기록한 뒤 CI에서 재생합니다.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## AI 에이전트로 설정(권장)
@@ -77,11 +77,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ### 3. 한 번 기록하고 영원히 재생
 
+테스트는 개발 백엔드와 그 데이터베이스를 사용합니다. `init`이 앱의 프로덕션 빌드(`preview` 스크립트 또는 Next.js `start`)를 찾았다면 `test:e2e` 스크립트는 그 프로덕션 빌드를 테스트하고, 일반 `npx playwright test` 또는 `--ui`로 실행하면 개발 서버를 사용하므로, 실패한 테스트를 직접 다시 실행해 브라우저에서 버그를 재현할 수 있습니다. 기록하기 전에 `dev`를 시작하고, 직접 만든 시드 스크립트로 개발 데이터베이스를 테스트가 기대하는 상태로 만들어 두세요.
+
 ```bash
-# fixtures.ts: MODE = 'record' — 실제 응답 캡처
+# RECORD_MODE=1 설정 — 실제 응답 캡처
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — 그런 다음 기록 커밋
+# 그런 다음 기록 커밋; npm run test:e2e가 이를 재생
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 

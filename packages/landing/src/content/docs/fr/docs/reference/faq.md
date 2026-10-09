@@ -2,7 +2,7 @@
 title: FAQ
 description: Questions fréquentes sur test-proxy-recorder — replay en parallèle, commit des enregistrements dans git, la cible du proxy pour l'enregistrement HAR, le serveur de dev Next.js et la mise à jour des enregistrements.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## Mes tests de replay en parallèle appellent parfois le vrai backend — pourquoi ? {#parallel-replay}
@@ -52,7 +52,7 @@ Pour garder un test hors du réseau, élargissez `url` pour que le HAR couvre le
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // Le HAR enregistre et rejoue aussi le CDN.
@@ -73,7 +73,7 @@ Préférez `next build` + `next start` à `next dev` pour enregistrer et rejouer
 
 ## Comment mettre à jour un enregistrement ?
 
-Relancez en mode record (mettez `MODE = 'record'` dans votre fixture, ou `RECORD_MODE=1`) contre la vraie API, puis repassez en replay et committez les fichiers mis à jour dans `e2e/recordings/`.
+Relancez en mode record (`RECORD_MODE=1`, le script `test:e2e:record`) contre la vraie API, puis committez les fichiers mis à jour dans `e2e/recordings/`.
 
 ## Puis-je forcer une erreur, une liste vide ou une réponse lente dans un test rejoué ? {#override-responses}
 

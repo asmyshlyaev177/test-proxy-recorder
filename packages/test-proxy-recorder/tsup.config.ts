@@ -6,8 +6,8 @@ export default defineConfig([
     entry: {
       index: 'src/index.ts',
       'playwright/index': 'src/playwright/index.ts',
-      'nextjs/index': 'src/nextjs-only.ts',
-      'tanstack-start/index': 'src/tanstack-start-only.ts',
+      'nextjs/index': 'src/nextjs/index.ts',
+      'tanstack-start/index': 'src/tanstack-start/index.ts',
     },
     format: ['esm', 'cjs'],
     dts: true,
@@ -53,6 +53,8 @@ export default defineConfig([
       proxy: 'src/proxy-cli.ts',
     },
     format: ['esm'],
+    // npm links bins as symlinks, so without this the shell executes the file.
+    banner: { js: '#!/usr/bin/env node' },
     dts: true,
     sourcemap: true,
     splitting: false,

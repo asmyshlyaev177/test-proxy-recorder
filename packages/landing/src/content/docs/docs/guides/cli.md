@@ -10,7 +10,7 @@ test-proxy-recorder <target-url> [options]
 | Option           | Default        | Description                         |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(required)*   | Backend URL to proxy                |
-| `--port, -p`     | `8000`         | Proxy listen port                   |
+| `--port, -p`     | `8100`         | Proxy listen port; also read from `TEST_PROXY_RECORDER_PORT` |
 | `--dir, -d`      | `./recordings` | Directory for recording files       |
 | `--timeout, -t`  | `120000`       | Session auto-reset timeout (ms)     |
 | `--config, -c`   | *(auto)*       | Path to a config file               |
@@ -38,7 +38,7 @@ The proxy auto-reverts to `transparent` after each session times out, and the `g
 test-proxy-recorder reset    # or: npm run proxy:reset
 ```
 
-This POSTs `{ "mode": "transparent" }` to `/__control` — the supported, parallel-safe replacement for resetting by hand with `curl`. It's safe to run anytime: an unreachable proxy is treated as a no-op. The port is resolved as **`--port` flag → `TEST_PROXY_RECORDER_PORT` env → config file → `8000`**, so it targets the port the proxy was started on (pass `--port` / `--config` to override). `init` scaffolds this as the `proxy:reset` script.
+This POSTs `{ "mode": "transparent" }` to `/__control` — the supported, parallel-safe replacement for resetting by hand with `curl`. It's safe to run anytime: an unreachable proxy is treated as a no-op. The port is resolved as **`--port` flag → `TEST_PROXY_RECORDER_PORT` env → config file → `8100`**, so it targets the port the proxy was started on (pass `--port` / `--config` to override). `init` scaffolds this as the `proxy:reset` script.
 
 ## `init` — scaffold the setup
 

@@ -2,7 +2,7 @@
 title: Skill cho AI agent
 description: Cài các skill của test-proxy-recorder để AI coding agents (Claude Code, Cursor, Copilot) tạo mã thiết lập proxy, fixture, và SSR đúng đắn.
 i18nSource: docs/reference/ai-agent-skills.md
-i18nSourceBlob: 2622ae8f436b9a9a1d57fdf8831308a039a8981d
+i18nSourceBlob: 8214769e2ee6aa9a875b70e13d00aeee8c361beb
 ---
 
 Nếu bạn dùng AI coding agent (Claude Code, Cursor, Copilot, và tương tự), hãy thiết lập việc nạp skill để agent tạo mã thiết lập đúng đắn. Các skill được đóng gói bên trong package `test-proxy-recorder` qua [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent) và đi kèm nó qua các bản cập nhật package-manager thông thường của bạn.
@@ -20,6 +20,8 @@ npx @tanstack/intent@latest install
 ```
 
 Truyền `--map` nếu bạn muốn viết các ánh xạ task-to-skill tường minh vào cấu hình agent thay vì hướng dẫn khám phá chung.
+
+`install` cần một terminal tương tác. Một agent chạy mà không có terminal có thể đọc các skill từ `node_modules/test-proxy-recorder/skills/*/SKILL.md`.
 
 Khi đó agent sẽ biết thiết lập proxy/fixture đúng, quy trình ghi lại so với phát lại, và các pattern header SSR của Next.js mà không cần hướng dẫn.
 

@@ -2,7 +2,7 @@
 title: AI エージェントスキル
 description: test-proxy-recorder のスキルをインストールすると、AI コーディングエージェント（Claude Code、Cursor、Copilot）が正しいセットアップコードを生成します。
 i18nSource: docs/reference/ai-agent-skills.md
-i18nSourceBlob: 2622ae8f436b9a9a1d57fdf8831308a039a8981d
+i18nSourceBlob: 8214769e2ee6aa9a875b70e13d00aeee8c361beb
 ---
 
 AI コーディングエージェント（Claude Code、Cursor、Copilot など）を使っているなら、スキル読み込みを設定して、エージェントが正しいセットアップコードを生成できるようにしてください。スキルは [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent) を通じて `test-proxy-recorder` パッケージに同梱され、通常のパッケージマネージャーの更新とともに配布されます。
@@ -20,6 +20,8 @@ npx @tanstack/intent@latest install
 ```
 
 汎用の検出ガイダンスではなく、明示的なタスク対スキルの対応をエージェント設定に書き込みたい場合は、`--map` を渡してください。
+
+`install` には対話型ターミナルが必要です。対話型ターミナルなしで動作するエージェントは、`node_modules/test-proxy-recorder/skills/*/SKILL.md` からスキルを読み取れます。
 
 これでエージェントは、ガイダンスなしで、正しいプロキシ/フィクスチャのセットアップ、記録と再生のワークフロー、Next.js の SSR ヘッダーパターンを把握できるようになります。
 

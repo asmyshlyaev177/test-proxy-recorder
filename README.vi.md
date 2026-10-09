@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · Tiếng Việt
-<!-- i18n:meta locale=vi source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
+<!-- i18n:meta locale=vi source=README.md source-blob=3339c08170c4b61bcf11c9527d6fdeda00ab5558 status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-Sau đó đặt `MODE = 'record'`, chạy một lần dựa trên API thật, lật sang `'replay'`, và commit `e2e/recordings/`. CI giờ chạy với backend đã tắt.
+Sau đó chạy `npm run test:e2e:record` (lệnh này đặt `RECORD_MODE=1`) một lần dựa trên API thật và commit `e2e/recordings/`. CI chạy `npm run test:e2e`, lệnh này phát lại với backend đã tắt.
 
 Hướng dẫn đầy đủ: [bắt đầu nhanh](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [thiết lập thủ công](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/).
 
@@ -130,32 +130,20 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install` thêm hướng dẫn khám phá skill vào cấu hình agent của bạn (`CLAUDE.md`, `.cursorrules`, …); agent nạp các skill `proxy-setup`, `nextjs-ssr`, và `tanstack-start` theo yêu cầu. Liệt kê hoặc nạp chúng trực tiếp bằng `npx @tanstack/intent@latest list` và `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Hướng dẫn đầy đủ: [skill cho AI agent](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+`install` thêm hướng dẫn khám phá skill vào cấu hình agent của bạn (`CLAUDE.md`, `.cursorrules`, …); agent nạp các skill `proxy-setup`, `nextjs-ssr`, và `tanstack-start` theo yêu cầu. Liệt kê hoặc nạp chúng trực tiếp bằng `npx @tanstack/intent@latest list` và `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. `install` cần một terminal tương tác; một agent chạy mà không có terminal có thể đọc các skill từ `node_modules/test-proxy-recorder/skills/*/SKILL.md`. Hướng dẫn đầy đủ: [skill cho AI agent](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 Nguồn các skill nằm trong [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
 ## Thuê tôi
 
-Tôi là **Aleksandr Smyshliaev** — tác giả và maintainer của công cụ này. Senior
-frontend engineer (React / Next.js / TypeScript, 8+ năm kinh nghiệm), và **sẵn sàng
-nhận việc full-time remote ngay bây giờ**.
+Tôi là **Aleksandr Smyshliaev** — tác giả và maintainer của công cụ này. Senior frontend engineer (React / Next.js / TypeScript, 8+ năm kinh nghiệm), và **sẵn sàng nhận việc full-time remote ngay bây giờ**.
 
-Dự án này tồn tại vì tôi đã dành nhiều năm sửa các bộ test không ổn định của
-người khác. Đó là loại công việc tôi giỏi nhất: hạ tầng nhàm chán quyết định
-liệu một codebase còn dễ chịu sau sáu tháng hay không.
+Dự án này tồn tại vì tôi đã dành nhiều năm sửa các bộ test không ổn định của người khác. Đó là loại công việc tôi giỏi nhất: hạ tầng nhàm chán quyết định liệu một codebase còn dễ chịu sau sáu tháng hay không.
 
-- **Giỏi nhất ở** — thư viện component, quản lý state, và các bộ test sống sót
-  qua một lần refactor.
-- **Cũng là của tôi** —
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  (~84k lượt cài hàng tuần),
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (state URL có kiểu),
-  [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
-- **Ở đâu** — Tbilisi, Georgia (GMT+4), trùng khớp toàn bộ CET. Đã đăng ký thực thể
-  contractor, nên hợp tác B2B không cần thiết lập employer-of-record.
-- **Liên hệ** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **Giỏi nhất ở** — thư viện component, quản lý state, và các bộ test sống sót qua một lần refactor.
+- **Cũng là của tôi** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu) (~84k lượt cài hàng tuần), [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (state URL có kiểu), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
+- **Ở đâu** — Tbilisi, Georgia (GMT+4), trùng khớp toàn bộ CET. Đã đăng ký thực thể contractor, nên hợp tác B2B không cần thiết lập employer-of-record.
+- **Liên hệ** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## Giấy phép
 

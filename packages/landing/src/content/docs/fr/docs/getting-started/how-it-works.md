@@ -4,7 +4,7 @@ description: test-proxy-recorder enregistre le trafic via deux mécanismes, un p
 sidebar:
   label: Comment ça marche
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: f808b2bb0634754bcb63911e3e006c34c495fe06
+i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
 ---
 
 test-proxy-recorder prend en charge deux mécanismes d'enregistrement selon l'origine de vos requêtes. Les deux peuvent être utilisés ensemble ou indépendamment.
@@ -22,7 +22,7 @@ test-proxy-recorder prend en charge deux mécanismes d'enregistrement selon l'or
                     └──> .mock.json                        └──> .har
 ```
 
-Chaque test définit le mode à son démarrage, et le proxy garde un seul mode pour toutes les requêtes qu'il reçoit : les tests qui tournent en même temps le partagent donc. En mode **record**, le proxy transmet au vrai backend et sauvegarde les réponses ; en mode **replay**, il sert les réponses sauvegardées depuis le disque, et l'id de chaque test sélectionne l'enregistrement de ce test ; en mode **transparent**, il transmet sans enregistrer. Voir l'[endpoint de contrôle](/fr/docs/guides/control-endpoint/) pour savoir comment les modes sont changés.
+Chaque test définit le mode à son démarrage, et le proxy garde un seul mode pour toutes les requêtes qu'il reçoit : les tests qui tournent en même temps le partagent donc. En mode **record**, le proxy transmet au vrai backend et sauvegarde les réponses ; en mode **replay**, il sert les réponses sauvegardées depuis le disque, et l'id de chaque test sélectionne l'enregistrement de ce test ; en mode **transparent**, il transmet sans enregistrer. Le proxy démarre en mode transparent, donc une app qui passe par lui en dehors des tests parle à son backend comme d'habitude. Voir l'[endpoint de contrôle](/fr/docs/guides/control-endpoint/) pour savoir comment les modes sont changés.
 
 ## Correspondance des requêtes en replay {#replay-matching}
 
@@ -32,7 +32,7 @@ Le proxy et le fichier HAR retrouvent une réponse enregistrée de façons diff�
 | --- | --- | --- |
 | Critères de correspondance | La méthode, le chemin et un hash MD5 de la query string. Le corps n'est pas comparé. | La méthode et l'URL, plus le corps pour un `POST` ([règles de Playwright](https://playwright.dev/docs/mock#replaying-from-har)). |
 | Même requête répétée | L'enregistrement suivant, dans l'ordre d'enregistrement. | L'entrée qui a le plus d'en-têtes correspondants. L'ordre d'enregistrement est ignoré. |
-| Aucun enregistrement | Une réponse 404 avec un corps JSON qui nomme la requête. | La requête est interrompue. |
+| Aucun enregistrement | Une réponse 404 avec un corps JSON qui nomme la requête, et `playwrightProxy.before()` ferme la page pour que le test échoue aussitôt (`failOnMissingRecording: false` désactive ce comportement). | La requête est interrompue. |
 | Vraie API atteinte | Uniquement en mode `transparent`. | Uniquement par les requêtes qui ne correspondent pas à `url`. |
 
 ### Requêtes côté serveur (proxy)

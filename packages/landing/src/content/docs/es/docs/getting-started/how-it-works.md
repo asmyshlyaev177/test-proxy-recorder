@@ -4,7 +4,7 @@ description: test-proxy-recorder graba tráfico mediante dos mecanismos, un prox
 sidebar:
   label: Cómo funciona
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: f808b2bb0634754bcb63911e3e006c34c495fe06
+i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
 ---
 
 test-proxy-recorder admite dos mecanismos de grabación según dónde se originan tus peticiones. Ambos pueden usarse juntos o de forma independiente.
@@ -22,7 +22,7 @@ test-proxy-recorder admite dos mecanismos de grabación según dónde se origina
                     └──> .mock.json                        └──> .har
 ```
 
-Cada prueba establece el modo al empezar, y el proxy mantiene un único modo para todas las peticiones que recibe, así que las pruebas que se ejecutan a la vez lo comparten. En modo **record** el proxy reenvía al backend real y guarda las respuestas; en modo **replay** sirve las respuestas guardadas desde disco, y el id de cada prueba elige la grabación de esa prueba; en modo **transparent** reenvía sin grabar. Mira el [endpoint de control](/es/docs/guides/control-endpoint/) para saber cómo se cambian los modos.
+Cada prueba establece el modo al empezar, y el proxy mantiene un único modo para todas las peticiones que recibe, así que las pruebas que se ejecutan a la vez lo comparten. En modo **record** el proxy reenvía al backend real y guarda las respuestas; en modo **replay** sirve las respuestas guardadas desde disco, y el id de cada prueba elige la grabación de esa prueba; en modo **transparent** reenvía sin grabar. El proxy arranca en modo transparent, así que una app que pasa por él fuera de las pruebas habla con su backend como siempre. Mira el [endpoint de control](/es/docs/guides/control-endpoint/) para saber cómo se cambian los modos.
 
 ## Cómo se emparejan las peticiones al reproducir {#replay-matching}
 
@@ -32,7 +32,7 @@ El proxy y el archivo HAR buscan una respuesta grabada de formas distintas.
 | --- | --- | --- |
 | Se empareja por | Método, ruta y un hash MD5 de la cadena de consulta (query string). El cuerpo no se compara. | Método y URL, más el cuerpo en un `POST` ([reglas de Playwright](https://playwright.dev/docs/mock#replaying-from-har)). |
 | La misma petición otra vez | La siguiente grabación, en el orden grabado. | La entrada con más cabeceras coincidentes. El orden grabado se ignora. |
-| Sin grabación | Un 404 con un cuerpo JSON que indica la petición. | La petición se aborta. |
+| Sin grabación | Un 404 con un cuerpo JSON que indica la petición, y `playwrightProxy.before()` cierra la página para que la prueba falle de inmediato (`failOnMissingRecording: false` lo desactiva). | La petición se aborta. |
 | Llega a la API real | Solo en modo `transparent`. | Solo las peticiones que no coinciden con `url`. |
 
 ### Peticiones del lado del servidor (proxy)

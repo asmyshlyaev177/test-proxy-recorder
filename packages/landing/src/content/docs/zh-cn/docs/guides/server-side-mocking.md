@@ -4,7 +4,7 @@ description: '为什么 page.route() 捕获不到 Next.js 和 TanStack Start 中
 sidebar:
   label: 服务端 mock
 i18nSource: docs/guides/server-side-mocking.md
-i18nSourceBlob: f5b4c780da98c479c1bc9c0491d2ae9747da5b85
+i18nSourceBlob: 6fd6662395c2237b6c951527806be5bd6116dec1
 ---
 
 在 Next.js 或 TanStack Start 应用中，服务器会在渲染页面时调用你的 API。Playwright 的请求 mock 永远看不到这些调用。下面各节先解释原因，再比较在 Playwright 测试中控制这些调用的四种方式：Next.js test mode、服务器内部的 MSW、mockttp 这类正向代理，以及用 test-proxy-recorder 录制真实响应。关于其他工具的事实已于 2026-10-03 对照它们自己的文档和源代码核实。
@@ -92,7 +92,7 @@ Playwright 团队称这种方式“与服务器的语言和框架无关”。文
 
 - **代理：** 在测试运行时，在你的应用旁边启动 `test-proxy-recorder <target-url>`。设置了 `TEST_PROXY_RECORDER_ENABLED` 时，把应用的 API 基础 URL 指向它。每个代理只转发到一个后端，即启动它时指定的 `<target-url>`。
 - **`registerProxyFetch()`：** 在服务器上调用一次，就会 patch 全局 `fetch`。它把当前请求的 `x-test-rcrd-id` header 复制到每个出站请求上。代理读取这个 header，把每个服务端调用归到对应的测试下。除非设置了 `TEST_PROXY_RECORDER_ENABLED`，否则这个调用在生产环境中是 no-op。
-- **每个测试的 id：** `playwrightProxy.before(page, testInfo, mode)` 根据 spec 文件和测试标题生成会话 id。它把这个 id 作为 `x-test-rcrd-id` 附加到页面的请求上，并把该会话切换到 `record` 或 `replay`。并行的 worker 共用一台应用服务器和一个代理，而每个测试仍有自己的录制。
+- **每个测试的 id：** `playwrightProxy.before(page, testInfo, mode)` 根据 spec 文件、其 `describe` 标题和测试标题生成会话 id。它把这个 id 作为 `x-test-rcrd-id` 附加到页面的请求上，并把该会话切换到 `record` 或 `replay`。并行的 worker 共用一台应用服务器和一个代理，而每个测试仍有自己的录制。
 
 ```typescript
 // Next.js: app/layout.tsx

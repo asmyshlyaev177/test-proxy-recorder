@@ -2,7 +2,7 @@
 title: Быстрый старт
 description: Разверните test-proxy-recorder одной командой init — её лучше запускает AI-агент. Направьте ваш API на прокси, запишите один раз, воспроизводите в CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## Настройка через AI-агента (рекомендуется)
@@ -73,17 +73,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-Используете axios для серверных вызовов? Используйте вместо этого `registerProxyAxios(instance)`.
-Записывайте против продакшен-сборки (`next build && next start`), не `next dev`.
-Приложения только для браузера (SPA, расширение) могут пропустить этот шаг.
+Используете axios для серверных вызовов? Используйте вместо этого `registerProxyAxios(instance)`. Записывайте против продакшен-сборки (`next build && next start`), не `next dev`. Приложения только для браузера (SPA, расширение) могут пропустить этот шаг.
 
 ### 3. Запишите один раз, воспроизводите вечно
 
+Тесты работают с вашим dev-бэкендом и его базой данных. Скрипты `test:e2e` тестируют продакшен-сборку приложения, если `init` её нашёл (скрипт `preview` или `start` в Next.js), а обычный `npx playwright test` или `--ui` использует ваш dev-сервер, поэтому упавший тест можно перезапустить вручную и повторить ошибку в браузере. Перед записью запустите `dev` и приведите dev-базу данных в состояние, которого ожидают тесты, с помощью собственного seed-скрипта.
+
 ```bash
-# fixtures.ts: MODE = 'record' — захватываем реальные ответы
+# Задаёт RECORD_MODE=1 — захватываем реальные ответы
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — затем коммитим записи
+# Затем коммитим записи; npm run test:e2e воспроизводит их
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 

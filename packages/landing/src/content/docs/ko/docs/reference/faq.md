@@ -2,7 +2,7 @@
 title: FAQ
 description: test-proxy-recorder에 대한 자주 묻는 질문 — 병렬 재생, 기록의 git 커밋, HAR 기록용 프록시 대상, Next.js 개발 서버, 기록 갱신.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## 병렬 재생 테스트가 가끔 실제 백엔드를 호출합니다. 왜 그런가요? {#parallel-replay}
@@ -52,7 +52,7 @@ Playwright가 가로채지 않으므로, 기록할 때든 재생할 때든 실�
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // HAR이 CDN도 기록하고 재생합니다.
@@ -73,7 +73,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 ## 기록을 어떻게 갱신하나요?
 
-실제 API를 대상으로 기록 모드로 다시 실행하고(픽스처에서 `MODE = 'record'`로 설정하거나 `RECORD_MODE=1`), 다시 재생으로 전환한 뒤 `e2e/recordings/`의 갱신된 파일을 커밋하세요.
+실제 API를 대상으로 기록 모드로 다시 실행하고(`RECORD_MODE=1`, 즉 `test:e2e:record` 스크립트), `e2e/recordings/`의 갱신된 파일을 커밋하세요.
 
 ## 재생 테스트에서 오류, 빈 목록, 느린 응답을 강제할 수 있나요? {#override-responses}
 

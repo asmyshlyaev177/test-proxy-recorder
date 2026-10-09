@@ -54,9 +54,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
 
 ### 2. Tag server-side fetches (Next.js only)
 
-Browser requests already carry the recording-session id (Playwright sets it). For
-server-side fetches (SSR, Server Components), add one line to your root layout so
-they're tagged too — `init` does this for you:
+Browser requests already carry the recording-session id (Playwright sets it). For server-side fetches (SSR, Server Components), add one line to your root layout so they're tagged too — `init` does this for you:
 
 ```tsx
 // app/layout.tsx
@@ -73,17 +71,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-Using axios for server-side calls? Use `registerProxyAxios(instance)` instead.
-Record against a production build (`next build && next start`), not `next dev`.
-Browser-only apps (SPA, extension) can skip this step.
+Using axios for server-side calls? Use `registerProxyAxios(instance)` instead. Record against a production build (`next build && next start`), not `next dev`. Browser-only apps (SPA, extension) can skip this step.
 
 ### 3. Record once, replay forever
 
+Tests use your dev backend and its database. The `test:e2e` scripts test a production build of the app when `init` found one (a `preview` script, or Next.js `start`), and a plain `npx playwright test` or `--ui` uses your dev server, so you can rerun a failing test by hand and reproduce the bug in the browser. Before recording, start `dev` and put the dev database in the state the tests expect with your own seed script.
+
 ```bash
-# fixtures.ts: MODE = 'record' — capture real responses
+# Sets RECORD_MODE=1 — capture real responses
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — then commit the recordings
+# Then commit the recordings; npm run test:e2e replays them
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 

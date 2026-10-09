@@ -4,7 +4,7 @@ description: test-proxy-recorder 通过两种机制录制流量：用代理处�
 sidebar:
   label: 工作原理
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: f808b2bb0634754bcb63911e3e006c34c495fe06
+i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
 ---
 
 test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以一起使用，也可以独立使用。
@@ -22,7 +22,7 @@ test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以
                     └──> .mock.json                        └──> .har
 ```
 
-每个测试在启动时设置模式，而代理对它收到的所有请求都使用同一种模式，所以同时运行的测试共用这一模式。在 **record** 模式下，代理转发到真实后端并保存响应；在 **replay** 模式下，它从磁盘提供已保存的响应，并由每个测试的 id 选出该测试的录制；在 **transparent** 模式下，它转发但不录制。模式如何切换请参见[控制端点](/zh-cn/docs/guides/control-endpoint/)。
+每个测试在启动时设置模式，而代理对它收到的所有请求都使用同一种模式，所以同时运行的测试共用这一模式。在 **record** 模式下，代理转发到真实后端并保存响应；在 **replay** 模式下，它从磁盘提供已保存的响应，并由每个测试的 id 选出该测试的录制；在 **transparent** 模式下，它转发但不录制。代理启动时处于 transparent 模式，因此在测试之外通过它运行的应用会照常与后端通信。模式如何切换请参见[控制端点](/zh-cn/docs/guides/control-endpoint/)。
 
 ## 回放如何匹配请求 {#replay-matching}
 
@@ -32,7 +32,7 @@ test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以
 | --- | --- | --- |
 | 匹配依据 | 方法、路径，以及查询字符串的 MD5 哈希。不比较请求体。 | 方法和 URL；对 `POST` 还会比较请求体（[Playwright 的规则](https://playwright.dev/docs/mock#replaying-from-har)）。 |
 | 同一请求再次出现 | 按录制顺序返回下一条录制。 | 返回匹配 header 最多的条目，忽略录制顺序。 |
-| 没有录制 | 返回 404，JSON 响应体中指明该请求。 | 请求被中止。 |
+| 没有录制 | 返回 404，JSON 响应体中指明该请求；`playwrightProxy.before()` 会关闭页面，使测试立即失败（`failOnMissingRecording: false` 可关闭这一行为）。 | 请求被中止。 |
 | 访问真实 API | 仅在 `transparent` 模式下。 | 仅限不匹配 `url` 的请求。 |
 
 ### 服务端请求（代理）

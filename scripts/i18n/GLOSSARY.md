@@ -1,46 +1,26 @@
 # Glossary — test-proxy-recorder
 
-Hand this to any model or person translating this repo, together with
-[TRANSLATING.md](./TRANSLATING.md).
+Hand this to any model or person translating this repo, together with [TRANSLATING.md](./TRANSLATING.md).
 
 ## 1. Never translate, never transliterate, never inflect
 
-These are identifiers a reader will type or search for. Copy them character for
-character, keep their backticks, keep their capitalisation. If a sentence reads
-awkwardly around one, rewrite the sentence — not the identifier.
+These are identifiers a reader will type or search for. Copy them character for character, keep their backticks, keep their capitalisation. If a sentence reads awkwardly around one, rewrite the sentence — not the identifier.
 
-**Configuration and lifecycle**
-`defineConfig` · `Config` · `ProxyServer` · `Mode` · `startRecording` ·
-`startReplay` · `stopProxy` · `setProxyMode` · `generateSessionId` ·
-`playwrightProxy` · `PlaywrightTestInfo`
+**Configuration and lifecycle** `defineConfig` · `Config` · `ProxyServer` · `Mode` · `startRecording` · `startReplay` · `stopProxy` · `setProxyMode` · `generateSessionId` · `playwrightProxy` · `PlaywrightTestInfo`
 
-**Next.js integration**
-`registerProxyFetch` · `registerProxyAxios` · `getRecordingId` ·
-`createHeadersWithRecordingId` · `setNextProxyHeaders` · `ProxyAxiosInstance` ·
-`ProxyAxiosRequestConfig`
+**Next.js integration** `registerProxyFetch` · `registerProxyAxios` · `getRecordingId` · `createHeadersWithRecordingId` · `setNextProxyHeaders` · `ProxyAxiosInstance` · `ProxyAxiosRequestConfig`
 
-**Recording and redaction**
-`Recording` · `RecordingSession` · `WebSocketRecording` ·
-`WebSocketReplayConfig` · `ControlRequest` · `redactSession` ·
-`RedactionConfig` · `DEFAULT_REDACTED_HEADERS` · `REDACTED_PLACEHOLDER` ·
-`RECORDING_ID_HEADER`
+**Recording and redaction** `Recording` · `RecordingSession` · `WebSocketRecording` · `WebSocketReplayConfig` · `ControlRequest` · `redactSession` · `RedactionConfig` · `DEFAULT_REDACTED_HEADERS` · `REDACTED_PLACEHOLDER` · `RECORDING_ID_HEADER`
 
-**Files and paths**
-`test-proxy-recorder.config.ts` · `playwright.config.ts` · `.mock.json` ·
-`e2e/fixtures.ts` · `e2e/global-teardown.ts` · `app/layout.tsx`
+**Files and paths** `test-proxy-recorder.config.ts` · `playwright.config.ts` · `.mock.json` · `e2e/fixtures.ts` · `e2e/global-teardown.ts` · `app/layout.tsx`
 
-**Environment variables and CLI**
-`TEST_PROXY_RECORDER_ENABLED` · `init` · `record` · `replay` · `--help`
+**Environment variables and CLI** `TEST_PROXY_RECORDER_ENABLED` · `init` · `record` · `replay` · `--help`
 
 ## 2. Product and project names — keep in Latin script
 
-`test-proxy-recorder` · Playwright · Next.js · TanStack Start · React Router ·
-Remix · MSW · Polly.js · `playwright-network-cache` · Mocky Balboa · HAR ·
-WebSocket · Node.js · npm · TypeScript · MIT · GitHub · Discord ·
-`@tanstack/intent`
+`test-proxy-recorder` · Playwright · Next.js · TanStack Start · React Router · Remix · MSW · Polly.js · `playwright-network-cache` · Mocky Balboa · HAR · WebSocket · Node.js · npm · TypeScript · MIT · GitHub · Discord · `@tanstack/intent`
 
-The comparison table lists competing tools by name. Those names are never
-translated, and the table's y/n/p cells are data, not text.
+The comparison table lists competing tools by name. Those names are never translated, and the table's y/n/p cells are data, not text.
 
 ## 3. Terms of art — translate, but pick one rendering and keep it
 
@@ -58,9 +38,7 @@ translated, and the table's y/n/p cells are data, not text.
 
 ### "Secret redaction", settled per language
 
-The mechanism is masking: the proxy swaps a header's value for `[REDACTED]`.
-Nothing is edited and nothing is deleted. Use these and inflect them normally;
-the CLI flags stay `--redact-*` in every language.
+The mechanism is masking: the proxy swaps a header's value for `[REDACTED]`. Nothing is edited and nothing is deleted. Use these and inflect them normally; the CLI flags stay `--redact-*` in every language.
 
 | | noun | verb |
 | --- | --- | --- |
@@ -73,21 +51,12 @@ the CLI flags stay `--redact-*` in every language.
 | `fr` | masquage (**m**) | masquer |
 | `vi` | loại bỏ | loại bỏ |
 
-Spanish and French flipped gender when this was corrected — *la redacción* →
-*el enmascaramiento*, *la rédaction* → *le masquage* — so articles, past
-participles and clitic pronouns downstream of the noun moved with it.
+Spanish and French flipped gender when this was corrected — *la redacción* → *el enmascaramiento*, *la rédaction* → *le masquage* — so articles, past participles and clitic pronouns downstream of the noun moved with it.
 
 ## 4. Traps specific to this repo
 
-- **The record/replay ASCII diagram** in the docs and on the homepage is inside
-  a fenced block. The labels in it (`Browser/App`, `Proxy`, `Real API`,
-  `Record mode`, `Replay mode`) are part of a drawing whose alignment depends
-  on character width. Leave the whole block exactly as it is.
-- **CJK and Vietnamese in ASCII diagrams** break the alignment even when the
-  translation is correct. This is why the diagram is excluded.
-- Docs pages carry `i18nSource` and `i18nSourceBlob` in their frontmatter.
-  **Never edit or remove those two lines** — the tooling writes them.
-- Frontmatter `title` and `description` **values** are translated; the **keys**
-  are not.
-- `docs/reference/api/` is generated from TypeScript on every build and is
-  deliberately English-only. There is nothing to translate there.
+- **The record/replay ASCII diagram** in the docs and on the homepage is inside a fenced block. The labels in it (`Browser/App`, `Proxy`, `Real API`, `Record mode`, `Replay mode`) are part of a drawing whose alignment depends on character width. Leave the whole block exactly as it is.
+- **CJK and Vietnamese in ASCII diagrams** break the alignment even when the translation is correct. This is why the diagram is excluded.
+- Docs pages carry `i18nSource` and `i18nSourceBlob` in their frontmatter. **Never edit or remove those two lines** — the tooling writes them.
+- Frontmatter `title` and `description` **values** are translated; the **keys** are not.
+- `docs/reference/api/` is generated from TypeScript on every build and is deliberately English-only. There is nothing to translate there.

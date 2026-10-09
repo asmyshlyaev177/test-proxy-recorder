@@ -50,7 +50,7 @@ To keep a test off the network, widen `url` so the HAR covers the domain, or blo
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // The HAR also records and replays the CDN.
@@ -71,7 +71,7 @@ Prefer `next build` + `next start` over `next dev` for recording and replaying. 
 
 ## How do I update a recording?
 
-Re-run in record mode (set `MODE = 'record'` in your fixture, or `RECORD_MODE=1`) against the real API, then switch back to replay and commit the updated files in `e2e/recordings/`.
+Re-run in record mode (`RECORD_MODE=1`, the `test:e2e:record` script) against the real API, then commit the updated files in `e2e/recordings/`.
 
 ## Can I force an error, an empty list or a slow response in a replayed test? {#override-responses}
 

@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · Русский · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=ru source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
+<!-- i18n:meta locale=ru source=README.md source-blob=3339c08170c4b61bcf11c9527d6fdeda00ab5558 status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-Затем задайте `MODE = 'record'`, запустите один раз против реального API, переключите на `'replay'` и закоммитьте `e2e/recordings/`. Теперь CI работает с выключенным бэкендом.
+Затем один раз запустите `npm run test:e2e:record` (он задаёт `RECORD_MODE=1`) против реального API и закоммитьте `e2e/recordings/`. CI запускает `npm run test:e2e`, который воспроизводит записи при выключенном бэкенде.
 
 Полный разбор: [быстрый старт](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [ручная настройка](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/).
 
@@ -130,32 +130,20 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install` добавляет инструкцию по обнаружению навыков в конфиг вашего агента (`CLAUDE.md`, `.cursorrules`, …); агент загружает навыки `proxy-setup`, `nextjs-ssr` и `tanstack-start` по запросу. Посмотрите их список или загрузите напрямую через `npx @tanstack/intent@latest list` и `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Полное руководство: [навыки для AI-агентов](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+`install` добавляет инструкцию по обнаружению навыков в конфиг вашего агента (`CLAUDE.md`, `.cursorrules`, …); агент загружает навыки `proxy-setup`, `nextjs-ssr` и `tanstack-start` по запросу. Посмотрите их список или загрузите напрямую через `npx @tanstack/intent@latest list` и `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. `install` требует интерактивного терминала; агент, работающий без него, может прочитать навыки из `node_modules/test-proxy-recorder/skills/*/SKILL.md`. Полное руководство: [навыки для AI-агентов](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 Исходники навыков находятся в [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
 ## Наймите меня
 
-Я — **Aleksandr Smyshliaev**, автор и мейнтейнер этого инструмента. Senior
-frontend-инженер (React / Next.js / TypeScript, 8+ лет), **прямо сейчас доступен
-для полной удалённой занятости**.
+Я — **Aleksandr Smyshliaev**, автор и мейнтейнер этого инструмента. Senior frontend-инженер (React / Next.js / TypeScript, 8+ лет), **прямо сейчас доступен для полной удалённой занятости**.
 
-Этот проект существует, потому что я годами чинил чужие нестабильные тестовые
-наборы. Это именно та работа, в которой я силён: скучная инфраструктура, которая
-определяет, приятно ли работать с кодовой базой через полгода.
+Этот проект существует, потому что я годами чинил чужие нестабильные тестовые наборы. Это именно та работа, в которой я силён: скучная инфраструктура, которая определяет, приятно ли работать с кодовой базой через полгода.
 
-- **Сильные стороны** — библиотеки компонентов, управление состоянием и тестовые
-  наборы, которые переживают рефакторинг.
-- **Также моё** —
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  (~84k установок в неделю),
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (типизированное
-  состояние в URL), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
-- **Где** — Тбилиси, Грузия (GMT+4), полное пересечение с CET. Зарегистрированное
-  юрлицо подрядчика, поэтому для B2B-сотрудничества не нужен employer-of-record.
-- **Связаться со мной** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **Сильные стороны** — библиотеки компонентов, управление состоянием и тестовые наборы, которые переживают рефакторинг.
+- **Также моё** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu) (~84k установок в неделю), [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (типизированное состояние в URL), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
+- **Где** — Тбилиси, Грузия (GMT+4), полное пересечение с CET. Зарегистрированное юрлицо подрядчика, поэтому для B2B-сотрудничества не нужен employer-of-record.
+- **Связаться со мной** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## Лицензия
 

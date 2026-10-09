@@ -2,7 +2,7 @@
 title: Início rápido
 description: Configure o test-proxy-recorder com um único comando init — melhor conduzido por um agente de IA. Aponte sua API para o proxy, grave uma vez e reproduza na CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## Configurar com um agente de IA (recomendado)
@@ -73,17 +73,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 }
 ```
 
-Usando axios para chamadas do lado do servidor? Use `registerProxyAxios(instance)` em vez disso.
-Grave contra um build de produção (`next build && next start`), não `next dev`.
-Aplicações somente de navegador (SPA, extensão) podem pular esta etapa.
+Usando axios para chamadas do lado do servidor? Use `registerProxyAxios(instance)` em vez disso. Grave contra um build de produção (`next build && next start`), não `next dev`. Aplicações somente de navegador (SPA, extensão) podem pular esta etapa.
 
 ### 3. Grave uma vez, reproduza para sempre
 
+Os testes usam o seu backend de desenvolvimento e o banco de dados dele. Os scripts `test:e2e` testam um build de produção do app quando o `init` encontrou um (um script `preview`, ou o `start` do Next.js), e um simples `npx playwright test` ou `--ui` usa o seu servidor de desenvolvimento, então você pode rodar de novo à mão um teste que falhou e replicar o bug no navegador. Antes de gravar, inicie `dev` e coloque o banco de dados de desenvolvimento no estado que os testes esperam com seu próprio script de dados iniciais (seed).
+
 ```bash
-# fixtures.ts: MODE = 'record' — capture respostas reais
+# Define RECORD_MODE=1 — capture respostas reais
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — depois faça commit das gravações
+# Depois faça commit das gravações; npm run test:e2e as reproduz
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 

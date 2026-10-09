@@ -2,7 +2,7 @@
 title: CLI
 description: test-proxy-recorder 的命令行界面 —— 选项、WebSocket 回放节奏，以及如何重置卡住的代理。
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
+i18nSourceBlob: 1b481900a2093001d8adee923a7a37c4db3294f4
 ---
 
 ```bash
@@ -12,7 +12,7 @@ test-proxy-recorder <target-url> [options]
 | 选项             | 默认值         | 说明                                |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(必填)*       | 要代理的后端 URL                    |
-| `--port, -p`     | `8000`         | 代理监听端口                        |
+| `--port, -p`     | `8100`         | 代理监听端口；也会从 `TEST_PROXY_RECORDER_PORT` 读取 |
 | `--dir, -d`      | `./recordings` | 录制文件目录                        |
 | `--timeout, -t`  | `120000`       | 会话自动重置超时（毫秒）            |
 | `--config, -c`   | *(自动)*       | 配置文件路径                        |
@@ -40,7 +40,7 @@ test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 test-proxy-recorder reset    # or: npm run proxy:reset
 ```
 
-它会向 `/__control` 发送 `{ "mode": "transparent" }` POST —— 这是用 `curl` 手动重置的受支持、并行安全的替代方案。随时运行都安全：无法访问的代理会被当作无操作。端口的解析顺序为 **`--port` 标志 → 环境变量 `TEST_PROXY_RECORDER_PORT` → 配置文件 → `8000`**，因此它会指向代理启动时所用的端口（用 `--port` / `--config` 覆盖）。`init` 会把它生成为 `proxy:reset` 脚本。
+它会向 `/__control` 发送 `{ "mode": "transparent" }` POST —— 这是用 `curl` 手动重置的受支持、并行安全的替代方案。随时运行都安全：无法访问的代理会被当作无操作。端口的解析顺序为 **`--port` 标志 → 环境变量 `TEST_PROXY_RECORDER_PORT` → 配置文件 → `8100`**，因此它会指向代理启动时所用的端口（用 `--port` / `--config` 覆盖）。`init` 会把它生成为 `proxy:reset` 脚本。
 
 ## `init` —— 生成配置
 

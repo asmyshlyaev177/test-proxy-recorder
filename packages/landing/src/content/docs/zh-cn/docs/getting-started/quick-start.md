@@ -2,7 +2,7 @@
 title: 快速开始
 description: 一条 init 命令即可搭建 test-proxy-recorder —— 最好由 AI agent 驱动。把你的 API 指向代理，录制一次，在 CI 中回放。
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## 用 AI agent 搭建（推荐）
@@ -77,11 +77,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ### 3. 录制一次，永远回放
 
+测试使用你的开发后端及其数据库。当 `init` 找到了应用的 production build（`preview` 脚本，或 Next.js 的 `start`）时，`test:e2e` 脚本会测试该 production build；而直接运行 `npx playwright test` 或 `--ui` 则使用你的开发服务器，因此你可以手动重新运行失败的测试，并在浏览器中复现 bug。录制之前，请先启动 `dev`，再用你自己的种子脚本（seed script）把开发数据库置于测试所期望的状态。
+
 ```bash
-# fixtures.ts: MODE = 'record' —— 捕获真实响应
+# 设置 RECORD_MODE=1 —— 捕获真实响应
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' —— 然后提交录制内容
+# 然后提交录制内容；npm run test:e2e 会回放它们
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 

@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · 日本語 · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=ja source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
+<!-- i18n:meta locale=ja source=README.md source-blob=3339c08170c4b61bcf11c9527d6fdeda00ab5558 status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-その後、`MODE = 'record'` に設定し、実際の API に対して一度実行し、`'replay'` に切り替えて、`e2e/recordings/` をコミットします。CI はこれでバックエンドをオフにしたまま実行されます。
+その後、実際の API に対して `npm run test:e2e:record`（`RECORD_MODE=1` を設定します）を一度実行し、`e2e/recordings/` をコミットします。CI は `npm run test:e2e` を実行し、バックエンドをオフにしたまま再生します。
 
 詳しい手順: [クイックスタート](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [手動セットアップ](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/)。
 
@@ -130,7 +130,7 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install` はスキル検出のガイダンスをエージェント設定（`CLAUDE.md`、`.cursorrules` など）に追加します。エージェントは `proxy-setup`、`nextjs-ssr`、`tanstack-start` の各スキルをオンデマンドで読み込みます。`npx @tanstack/intent@latest list` と `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup` で直接一覧表示や読み込みができます。詳しいガイド: [AI エージェントスキル](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/)。
+`install` はスキル検出のガイダンスをエージェント設定（`CLAUDE.md`、`.cursorrules` など）に追加します。エージェントは `proxy-setup`、`nextjs-ssr`、`tanstack-start` の各スキルをオンデマンドで読み込みます。`npx @tanstack/intent@latest list` と `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup` で直接一覧表示や読み込みができます。`install` には対話型ターミナルが必要です。対話型ターミナルなしで動作するエージェントは、`node_modules/test-proxy-recorder/skills/*/SKILL.md` からスキルを読み取れます。詳しいガイド: [AI エージェントスキル](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/)。
 
 スキルのソースは [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/) にあります。
 
@@ -141,15 +141,9 @@ npx @tanstack/intent@latest install
 このプロジェクトは、私が何年も他人のフレーキーなテストスイートを直してきた経験から生まれました。それが私の最も得意とする仕事です: 半年後にコードベースがまだ快適かどうかを左右する、地味なインフラストラクチャです。
 
 - **得意分野** — コンポーネントライブラリ、状態管理、リファクタリングに耐えるテストスイート。
-- **その他のプロジェクト** —
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  （週間インストール数 約 84k）、
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url)（型付き URL
-  状態）、[llm-queue](https://github.com/asmyshlyaev177/llm-queue)。
+- **その他のプロジェクト** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)（週間インストール数 約 84k）、[state-in-url](https://github.com/asmyshlyaev177/state-in-url)（型付き URL 状態）、[llm-queue](https://github.com/asmyshlyaev177/llm-queue)。
 - **所在地** — ジョージアのトビリシ（GMT+4）。CET と完全に重なります。契約事業体として登録済みのため、B2B 契約に employer-of-record の設定は不要です。
-- **連絡先** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **連絡先** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## ライセンス
 

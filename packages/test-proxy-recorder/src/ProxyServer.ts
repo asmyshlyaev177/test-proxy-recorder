@@ -11,9 +11,11 @@ import {
   HTTP_STATUS_BAD_REQUEST,
   HTTP_STATUS_NOT_FOUND,
   HTTP_STATUS_OK,
+  MISSING_RECORDING_ENDPOINT,
   RECORDING_ID_HEADER,
 } from './constants.js';
 import { recordAndProxyRequest } from './httpRecorder.js';
+import { MissingRecordingNotifier } from './missingRecordings.js';
 import {
   getServedTracker,
   getSortedRecordings,
@@ -30,6 +32,7 @@ import {
 } from './types.js';
 import { addCorsHeaders, getCorsHeaders } from './utils/cors.js';
 import {
+  findRecordingPath,
   getRecordingPath,
   loadRecordingSession,
   saveRecordingSession,
@@ -46,6 +49,24 @@ import {
   recordWebSocket,
   replayWebSocket,
 } from './websocketHandlers.js';
+
+/**
+ * Body redaction rewrites the stored body but not its recorded content-length,
+ * and a client waits for bytes that never come, so the length follows the body.
+ */
+function withReplayedContentLength(
+  method: string | undefined,
+  headers: http.IncomingHttpHeaders,
+  body: string | null,
+): http.IncomingHttpHeaders {
+  // A HEAD response states the length of a body it never sends.
+  if (method === 'HEAD') return headers;
+  const lengthKey = Object.keys(headers).find(
+    (key) => key.toLowerCase() === 'content-length',
+  );
+  if (lengthKey === undefined) return headers;
+  return { ...headers, [lengthKey]: String(Buffer.byteLength(body ?? '')) };
+}
 
 export class ProxyServer {
   private target: string;
@@ -66,6 +87,7 @@ export class ProxyServer {
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
   private redaction?: RedactionConfig | false; // Secret-redaction config applied before saving (false/undefined = off)
   private wsReplay?: WebSocketReplayConfig; // WebSocket replay pacing
+  private missingRecordings = new MissingRecordingNotifier();
 
   constructor(
     target: string,
@@ -154,6 +176,7 @@ export class ProxyServer {
    */
   private async cleanupSession(sessionId: string): Promise<void> {
     this.replaySessions.delete(sessionId);
+    this.missingRecordings.reset(sessionId);
 
     // If this was the active recording session, save it before clearing
     if (this.recordingId === sessionId) {
@@ -334,6 +357,7 @@ export class ProxyServer {
     this.replayId = id;
     this.recordingId = null;
     this.currentSession = null;
+    this.missingRecordings.reset(id);
 
     // Get or create the replay session
     const sessionState = this.replaySessions.getOrCreate(id);
@@ -348,7 +372,7 @@ export class ProxyServer {
 
     // Load the session file immediately instead of on first request
     // If the file doesn't exist, we'll still switch to replay mode but requests will fail
-    const filePath = getRecordingPath(this.recordingsDir, id);
+    const filePath = await findRecordingPath(this.recordingsDir, id);
     try {
       sessionState.loadedSession = await loadRecordingSession(filePath);
       console.log(`[REPLAY] Loaded recording session: ${id}`);
@@ -517,6 +541,10 @@ export class ProxyServer {
       if (recordsWithKey.length === 0) {
         const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}`;
         console.error(`[REPLAY ERROR] ${errorMsg} (session: ${recordingId})`);
+        this.missingRecordings.report(
+          recordingId,
+          `No recording for ${req.method} ${req.url} in session ${recordingId}`,
+        );
         console.error(
           `[REPLAY ERROR] This request was not made during recording - possible test non-determinism`,
         );
@@ -564,13 +592,17 @@ export class ProxyServer {
       const { statusCode, headers, body } = record.response;
 
       const responseHeaders = {
-        ...headers,
+        ...withReplayedContentLength(req.method, headers, body),
         ...getCorsHeaders(req),
       };
 
       res.writeHead(statusCode, responseHeaders);
       res.end(body);
     } catch (error) {
+      this.missingRecordings.report(
+        recordingId,
+        `No recording for ${req.method} ${req.url} in session ${recordingId}: ${error instanceof Error ? error.message : String(error)}`,
+      );
       this.handleReplayError(req, res, error, key, filePath);
     }
   }
@@ -617,12 +649,29 @@ export class ProxyServer {
     if (urlPath === CONTROL_ENDPOINT) {
       return this.handleControlRequest(req, res);
     }
+    if (urlPath === MISSING_RECORDING_ENDPOINT) {
+      return this.handleMissingRecordingPoll(req, res);
+    }
 
     if (this.mode === Modes.replay) {
       return this.handleReplayRequest(req, res);
     }
 
     await this.handleProxyRequest(req, res);
+  }
+
+  private handleMissingRecordingPoll(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+  ): void {
+    const id = new URLSearchParams(req.url?.split('?')[1] ?? '').get('id');
+    if (!id) {
+      sendJsonResponse(res, HTTP_STATUS_BAD_REQUEST, {
+        error: 'Missing id query parameter',
+      });
+      return;
+    }
+    this.missingRecordings.wait(id, res);
   }
 
   private handleCorsPreflightRequest(
@@ -748,7 +797,10 @@ export class ProxyServer {
       // every upgrade
       const sessionState = this.replaySessions.getOrCreate(recordingId);
       if (!sessionState.loadedSession) {
-        const filePath = getRecordingPath(this.recordingsDir, recordingId);
+        const filePath = await findRecordingPath(
+          this.recordingsDir,
+          recordingId,
+        );
         sessionState.loadedSession = await loadRecordingSession(filePath);
       }
 

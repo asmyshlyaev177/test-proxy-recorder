@@ -4,7 +4,7 @@ description: 'Por que o page.route() não vê as buscas do lado do servidor no N
 sidebar:
   label: Mock do lado do servidor
 i18nSource: docs/guides/server-side-mocking.md
-i18nSourceBlob: f5b4c780da98c479c1bc9c0491d2ae9747da5b85
+i18nSourceBlob: 6fd6662395c2237b6c951527806be5bd6116dec1
 ---
 
 Em uma aplicação Next.js ou TanStack Start, o servidor chama a sua API enquanto renderiza uma página. O mock de requisições do Playwright nunca vê essas chamadas. As seções abaixo explicam por quê e depois comparam quatro formas de controlá-las em um teste do Playwright: o modo de teste do Next.js (test mode), o MSW dentro do servidor, um proxy de encaminhamento (forward proxy) como o mockttp e a gravação de respostas reais com o test-proxy-recorder. Os fatos sobre as outras ferramentas foram conferidos na documentação e no código-fonte de cada uma em 2026-10-03.
@@ -92,7 +92,7 @@ Com as três opções acima, você mesmo escreve cada resposta. O test-proxy-rec
 
 - **O proxy.** Inicie o `test-proxy-recorder <target-url>` ao lado da sua aplicação durante a execução dos testes. Aponte a URL base da API da aplicação para ele enquanto `TEST_PROXY_RECORDER_ENABLED` estiver definido. Cada proxy encaminha para um único backend, o `<target-url>` com que foi iniciado.
 - **`registerProxyFetch()`.** Uma única chamada no servidor faz patch do `fetch` global. Ela copia o header `x-test-rcrd-id` da requisição atual para cada requisição de saída. O proxy lê esse header para associar cada chamada do lado do servidor ao respectivo teste. A chamada é um no-op em produção, a menos que `TEST_PROXY_RECORDER_ENABLED` esteja definido.
-- **O id por teste.** O `playwrightProxy.before(page, testInfo, mode)` monta um id de sessão a partir do arquivo de spec e do título do teste. Ele envia esse id como `x-test-rcrd-id` nas requisições da página e muda essa sessão para `record` ou `replay`. Workers em paralelo compartilham um único servidor da aplicação e um único proxy, e cada teste ainda tem a própria gravação.
+- **O id por teste.** O `playwrightProxy.before(page, testInfo, mode)` monta um id de sessão a partir do arquivo de spec, dos seus títulos de `describe` e do título do teste. Ele envia esse id como `x-test-rcrd-id` nas requisições da página e muda essa sessão para `record` ou `replay`. Workers em paralelo compartilham um único servidor da aplicação e um único proxy, e cada teste ainda tem a própria gravação.
 
 ```typescript
 // Next.js: app/layout.tsx

@@ -2,7 +2,7 @@
 title: クイックスタート
 description: 1 つの init コマンドで test-proxy-recorder をセットアップします — AI エージェントで進めるのがベスト。アプリの API をプロキシに向け、一度記録し、CI で再生します。
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## AI エージェントでセットアップする（推奨）
@@ -77,11 +77,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 ### 3. 一度記録し、永遠に再生する
 
+テストは開発用バックエンドとそのデータベースを使います。`init` がアプリの本番ビルド（`preview` スクリプト、または Next.js の `start`）を見つけた場合、`test:e2e` スクリプトはその本番ビルドをテストします。一方、素の `npx playwright test` や `--ui` は開発サーバーを使うため、失敗したテストを手動で再実行し、ブラウザでバグを再現できます。記録する前に `dev` を起動し、自前のシードスクリプトで開発データベースをテストが想定する状態にしてください。
+
 ```bash
-# fixtures.ts: MODE = 'record' — capture real responses
+# Sets RECORD_MODE=1 — capture real responses
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — then commit the recordings
+# Then commit the recordings; npm run test:e2e replays them
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 
