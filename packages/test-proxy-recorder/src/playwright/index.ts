@@ -6,8 +6,18 @@ import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 // Tracks which contexts already have a cleanup handler registered to avoid duplicates.
 const registeredContexts = new WeakSet<BrowserContext>();
 
-import { RECORDING_ID_HEADER } from '../constants.js';
+import {
+  DEFAULT_PROXY_PORT,
+  MISSING_RECORDING_ENDPOINT,
+  PROXY_PORT_ENV,
+  RECORDING_ID_HEADER,
+} from '../constants.js';
 import { type Mode, Modes, type WebSocketReplayConfig } from '../types';
+import {
+  findHarPath,
+  findRecordingPath,
+  getHarPath,
+} from '../utils/fileUtils.js';
 import {
   deserializeRedactionConfig,
   type Har,
@@ -30,7 +40,7 @@ interface ProxyControlRequest {
  * @returns The port number to use
  */
 function getProxyPort(): number {
-  const envPort = process.env.TEST_PROXY_RECORDER_PORT;
+  const envPort = process.env[PROXY_PORT_ENV];
   if (envPort) {
     const parsed = Number.parseInt(envPort, 10);
     if (!Number.isNaN(parsed)) {
@@ -38,7 +48,7 @@ function getProxyPort(): number {
     }
   }
 
-  return 8100; // Default fallback
+  return DEFAULT_PROXY_PORT;
 }
 
 /**
@@ -119,20 +129,36 @@ interface ParsedPath {
   fileName: string | null;
 }
 
-function parseSpecFilePath(specPath: string): ParsedPath {
-  // Try to match 'folder/FileName.(spec|test).ts' pattern
+/** The old parsing: only `.spec.ts` / `.test.ts` files got a file-name prefix. */
+function parseLegacySpecFilePath(specPath: string): ParsedPath {
   const folderMatch = specPath.match(/^(.+?)\/([^/]+)\.(spec|test)\.ts$/);
   if (folderMatch) {
     return { folder: folderMatch[1], fileName: folderMatch[2] };
   }
 
-  // Try to match 'FileName.(spec|test).ts' pattern (no folder)
   const fileMatch = specPath.match(/^([^/]+)\.(spec|test)\.ts$/);
   if (fileMatch) {
     return { folder: null, fileName: fileMatch[1] };
   }
 
   return { folder: null, fileName: null };
+}
+
+const TEST_FILE_SUFFIX = /\.(spec|test)\.[cm]?[jt]sx?$/;
+const SCRIPT_EXTENSION = /\.[cm]?[jt]sx?$/;
+
+function parseTestFilePath(filePath: string): ParsedPath {
+  const normalized = filePath.replaceAll('\\', '/');
+  const slash = normalized.lastIndexOf('/');
+  const baseName = normalized.slice(slash + 1);
+  const fileName = TEST_FILE_SUFFIX.test(baseName)
+    ? baseName.replace(TEST_FILE_SUFFIX, '')
+    : baseName.replace(SCRIPT_EXTENSION, '');
+  return { folder: slash === -1 ? null : normalized.slice(0, slash), fileName };
+}
+
+function slugifyTitle(title: string): string {
+  return title.toLowerCase().replaceAll(/\s+/g, '-');
 }
 
 function buildSessionPath(
@@ -150,24 +176,79 @@ function buildSessionPath(
 }
 
 /**
- * Generate a session ID from test info
- * Uses titlePath to create folder structure with test file name
- * Supports both .spec.ts and .test.ts extensions
- * Example: ['jobs/Create.spec.ts', 'create a job'] becomes 'jobs/Create__create-a-job'
- * Example: ['users/Auth.test.ts', 'login test'] becomes 'users/Auth__login-test'
- * @param testInfo - Playwright test info object
+ * Session id from the test file, its describe titles and its title:
+ * ['jobs/Create.spec.ts', 'admin', 'create a job'] → 'jobs/Create__admin__create-a-job'.
  */
 export function generateSessionId(testInfo: PlaywrightTestInfo): string {
   const { titlePath } = testInfo;
-
   if (!titlePath || titlePath.length === 0) {
-    return testInfo.title.toLowerCase().replaceAll(/\s+/g, '-');
+    return slugifyTitle(testInfo.title);
   }
 
-  const { folder, fileName } = parseSpecFilePath(titlePath[0]);
-  const testName = titlePath.at(-1)!.toLowerCase().replaceAll(/\s+/g, '-');
+  const [first, ...rest] = titlePath;
+  const isFirstAFile = SCRIPT_EXTENSION.test(first);
+  const titles = isFirstAFile ? rest : titlePath;
+  const { folder, fileName } = isFirstAFile
+    ? parseTestFilePath(first)
+    : { folder: null, fileName: null };
 
-  return buildSessionPath(folder, fileName, testName);
+  return buildSessionPath(
+    folder,
+    fileName,
+    titles.map((title) => slugifyTitle(title)).join('__'),
+  );
+}
+
+/** The old id: last title only, so tests sharing a title in one file collided. */
+function generateLegacySessionId(testInfo: PlaywrightTestInfo): string {
+  const { titlePath } = testInfo;
+  if (!titlePath || titlePath.length === 0) {
+    return slugifyTitle(testInfo.title);
+  }
+
+  const { folder, fileName } = parseLegacySpecFilePath(titlePath[0]);
+  return buildSessionPath(folder, fileName, slugifyTitle(titlePath.at(-1)!));
+}
+
+async function hasRecording(sessionId: string): Promise<boolean> {
+  const recordingsDir = await getRecordingsDir();
+  const files = await Promise.all([
+    findRecordingPath(recordingsDir, sessionId),
+    findHarPath(recordingsDir, sessionId),
+  ]);
+  const found = await Promise.all(
+    files.map((file) =>
+      fs.access(file).then(
+        () => true,
+        () => false,
+      ),
+    ),
+  );
+  return found.includes(true);
+}
+
+/**
+ * Replay keeps working for recordings made before describe titles were part of
+ * the id: the old name is used only while no recording exists under the new one.
+ */
+async function resolveReplaySessionId(
+  testInfo: PlaywrightTestInfo,
+): Promise<string> {
+  const sessionId = generateSessionId(testInfo);
+  const legacyId = generateLegacySessionId(testInfo);
+  if (legacyId === sessionId || (await hasRecording(sessionId))) {
+    return sessionId;
+  }
+  return (await hasRecording(legacyId)) ? legacyId : sessionId;
+}
+
+async function resolveSessionId(
+  testInfo: PlaywrightTestInfo,
+  mode: Mode,
+): Promise<string> {
+  return mode === Modes.replay
+    ? resolveReplaySessionId(testInfo)
+    : generateSessionId(testInfo);
 }
 
 /**
@@ -186,7 +267,7 @@ export async function startRecording(
  * @param testInfo - Playwright test info object
  */
 export async function startReplay(testInfo: PlaywrightTestInfo): Promise<void> {
-  const sessionId = generateSessionId(testInfo);
+  const sessionId = await resolveReplaySessionId(testInfo);
   await setProxyMode(Modes.replay, sessionId);
 }
 
@@ -331,14 +412,15 @@ async function redactHarRecordings(): Promise<void> {
 /**
  * Setup client-side recording/replay using Playwright's routeFromHAR
  */
-/**
- * HAR file path for a session. Session path separators become underscores so
- * recordings stay a flat directory.
- */
-async function harPathForSession(sessionId: string): Promise<string> {
-  const harFileName = sessionId.replaceAll('/', '__');
+/** The HAR a session records to, or replays from (an older name when only it exists). */
+async function harPathForSession(
+  sessionId: string,
+  mode: Mode,
+): Promise<string> {
   const recordingsDir = await getRecordingsDir();
-  return path.join(recordingsDir, `${harFileName}.har`);
+  return mode === Modes.record
+    ? getHarPath(recordingsDir, sessionId)
+    : findHarPath(recordingsDir, sessionId);
 }
 
 async function setupClientSideRecording(
@@ -347,7 +429,7 @@ async function setupClientSideRecording(
   mode: Mode,
   url: string | RegExp,
 ): Promise<void> {
-  const harPath = await harPathForSession(sessionId);
+  const harPath = await harPathForSession(sessionId, mode);
 
   try {
     await page.routeFromHAR(harPath, {
@@ -378,13 +460,67 @@ export interface ClientSideRecordingOptions {
    * Example: /cognito-.*amazonaws\.com|\.stream-io-api\.com/
    * Example: 'https://api.example.com/**'
    */
-  url?: string | RegExp;
+  url?: string | RegExp | undefined;
   /**
    * Per-test WebSocket replay pacing. Overrides the proxy-level setting for this
    * session only — e.g. `{ timing: 'original' }` to re-pace recorded messages
    * from their timestamps. Applies in replay mode.
    */
-  websocket?: WebSocketReplayConfig;
+  websocket?: WebSocketReplayConfig | undefined;
+}
+
+interface BeforeOptions extends ClientSideRecordingOptions {
+  timeout?: number | undefined;
+  /**
+   * Replay only: close the page, failing the test, as soon as the proxy gets a
+   * request this test never recorded. Defaults to true.
+   */
+  failOnMissingRecording?: boolean | undefined;
+}
+
+const NAVIGATION_SETTLE_MS = 3000;
+
+/** Tracks whether the main frame has a navigation that has not reached `load`. */
+function trackPendingNavigation(page: Page): () => boolean {
+  let isNavigating = false;
+  page.on('request', (request) => {
+    if (request.isNavigationRequest() && request.frame() === page.mainFrame()) {
+      isNavigating = true;
+    }
+  });
+  page.on('load', () => {
+    isNavigating = false;
+  });
+  page.on('requestfailed', (request) => {
+    if (request.isNavigationRequest()) isNavigating = false;
+  });
+  return () => isNavigating;
+}
+
+/** Closes the page with the proxy's reason once it reports an unrecorded request. */
+function watchMissingRecordings(page: Page, sessionId: string): void {
+  const controller = new AbortController();
+  page.once('close', () => controller.abort());
+  const isNavigating = trackPendingNavigation(page);
+  const url = `http://localhost:${getProxyPort()}${MISSING_RECORDING_ENDPOINT}?id=${encodeURIComponent(sessionId)}`;
+
+  // Any other outcome (aborted on close, proxy gone, older proxy) just stops watching.
+  fetch(url, { signal: controller.signal })
+    .then(async (response) => {
+      if (response.status !== 200) return;
+      const { message } = (await response.json()) as { message: string };
+      const reason = `[test-proxy-recorder] ${message}. Re-record this test, or pass failOnMissingRecording: false to playwrightProxy.before() to allow it.`;
+      console.error(reason);
+      // Closing mid-navigation fails page.goto() with a bare net::ERR_ABORTED
+      // that drops the reason, so let a pending navigation finish first.
+      if (isNavigating()) {
+        await page
+          .waitForEvent('load', { timeout: NAVIGATION_SETTLE_MS })
+          .catch(() => {});
+      }
+      await page.close({ reason });
+    })
+    .catch(() => {});
 }
 
 export const playwrightProxy = {
@@ -400,13 +536,13 @@ export const playwrightProxy = {
     page: Page,
     testInfo: PlaywrightTestInfo,
     mode: Mode,
-    options?: number | (ClientSideRecordingOptions & { timeout?: number }),
+    options?: number | BeforeOptions,
   ): Promise<void> {
     // Handle backward compatibility - if options is a number, treat it as timeout
     const timeout = typeof options === 'number' ? options : options?.timeout;
     const clientSideOptions =
       typeof options === 'object' && options !== null ? options : undefined;
-    const sessionId = generateSessionId(testInfo);
+    const sessionId = await resolveSessionId(testInfo, mode);
 
     // Set the custom header on the page for Next.js and other frameworks
     await page.setExtraHTTPHeaders({
@@ -431,6 +567,13 @@ export const playwrightProxy = {
     // Set the proxy mode FIRST before setting up any route handlers
     await setProxyMode(mode, sessionId, timeout, clientSideOptions?.websocket);
 
+    if (
+      mode === Modes.replay &&
+      clientSideOptions?.failOnMissingRecording !== false
+    ) {
+      watchMissingRecordings(page, sessionId);
+    }
+
     // Setup optional client-side recording/replay for 3rd party services BEFORE proxy route handler
     // This is important because Playwright processes routes in REVERSE order of registration
     // We want proxy route handler to run FIRST, so we register it LAST
@@ -446,8 +589,7 @@ export const playwrightProxy = {
     // IMPORTANT: Register proxy route handler LAST so it runs FIRST (highest priority)
     // Playwright processes routes in reverse order - last registered = first to run
     // This ensures the recording ID header is added before any other routing logic
-    const proxyPort = process.env.TEST_PROXY_RECORDER_PORT || '8100';
-    const proxyUrl = `localhost:${proxyPort}`;
+    const proxyUrl = `localhost:${getProxyPort()}`;
 
     await page.route(
       (url) => {

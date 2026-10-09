@@ -20,7 +20,7 @@ test-proxy-recorder supports two recording mechanisms depending on where your re
                     └──> .mock.json                        └──> .har
 ```
 
-Each test sets the mode when it starts, and the proxy keeps one mode for every request it gets, so tests that run at the same time share it. In **record** mode the proxy forwards to the real backend and saves responses; in **replay** mode it serves the saved responses from disk, and each test's id picks that test's recording; in **transparent** mode it forwards without recording. See the [control endpoint](/docs/guides/control-endpoint/) for how modes are switched.
+Each test sets the mode when it starts, and the proxy keeps one mode for every request it gets, so tests that run at the same time share it. In **record** mode the proxy forwards to the real backend and saves responses; in **replay** mode it serves the saved responses from disk, and each test's id picks that test's recording; in **transparent** mode it forwards without recording. The proxy starts in transparent mode, so an app run through it outside tests talks to its backend as usual. See the [control endpoint](/docs/guides/control-endpoint/) for how modes are switched.
 
 ## How replay matches requests {#replay-matching}
 
@@ -30,7 +30,7 @@ The proxy and the HAR file look up a recorded response in different ways.
 | --- | --- | --- |
 | Matched on | Method, path and an MD5 hash of the query string. The body is not compared. | Method and URL, plus the body for a `POST` ([Playwright's rules](https://playwright.dev/docs/mock#replaying-from-har)). |
 | Same request again | The next recording, in recorded order. | The entry with the most matching headers. Recorded order is ignored. |
-| No recording | A 404 with a JSON body that names the request. | The request is aborted. |
+| No recording | A 404 with a JSON body that names the request, and `playwrightProxy.before()` closes the page so the test fails at once (`failOnMissingRecording: false` turns that off). | The request is aborted. |
 | Real API reached | Only in `transparent` mode. | Only by requests that don't match `url`. |
 
 ### Server-side requests (proxy)

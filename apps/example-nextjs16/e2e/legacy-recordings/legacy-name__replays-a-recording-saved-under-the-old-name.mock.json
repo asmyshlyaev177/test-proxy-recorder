@@ -1,0 +1,45 @@
+{
+  "id": "legacy-name__replays-a-recording-saved-under-the-old-name",
+  "recordings": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/todos",
+        "headers": {
+          "host": "localhost:8100",
+          "connection": "keep-alive",
+          "x-test-rcrd-id": "ssr__ssr-renders-the-alpha-todo-from-its-own-recording",
+          "accept": "*/*",
+          "accept-language": "*",
+          "sec-fetch-mode": "cors",
+          "user-agent": "node",
+          "pragma": "no-cache",
+          "cache-control": "no-cache",
+          "accept-encoding": "gzip, deflate"
+        },
+        "body": null
+      },
+      "response": {
+        "statusCode": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+          "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-test-rcrd-id",
+          "content-type": "application/json",
+          "date": "Thu, 08 Oct 2026 14:07:34 GMT",
+          "connection": "keep-alive",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "*"
+        },
+        "body": "[{\"id\":\"9952dbed-a3d1-404b-9a30-ed77a18b66d3\",\"text\":\"SSR-ONLY-alpha\",\"completed\":false,\"createdAt\":\"2026-10-08T14:07:34.218Z\"}]"
+      },
+      "timestamp": "2026-10-08T14:07:34.228Z",
+      "key": "GET_todos.json",
+      "recordingId": 0,
+      "sequence": 0
+    }
+  ],
+  "websocketRecordings": []
+}

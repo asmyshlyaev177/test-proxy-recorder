@@ -10,10 +10,15 @@ import { type RedactionConfig, redactSession } from './redact.js';
 
 const JSON_INDENT_SPACES = 2;
 const EXTENSION = '.mock.json';
-// Max filename length: 255 chars on most filesystems
-// Reserve space for extension and hash suffix
-const MAX_FILENAME_LENGTH = 255 - EXTENSION.length;
+const HAR_EXTENSION = '.har';
+// Bytes, not characters: filesystems cap a name at 255 bytes. Well under that,
+// so the whole path also fits the 260 characters Git for Windows allows.
+const MAX_FILE_BASE_BYTES = 120;
 const HASH_LENGTH = 8; // Use 8 hex chars for hash suffix (16^8 = 4.3B combinations)
+// Windows reserves these names even with an extension: NUL.txt is NUL.
+const WINDOWS_DEVICE_NAME = /^(con|prn|aux|nul|com\d|lpt\d)\./i;
+// The earlier `.mock.json` cap, in characters, kept to find files saved under it.
+const LEGACY_MAX_FILENAME_LENGTH = 255 - EXTENSION.length;
 
 /**
  * Generates a hash from a string to use as a filename suffix
@@ -28,27 +33,100 @@ function generateHash(str: string): string {
     .digest('hex');
 }
 
-export function getRecordingPath(recordingsDir: string, id: string): string {
-  // Sanitize the session ID to create a safe, flat filename
-  // Replace path separators with double underscores to preserve structure in the name
-  // First, check if we need to truncate before sanitizing
-  let processedId = id.replaceAll('/', '__');
-
-  // Check if filename would exceed max length
-  if (processedId.length > MAX_FILENAME_LENGTH) {
-    // Truncate and append hash to maintain uniqueness
-    const hash = generateHash(id);
-    const maxBaseLength = MAX_FILENAME_LENGTH - HASH_LENGTH - 1; // -1 for underscore
-    processedId = `${processedId.slice(0, maxBaseLength)}_${hash}`;
+function truncateToBytes(text: string, maxBytes: number): string {
+  let result = '';
+  for (const char of text) {
+    if (Buffer.byteLength(result + char) > maxBytes) break;
+    result += char;
   }
+  return result;
+}
 
-  // Now sanitize the (possibly truncated) ID
+/**
+ * The name, without extension, of a session's `.mock.json` and `.har` files:
+ * one flat name, valid on every platform. Path separators become `__`.
+ */
+export function getRecordingFileBase(id: string): string {
+  const safe = filenamify(id.replaceAll('/', '__'), {
+    replacement: '_',
+    maxLength: Number.MAX_SAFE_INTEGER,
+  });
+  const capped =
+    Buffer.byteLength(safe) > MAX_FILE_BASE_BYTES
+      ? `${truncateToBytes(safe, MAX_FILE_BASE_BYTES - HASH_LENGTH - 1)}_${generateHash(id)}`
+      : safe;
+  return WINDOWS_DEVICE_NAME.test(capped) ? `_${capped}` : capped;
+}
+
+export function getRecordingPath(recordingsDir: string, id: string): string {
+  return path.join(recordingsDir, `${getRecordingFileBase(id)}${EXTENSION}`);
+}
+
+export function getHarPath(recordingsDir: string, id: string): string {
+  return path.join(
+    recordingsDir,
+    `${getRecordingFileBase(id)}${HAR_EXTENSION}`,
+  );
+}
+
+/** The `.mock.json` name of earlier versions: a character cap that could pass 255 bytes. */
+function getLegacyRecordingPath(recordingsDir: string, id: string): string {
+  let processedId = id.replaceAll('/', '__');
+  if (processedId.length > LEGACY_MAX_FILENAME_LENGTH) {
+    const maxBaseLength = LEGACY_MAX_FILENAME_LENGTH - HASH_LENGTH - 1;
+    processedId = `${processedId.slice(0, maxBaseLength)}_${generateHash(id)}`;
+  }
   const sanitizedId = filenamify(processedId, {
     replacement: '_',
-    maxLength: 255, // Set explicit max to prevent filenamify's default truncation
+    maxLength: 255,
   });
-
   return path.join(recordingsDir, `${sanitizedId}${EXTENSION}`);
+}
+
+/** The `.har` name of earlier versions: not sanitized, so `:` or `?` broke it on Windows. */
+function getLegacyHarPath(recordingsDir: string, id: string): string {
+  return path.join(
+    recordingsDir,
+    `${id.replaceAll('/', '__')}${HAR_EXTENSION}`,
+  );
+}
+
+async function fileExists(filePath: string): Promise<boolean> {
+  return fs.access(filePath).then(
+    () => true,
+    () => false,
+  );
+}
+
+/** The current path, unless only the earlier name exists: replay reads that. */
+async function findExistingPath(
+  current: string,
+  legacy: string,
+): Promise<string> {
+  if (current === legacy || (await fileExists(current))) return current;
+  return (await fileExists(legacy)) ? legacy : current;
+}
+
+/** Where to read a session's `.mock.json` from; recording writes {@link getRecordingPath}. */
+export function findRecordingPath(
+  recordingsDir: string,
+  id: string,
+): Promise<string> {
+  return findExistingPath(
+    getRecordingPath(recordingsDir, id),
+    getLegacyRecordingPath(recordingsDir, id),
+  );
+}
+
+/** Where to read a session's `.har` from; recording writes {@link getHarPath}. */
+export function findHarPath(
+  recordingsDir: string,
+  id: string,
+): Promise<string> {
+  return findExistingPath(
+    getHarPath(recordingsDir, id),
+    getLegacyHarPath(recordingsDir, id),
+  );
 }
 
 export async function loadRecordingSession(

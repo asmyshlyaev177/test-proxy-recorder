@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · Português (BR) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=pt-BR source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
+<!-- i18n:meta locale=pt-BR source=README.md source-blob=3339c08170c4b61bcf11c9527d6fdeda00ab5558 status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-Depois defina `MODE = 'record'`, execute uma vez contra a API real, mude para `'replay'` e faça commit de `e2e/recordings/`. A CI agora roda com o backend desligado.
+Depois execute `npm run test:e2e:record` (ele define `RECORD_MODE=1`) uma vez contra a API real e faça commit de `e2e/recordings/`. A CI roda `npm run test:e2e`, que reproduz com o backend desligado.
 
 Passo a passo completo: [início rápido](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [configuração manual](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/).
 
@@ -130,34 +130,20 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-O `install` adiciona orientação de descoberta de skills à config do seu agente (`CLAUDE.md`, `.cursorrules`, …); o agente carrega as skills `proxy-setup`, `nextjs-ssr` e `tanstack-start` sob demanda. Liste ou carregue-as diretamente com `npx @tanstack/intent@latest list` e `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Guia completo: [skills para agentes de IA](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+O `install` adiciona orientação de descoberta de skills à config do seu agente (`CLAUDE.md`, `.cursorrules`, …); o agente carrega as skills `proxy-setup`, `nextjs-ssr` e `tanstack-start` sob demanda. Liste ou carregue-as diretamente com `npx @tanstack/intent@latest list` e `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. O `install` precisa de um terminal interativo; um agente rodando sem um pode ler as skills em `node_modules/test-proxy-recorder/skills/*/SKILL.md`. Guia completo: [skills para agentes de IA](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 Os fontes das skills ficam em [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
 ## Contrate-me
 
-Sou **Aleksandr Smyshliaev** — autor e mantenedor desta ferramenta. Engenheiro
-frontend sênior (React / Next.js / TypeScript, 8+ anos) e **disponível para
-trabalho remoto em tempo integral agora**.
+Sou **Aleksandr Smyshliaev** — autor e mantenedor desta ferramenta. Engenheiro frontend sênior (React / Next.js / TypeScript, 8+ anos) e **disponível para trabalho remoto em tempo integral agora**.
 
-Este projeto existe porque passei anos corrigindo suites de teste instáveis de
-outras pessoas. É o tipo de trabalho em que sou melhor: a infraestrutura
-entediante que decide se uma base de código continua agradável seis meses
-depois.
+Este projeto existe porque passei anos corrigindo suites de teste instáveis de outras pessoas. É o tipo de trabalho em que sou melhor: a infraestrutura entediante que decide se uma base de código continua agradável seis meses depois.
 
-- **Melhor em** — bibliotecas de componentes, gerenciamento de estado e suites
-  de teste que sobrevivem a uma refatoração.
-- **Também meus** —
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  (~84 mil instalações semanais),
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (estado de URL
-  tipado), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
-- **Onde** — Tbilisi, Geórgia (GMT+4), sobreposição total com CET. Entidade de
-  contratante registrada, então o engajamento B2B não precisa de configuração
-  de employer-of-record.
-- **Contato** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **Melhor em** — bibliotecas de componentes, gerenciamento de estado e suites de teste que sobrevivem a uma refatoração.
+- **Também meus** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu) (~84 mil instalações semanais), [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (estado de URL tipado), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
+- **Onde** — Tbilisi, Geórgia (GMT+4), sobreposição total com CET. Entidade de contratante registrada, então o engajamento B2B não precisa de configuração de employer-of-record.
+- **Contato** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## Licença
 

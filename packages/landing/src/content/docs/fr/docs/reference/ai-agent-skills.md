@@ -2,7 +2,7 @@
 title: Skills pour agents IA
 description: Installez les skills de test-proxy-recorder pour que les agents de code IA (Claude Code, Cursor, Copilot) génèrent du code de configuration correct.
 i18nSource: docs/reference/ai-agent-skills.md
-i18nSourceBlob: 2622ae8f436b9a9a1d57fdf8831308a039a8981d
+i18nSourceBlob: 8214769e2ee6aa9a875b70e13d00aeee8c361beb
 ---
 
 Si vous utilisez un agent de codage IA (Claude Code, Cursor, Copilot et similaires), configurez le chargement des skills afin que l'agent génère le bon code de configuration. Les skills sont fournies dans le paquet `test-proxy-recorder` via [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent) et suivent ses mises à jour habituelles de gestionnaire de paquets.
@@ -20,6 +20,8 @@ npx @tanstack/intent@latest install
 ```
 
 Passez `--map` si vous préférez écrire des correspondances explicites tâche→skill dans la config de votre agent plutôt que des instructions de découverte génériques.
+
+`install` a besoin d'un terminal interactif. Un agent qui tourne sans terminal peut lire les skills depuis `node_modules/test-proxy-recorder/skills/*/SKILL.md`.
 
 L'agent connaîtra alors la bonne configuration proxy/fixture, le flux enregistrer vs. rejouer et les motifs d'en-têtes SSR de Next.js sans avoir besoin d'être guidé.
 

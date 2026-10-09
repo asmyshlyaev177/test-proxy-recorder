@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · [简体中文](./README.zh-CN.md) · [日本語](./README.ja.md) · 한국어 · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=ko source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
+<!-- i18n:meta locale=ko source=README.md source-blob=3339c08170c4b61bcf11c9527d6fdeda00ab5558 status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-그런 다음 `MODE = 'record'`로 설정하고 실제 API를 대상으로 한 번 실행한 뒤, `'replay'`로 전환하고 `e2e/recordings/`를 커밋하세요. 이제 CI는 백엔드를 끈 상태로 실행됩니다.
+그런 다음 실제 API를 대상으로 `npm run test:e2e:record`(`RECORD_MODE=1`을 설정합니다)를 한 번 실행하고 `e2e/recordings/`를 커밋하세요. CI는 `npm run test:e2e`를 실행하며, 백엔드를 끈 상태로 재생합니다.
 
 전체 과정: [빠른 시작](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [수동 설정](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/).
 
@@ -130,7 +130,7 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install`은 에이전트 설정(`CLAUDE.md`, `.cursorrules` 등)에 스킬 검색 지침을 추가합니다. 에이전트는 필요할 때 `proxy-setup`, `nextjs-ssr`, `tanstack-start` 스킬을 로드합니다. `npx @tanstack/intent@latest list`와 `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`으로 직접 나열하거나 로드하세요. 전체 가이드: [AI 에이전트 스킬](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+`install`은 에이전트 설정(`CLAUDE.md`, `.cursorrules` 등)에 스킬 검색 지침을 추가합니다. 에이전트는 필요할 때 `proxy-setup`, `nextjs-ssr`, `tanstack-start` 스킬을 로드합니다. `npx @tanstack/intent@latest list`와 `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`으로 직접 나열하거나 로드하세요. `install`에는 대화형 터미널이 필요합니다. 대화형 터미널 없이 실행되는 에이전트는 `node_modules/test-proxy-recorder/skills/*/SKILL.md`에서 스킬을 읽을 수 있습니다. 전체 가이드: [AI 에이전트 스킬](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 스킬 소스는 [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/)에 있습니다.
 
@@ -141,16 +141,9 @@ npx @tanstack/intent@latest install
 이 프로젝트는 제가 다른 사람들의 불안정한 테스트 스위트를 수년간 고쳐 온 경험에서 비롯되었습니다. 코드베이스가 6개월 뒤에도 여전히 쾌적한지를 결정하는, 지루한 인프라가 제가 가장 잘하는 일입니다.
 
 - **잘하는 일** — 리팩터링 후에도 살아남는 컴포넌트 라이브러리, 상태 관리, 테스트 스위트.
-- **그 외 제가 만든 것** —
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  (주간 설치 약 84k),
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (타입 안전 URL
-  상태), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
-- **위치** — 조지아 트빌리시(GMT+4), CET와 완전히 겹칩니다. 등록된 계약자 법인이 있어
-  B2B 계약 시 고용 대행(EOR) 설정이 필요 없습니다.
-- **연락처** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **그 외 제가 만든 것** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu) (주간 설치 약 84k), [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (타입 안전 URL 상태), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
+- **위치** — 조지아 트빌리시(GMT+4), CET와 완전히 겹칩니다. 등록된 계약자 법인이 있어 B2B 계약 시 고용 대행(EOR) 설정이 필요 없습니다.
+- **연락처** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## 라이선스
 

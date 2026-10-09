@@ -4,7 +4,7 @@ description: test-proxy-recorder ghi lại traffic qua hai cơ chế, một prox
 sidebar:
   label: Cách thức hoạt động
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: f808b2bb0634754bcb63911e3e006c34c495fe06
+i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
 ---
 
 test-proxy-recorder hỗ trợ hai cơ chế ghi lại tùy theo nơi request của bạn xuất phát. Cả hai có thể dùng cùng nhau hoặc độc lập.
@@ -22,7 +22,7 @@ test-proxy-recorder hỗ trợ hai cơ chế ghi lại tùy theo nơi request c�
                     └──> .mock.json                        └──> .har
 ```
 
-Mỗi test đặt chế độ khi nó bắt đầu, và proxy giữ một chế độ duy nhất cho mọi request nó nhận được, nên các test chạy cùng lúc dùng chung chế độ đó. Ở chế độ **ghi lại**, proxy chuyển tiếp tới backend thật và lưu các response; ở chế độ **phát lại**, nó trả về các response đã lưu từ đĩa, và id của mỗi test chọn ra bản ghi của chính test đó; ở chế độ **transparent**, nó chuyển tiếp mà không ghi lại. Xem [endpoint điều khiển](/vi/docs/guides/control-endpoint/) để biết cách chuyển đổi giữa các chế độ.
+Mỗi test đặt chế độ khi nó bắt đầu, và proxy giữ một chế độ duy nhất cho mọi request nó nhận được, nên các test chạy cùng lúc dùng chung chế độ đó. Ở chế độ **ghi lại**, proxy chuyển tiếp tới backend thật và lưu các response; ở chế độ **phát lại**, nó trả về các response đã lưu từ đĩa, và id của mỗi test chọn ra bản ghi của chính test đó; ở chế độ **transparent**, nó chuyển tiếp mà không ghi lại. Proxy khởi động ở chế độ transparent, nên một ứng dụng chạy qua nó bên ngoài test vẫn giao tiếp với backend như bình thường. Xem [endpoint điều khiển](/vi/docs/guides/control-endpoint/) để biết cách chuyển đổi giữa các chế độ.
 
 ## Cách phát lại khớp request {#replay-matching}
 
@@ -32,7 +32,7 @@ Proxy và file HAR tra cứu một response đã ghi theo những cách khác nh
 | --- | --- | --- |
 | Khớp theo | Method, path và một hash MD5 của query string. Body không được so sánh. | Method và URL, cộng thêm body nếu request là `POST` ([quy tắc của Playwright](https://playwright.dev/docs/mock#replaying-from-har)). |
 | Cùng một request lặp lại | Bản ghi tiếp theo, theo thứ tự đã ghi. | Mục (entry) có nhiều header khớp nhất. Thứ tự ghi bị bỏ qua. |
-| Không có bản ghi | Một 404 với body JSON nêu tên request. | Request bị hủy. |
+| Không có bản ghi | Một 404 với body JSON nêu tên request, và `playwrightProxy.before()` đóng trang để test thất bại ngay lập tức (`failOnMissingRecording: false` tắt hành vi này). | Request bị hủy. |
 | Khi nào gọi tới API thật | Chỉ ở chế độ `transparent`. | Chỉ với các request không khớp `url`. |
 
 ### Request phía máy chủ (proxy)

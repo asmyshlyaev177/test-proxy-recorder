@@ -2,7 +2,7 @@
 title: CLI
 description: test-proxy-recorder のコマンドラインインターフェース — オプション、WebSocket の再生ペース、スタックしたプロキシのリセット方法。
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
+i18nSourceBlob: 1b481900a2093001d8adee923a7a37c4db3294f4
 ---
 
 ```bash
@@ -12,7 +12,7 @@ test-proxy-recorder <target-url> [options]
 | オプション        | デフォルト     | 説明                                |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(必須)*       | プロキシするバックエンド URL        |
-| `--port, -p`     | `8000`         | プロキシのリッスンポート            |
+| `--port, -p`     | `8100`         | プロキシのリッスンポート。`TEST_PROXY_RECORDER_PORT` からも読み取ります |
 | `--dir, -d`      | `./recordings` | 記録ファイルのディレクトリ          |
 | `--timeout, -t`  | `120000`       | セッション自動リセットのタイムアウト (ms) |
 | `--config, -c`   | *(自動)*       | 設定ファイルのパス                  |
@@ -40,7 +40,7 @@ test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 test-proxy-recorder reset    # or: npm run proxy:reset
 ```
 
-これは `/__control` に `{ "mode": "transparent" }` を POST します — `curl` で手動リセットする代わりの、サポートされた並列安全な手段です。いつでも安全に実行できます: 到達不能なプロキシは no-op として扱われます。ポートは **`--port` フラグ → 環境変数 `TEST_PROXY_RECORDER_PORT` → 設定ファイル → `8000`** の順で解決され、プロキシが起動したポートを対象とします（上書きするには `--port` / `--config`）。`init` はこれを `proxy:reset` スクリプトとして生成します。
+これは `/__control` に `{ "mode": "transparent" }` を POST します — `curl` で手動リセットする代わりの、サポートされた並列安全な手段です。いつでも安全に実行できます: 到達不能なプロキシは no-op として扱われます。ポートは **`--port` フラグ → 環境変数 `TEST_PROXY_RECORDER_PORT` → 設定ファイル → `8100`** の順で解決され、プロキシが起動したポートを対象とします（上書きするには `--port` / `--config`）。`init` はこれを `proxy:reset` スクリプトとして生成します。
 
 ## `init` — セットアップを生成する
 

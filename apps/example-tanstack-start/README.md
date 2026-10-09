@@ -1,16 +1,11 @@
 # Example: TanStack Start (server-side + browser recording)
 
-A full-stack example of using [test-proxy-recorder](../../packages/test-proxy-recorder) to test a
-**TanStack Start** app end-to-end without a live backend on CI.
+A full-stack example of using [test-proxy-recorder](../../packages/test-proxy-recorder) to test a **TanStack Start** app end-to-end without a live backend on CI.
 
-The data layer is **TanStack Query** — the idiomatic choice for a TanStack app —
-and the todo list talks to an API from **two** places:
+The data layer is **TanStack Query** — the idiomatic choice for a TanStack app — and the todo list talks to an API from **two** places:
 
-- **Server-side** — the home route's loader prefetches the list into the
-  `QueryClient` during SSR (`src/routes/index.tsx`), which is dehydrated to the
-  client.
-- **Browser-side** — the component (`src/components/TodoApp.tsx`) reads it with
-  `useSuspenseQuery` and adds/edits/toggles/deletes via `useMutation`.
+- **Server-side** — the home route's loader prefetches the list into the `QueryClient` during SSR (`src/routes/index.tsx`), which is dehydrated to the client.
+- **Browser-side** — the component (`src/components/TodoApp.tsx`) reads it with `useSuspenseQuery` and adds/edits/toggles/deletes via `useMutation`.
 
 > **The recorder is data-layer-agnostic.** It works at the HTTP layer, so nothing
 > here is Query-specific: `useMutation`/`queryFn` calls bottom out in `fetch`,
@@ -42,9 +37,7 @@ Three services are involved:
 
 - **Node + pnpm**, with workspace deps installed (`pnpm install` at the repo root).
 
-No `.env` is needed for testing: both `BACKEND_URL` (SSR) and `VITE_API_URL`
-(browser) default to the proxy at `http://localhost:8100`. `.env.example` only
-matters when pointing the app at a real backend in production.
+No `.env` is needed for testing: both `BACKEND_URL` (SSR) and `VITE_API_URL` (browser) default to the proxy at `http://localhost:8100`. `.env.example` only matters when pointing the app at a real backend in production.
 
 ## Quick start — replay
 
@@ -52,10 +45,7 @@ matters when pointing the app at a real backend in production.
 pnpm test:e2e
 ```
 
-This one command is self-contained: it builds the app, starts all three services,
-runs the Playwright tests in replay mode (served entirely from
-[`e2e/recordings/`](e2e/recordings/)), and tears everything down. No network and no
-backend are needed.
+This one command is self-contained: it builds the app, starts all three services, runs the Playwright tests in replay mode (served entirely from [`e2e/recordings/`](e2e/recordings/)), and tears everything down. No network and no backend are needed.
 
 > **Recordings are not committed to git.** A fresh clone has an empty
 > `e2e/recordings/`, so replay has nothing to serve until you record once — see
@@ -63,8 +53,7 @@ backend are needed.
 
 ## Record your own
 
-Recording hits the **real** API (here, the local mock backend) and saves the
-traffic to disk so future replay runs are offline and deterministic.
+Recording hits the **real** API (here, the local mock backend) and saves the traffic to disk so future replay runs are offline and deterministic.
 
 In one terminal, start the services:
 
@@ -78,9 +67,7 @@ In another, record:
 pnpm test:e2e:record    # RECORD_MODE=1, opens the Playwright UI
 ```
 
-Every test's requests are written to `e2e/recordings/` — a `.mock.json` for the
-server-side SSR fetch and a `.har` for the browser-side calls. Switch back to
-`pnpm test:e2e` to run offline from those recordings.
+Every test's requests are written to `e2e/recordings/` — a `.mock.json` for the server-side SSR fetch and a `.har` for the browser-side calls. Switch back to `pnpm test:e2e` to run offline from those recordings.
 
 > **Record against a production build, not `vite dev`.** The scripts build the app
 > (`vite build`) and start the Nitro server (`node .output/server/index.mjs`), the
@@ -89,24 +76,12 @@ server-side SSR fetch and a `.har` for the browser-side calls. Switch back to
 
 ## How recording works
 
-The interesting part of this example is that two different request origins are
-captured by two different mechanisms, keyed to the same test:
+The interesting part of this example is that two different request origins are captured by two different mechanisms, keyed to the same test:
 
-- **Browser → `.har`.** [`e2e/todos.spec.ts`](e2e/todos.spec.ts) calls
-  `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })`, which
-  uses Playwright's HAR intercept to record/replay the browser's `fetch` calls.
-- **SSR → `.mock.json`.** The proxy records server-side requests itself. For the
-  proxy to associate an SSR fetch with the right test, the per-test recording-id
-  header (`x-test-rcrd-id`) must travel from the incoming page request to the
-  outgoing SSR fetch — that is exactly what
-  [`registerProxyFetch()`](../../packages/test-proxy-recorder/src/tanstack-start/registerProxyFetch.ts)
-  in [`src/router.tsx`](src/router.tsx) does. It patches the server `fetch` to read
-  the current request's id (via TanStack Start's `getRequestHeader`) and forward it
-  — which transparently tags the `fetch` that TanStack Query's loader prefetch
-  runs during SSR, so the data layer needs no recorder-specific code.
+- **Browser → `.har`.** [`e2e/todos.spec.ts`](e2e/todos.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })`, which uses Playwright's HAR intercept to record/replay the browser's `fetch` calls.
+- **SSR → `.mock.json`.** The proxy records server-side requests itself. For the proxy to associate an SSR fetch with the right test, the per-test recording-id header (`x-test-rcrd-id`) must travel from the incoming page request to the outgoing SSR fetch — that is exactly what [`registerProxyFetch()`](../../packages/test-proxy-recorder/src/tanstack-start/registerProxyFetch.ts) in [`src/router.tsx`](src/router.tsx) does. It patches the server `fetch` to read the current request's id (via TanStack Start's `getRequestHeader`) and forward it — which transparently tags the `fetch` that TanStack Query's loader prefetch runs during SSR, so the data layer needs no recorder-specific code.
 - **`mode`** is `record` when `RECORD_MODE` is set, otherwise `replay`.
-- Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so
-  recordings start from a known-empty state.
+- Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so recordings start from a known-empty state.
 
 ## Files
 
@@ -129,10 +104,7 @@ captured by two different mechanisms, keyed to the same test:
 
 ## Authenticated dashboard (AWS Cognito)
 
-The `/login` → `/dashboard` routes add a **real auth provider** on top of the same
-recorder setup, mirroring [`example-auth-cognito`](../example-auth-cognito) but in
-TanStack Start idioms. An authenticated app has two kinds of traffic that need
-opposite treatment:
+The `/login` → `/dashboard` routes add a **real auth provider** on top of the same recorder setup, mirroring [`example-auth-cognito`](../example-auth-cognito) but in TanStack Start idioms. An authenticated app has two kinds of traffic that need opposite treatment:
 
 | Traffic | Mode | Why |
 | ------- | ---- | --- |
@@ -141,37 +113,22 @@ opposite treatment:
 
 The flow:
 
-1. A Playwright **`setup` project** ([`e2e/setup-auth.ts`](e2e/setup-auth.ts)) logs
-   in **once** with the proxy in `transparent` mode and saves `storageState` (the
-   Cognito access token in `localStorage`) to a gitignored `e2e/auth-state.json`.
-   The login hits real Cognito on a different host than the proxy, so it's never recorded.
-2. The **`auth` project** ([`e2e/auth.spec.ts`](e2e/auth.spec.ts)) loads that
-   `storageState` and starts already authenticated. Its protected requests carry
-   the JWT as a Bearer header and run in `record`/`replay`.
-3. The recorder **redacts** the `Authorization` header, so no token reaches the
-   recordings. [`e2e/assert-redactions.mjs`](e2e/assert-redactions.mjs) enforces
-   this — it fails if any JWT survives, or if the login flow produced a recording.
+1. A Playwright **`setup` project** ([`e2e/setup-auth.ts`](e2e/setup-auth.ts)) logs in **once** with the proxy in `transparent` mode and saves `storageState` (the Cognito access token in `localStorage`) to a gitignored `e2e/auth-state.json`. The login hits real Cognito on a different host than the proxy, so it's never recorded.
+2. The **`auth` project** ([`e2e/auth.spec.ts`](e2e/auth.spec.ts)) loads that `storageState` and starts already authenticated. Its protected requests carry the JWT as a Bearer header and run in `record`/`replay`.
+3. The recorder **redacts** the `Authorization` header, so no token reaches the recordings. [`e2e/assert-redactions.mjs`](e2e/assert-redactions.mjs) enforces this — it fails if any JWT survives, or if the login flow produced a recording.
 
-Because the Cognito token lives in the browser's `localStorage`, the protected list
-is **not** SSR-prefetched (unlike the public home page): the fetch runs client-side
-and is recorded via HAR — the same mechanism as [`/secret`](src/routes/secret.tsx).
+Because the Cognito token lives in the browser's `localStorage`, the protected list is **not** SSR-prefetched (unlike the public home page): the fetch runs client-side and is recorded via HAR — the same mechanism as [`/secret`](src/routes/secret.tsx).
 
 ### Running it
 
-The auth suite needs a real Cognito user pool, so it's **opt-in**. Nothing about
-the pool is committed — put it all in the gitignored `.env.local`:
+The auth suite needs a real Cognito user pool, so it's **opt-in**. Nothing about the pool is committed — put it all in the gitignored `.env.local`:
 
 ```bash
 cp .env.example .env.local     # then fill the four VITE_COGNITO_* / COGNITO_TEST_* vars
 pnpm test:e2e:ci               # records (real Cognito + backend) then replays
 ```
 
-`.env.local` holds both the public pool config (`VITE_COGNITO_REGION` /
-`VITE_COGNITO_CLIENT_ID`, baked into the client bundle at build time) and the secret
-test-user credentials — kept out of git so the demo isn't tied to a real pool.
-Without them the `setup` and `auth` projects are **skipped** and every other spec
-still records/replays exactly as before — so a fresh clone (and forks without
-secrets) stay green. In CI, supply all four as Actions secrets.
+`.env.local` holds both the public pool config (`VITE_COGNITO_REGION` / `VITE_COGNITO_CLIENT_ID`, baked into the client bundle at build time) and the secret test-user credentials — kept out of git so the demo isn't tied to a real pool. Without them the `setup` and `auth` projects are **skipped** and every other spec still records/replays exactly as before — so a fresh clone (and forks without secrets) stay green. In CI, supply all four as Actions secrets.
 
 | File | Purpose |
 | ---- | ------- |
@@ -184,19 +141,7 @@ secrets) stay green. In CI, supply all four as Actions secrets.
 
 ## Adapting this to your own app
 
-- **Point the app at the proxy in dev/test** — set `BACKEND_URL` (SSR) and
-  `VITE_API_URL` (browser) to the proxy's address so both request origins are
-  recorded; in production, point them at the real backend. See
-  [`.env.example`](.env.example).
-- **Call `registerProxyFetch()` once** — the top of
-  [`src/router.tsx`](src/router.tsx) is the natural place; it runs on the server for
-  every SSR request. Without it, SSR fetches can't be keyed to a test. If you'd
-  rather forward the id by hand, use `createHeadersWithRecordingId()` /
-  `getRecordingId()` from `test-proxy-recorder/tanstack-start` inside a loader or
-  server function.
-- **Match your API origin** — the `CLIENT_SIDE_URL` regex in
-  [`e2e/todos.spec.ts`](e2e/todos.spec.ts) decides which browser requests are
-  recorded/replayed.
-- **Browser-only app?** If your app never fetches from the server, you don't need
-  `registerProxyFetch()` or the `.mock.json` side — see the
-  [Chrome extension example](../example-extension) for the HAR-only setup.
+- **Point the app at the proxy in dev/test** — set `BACKEND_URL` (SSR) and `VITE_API_URL` (browser) to the proxy's address so both request origins are recorded; in production, point them at the real backend. See [`.env.example`](.env.example).
+- **Call `registerProxyFetch()` once** — the top of [`src/router.tsx`](src/router.tsx) is the natural place; it runs on the server for every SSR request. Without it, SSR fetches can't be keyed to a test. If you'd rather forward the id by hand, use `createHeadersWithRecordingId()` / `getRecordingId()` from `test-proxy-recorder/tanstack-start` inside a loader or server function.
+- **Match your API origin** — the `CLIENT_SIDE_URL` regex in [`e2e/todos.spec.ts`](e2e/todos.spec.ts) decides which browser requests are recorded/replayed.
+- **Browser-only app?** If your app never fetches from the server, you don't need `registerProxyFetch()` or the `.mock.json` side — see the [Chrome extension example](../example-extension) for the HAR-only setup.

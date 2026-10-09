@@ -4,7 +4,7 @@ description: 'Vì sao page.route() bỏ sót các fetch phía máy chủ trong N
 sidebar:
   label: Mock phía máy chủ
 i18nSource: docs/guides/server-side-mocking.md
-i18nSourceBlob: f5b4c780da98c479c1bc9c0491d2ae9747da5b85
+i18nSourceBlob: 6fd6662395c2237b6c951527806be5bd6116dec1
 ---
 
 Trong một ứng dụng Next.js hoặc TanStack Start, máy chủ gọi API của bạn trong lúc render một trang. Cơ chế mock request của Playwright không bao giờ thấy các lời gọi đó. Các phần bên dưới giải thích vì sao, rồi so sánh bốn cách kiểm soát chúng trong một test Playwright: chế độ test của Next.js (Next.js test mode), MSW bên trong máy chủ, một proxy chuyển tiếp (forward proxy) như mockttp, và ghi lại response thật bằng test-proxy-recorder. Thông tin về các công cụ khác đã được đối chiếu với tài liệu và mã nguồn của chính chúng vào ngày 2026-10-03.
@@ -92,7 +92,7 @@ Với ba lựa chọn ở trên, bạn tự viết mọi response. test-proxy-re
 
 - **Proxy.** Khởi động `test-proxy-recorder <target-url>` cạnh ứng dụng của bạn cho lần chạy test. Trỏ base URL API của ứng dụng về nó khi `TEST_PROXY_RECORDER_ENABLED` được đặt. Mỗi proxy chuyển tiếp tới một backend, chính là `<target-url>` được truyền khi khởi động nó.
 - **`registerProxyFetch()`.** Một lời gọi trên máy chủ sẽ patch `fetch` toàn cục. Nó sao chép header `x-test-rcrd-id` của request hiện tại sang mọi request đi ra. Proxy đọc header đó để xếp mỗi lời gọi phía máy chủ vào đúng test của nó. Lời gọi này là no-op trong production trừ khi `TEST_PROXY_RECORDER_ENABLED` được đặt.
-- **Id theo từng test.** `playwrightProxy.before(page, testInfo, mode)` tạo một session id từ file spec và tiêu đề của test. Nó gửi id đó dưới dạng `x-test-rcrd-id` trên các request của trang và chuyển session đó sang `record` hoặc `replay`. Các worker song song dùng chung một máy chủ ứng dụng và một proxy, và mỗi test vẫn có bản ghi riêng.
+- **Id theo từng test.** `playwrightProxy.before(page, testInfo, mode)` tạo một session id từ file spec, các tiêu đề `describe` của nó và tiêu đề của test. Nó gửi id đó dưới dạng `x-test-rcrd-id` trên các request của trang và chuyển session đó sang `record` hoặc `replay`. Các worker song song dùng chung một máy chủ ứng dụng và một proxy, và mỗi test vẫn có bản ghi riêng.
 
 ```typescript
 // Next.js: app/layout.tsx

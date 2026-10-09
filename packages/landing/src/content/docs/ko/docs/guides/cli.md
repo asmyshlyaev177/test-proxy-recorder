@@ -2,7 +2,7 @@
 title: CLI
 description: test-proxy-recorder 명령줄 인터페이스 — 옵션, WebSocket 재생 페이싱, 그리고 멈춘 프록시를 재설정하는 방법.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
+i18nSourceBlob: 1b481900a2093001d8adee923a7a37c4db3294f4
 ---
 
 ```bash
@@ -12,7 +12,7 @@ test-proxy-recorder <target-url> [options]
 | 옵션            | 기본값         | 설명                                 |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(필수)*   | 프록시할 백엔드 URL                  |
-| `--port, -p`     | `8000`         | 프록시 수신 포트                     |
+| `--port, -p`     | `8100`         | 프록시 수신 포트. `TEST_PROXY_RECORDER_PORT`에서도 읽습니다 |
 | `--dir, -d`      | `./recordings` | 기록 파일 디렉터리                   |
 | `--timeout, -t`  | `120000`       | 세션 자동 재설정 시간 초과(ms)        |
 | `--config, -c`   | *(자동)*   | 설정 파일 경로                      |
@@ -40,7 +40,7 @@ test-proxy-recorder http://localhost:8000 --port 8100 --dir ./mocks
 test-proxy-recorder reset    # 또는: npm run proxy:reset
 ```
 
-이 명령은 `{ "mode": "transparent" }`를 `/__control`로 POST합니다. `curl`로 직접 재설정하는 방법을 대체하는, 지원되고 병렬 실행에도 안전한 방법입니다. 언제든 안전하게 실행할 수 있으며, 접근할 수 없는 프록시는 아무 동작도 하지 않는 것으로 처리됩니다. 포트는 **`--port` 플래그 → `TEST_PROXY_RECORDER_PORT` 환경 변수 → 설정 파일 → `8000`** 순서로 결정되므로, 프록시가 시작된 포트를 대상으로 합니다(덮어쓰려면 `--port` / `--config`를 전달하세요). `init`은 이것을 `proxy:reset` 스크립트로 스캐폴딩합니다.
+이 명령은 `{ "mode": "transparent" }`를 `/__control`로 POST합니다. `curl`로 직접 재설정하는 방법을 대체하는, 지원되고 병렬 실행에도 안전한 방법입니다. 언제든 안전하게 실행할 수 있으며, 접근할 수 없는 프록시는 아무 동작도 하지 않는 것으로 처리됩니다. 포트는 **`--port` 플래그 → `TEST_PROXY_RECORDER_PORT` 환경 변수 → 설정 파일 → `8100`** 순서로 결정되므로, 프록시가 시작된 포트를 대상으로 합니다(덮어쓰려면 `--port` / `--config`를 전달하세요). `init`은 이것을 `proxy:reset` 스크립트로 스캐폴딩합니다.
 
 ## `init` — 설정 스캐폴딩
 

@@ -2,7 +2,7 @@
 title: 수동 설정
 description: test-proxy-recorder를 풀스택(SSR + 브라우저) 앱이나 브라우저 전용 SPA 또는 확장 프로그램에 직접 연결한 뒤, 한 번 기록하고 CI에서 재생하는 방법을 설명합니다.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
+i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
 ---
 
 대부분은 [`init`](/ko/docs/getting-started/quick-start/)을 실행하는 편이 좋습니다. 아래 모든 파일을 대신 작성해 줍니다. 이 페이지는 `init`이 생성하는 내용의 참조 자료이므로, 직접 연결하거나 코드 생성을 버리거나 각 부분을 이해하는 데 쓸 수 있습니다.
@@ -72,8 +72,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // 프록시 URL로 가는 브라우저 요청도 함께 처리됩니다.
 const CLIENT_SIDE_URL = /localhost:8100/;
 
-// 기록을 갱신하려면 'record'로 변경하세요.
-const MODE = 'replay' as const;
+// RECORD_MODE=1이면 기록을 갱신하고, 아니면 테스트가 재생됩니다.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
@@ -87,12 +87,14 @@ test('homepage loads', async ({ page }) => {
 
 ### 4. 기록
 
+기록하기 전에 직접 만든 시드 스크립트로 백엔드의 데이터베이스를 테스트가 기대하는 상태로 만들어 두세요.
+
 ```bash
 # 터미널 1
 npm run serve:proxy
 
 # 터미널 2 — .mock.json과 .har 파일이 자동으로 작성됩니다
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
 ### 5. 재생으로 전환하고 커밋
@@ -140,8 +142,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // 재생 모드에서는 디스크에서 제공됩니다. 네트워크가 필요 없습니다.
 const CLIENT_SIDE_URL = /api\.example\.com/;
 
-// 실제 API를 호출해 기록을 갱신하려면 'record'로 변경하세요.
-const MODE = 'replay' as const;
+// RECORD_MODE=1이면 실제 API를 호출해 기록을 갱신하고, 아니면 테스트가 재생됩니다.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 export const test = base.extend<{ page: Page }>({
   page: async ({ context }, use, testInfo) => {
@@ -167,15 +169,15 @@ test('homepage loads', async ({ page }) => {
 ### 5. 기록 — 실제 API를 대상으로 한 번 실행
 
 ```bash
-# fixtures.ts에서: const MODE = 'record' as const;
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 # .har 파일이 e2e/recordings/에 자동으로 작성됩니다
 ```
 
-### 6. 재생으로 전환하고 커밋
+### 6. 기록 커밋
+
+`RECORD_MODE` 없이 실행하면 `npx playwright test`는 이 기록에서 재생합니다.
 
 ```bash
-# fixtures.ts에서: const MODE = 'replay' as const;
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```

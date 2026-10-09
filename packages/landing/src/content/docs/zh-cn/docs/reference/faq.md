@@ -2,7 +2,7 @@
 title: 常见问题
 description: 关于 test-proxy-recorder 的常见问题 —— 并行回放、把录制提交到 git、HAR 录制的代理目标、Next.js 开发服务器，以及如何更新录制。
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## 我的并行回放测试有时会访问真实后端 —— 为什么？{#parallel-replay}
@@ -52,7 +52,7 @@ Playwright 不会拦截它们，所以无论录制还是回放，它们都会发
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // HAR 也会录制并回放 CDN 的请求。
@@ -73,7 +73,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 ## 如何更新一份录制？
 
-在 record 模式下重新运行（在 fixture 中设 `MODE = 'record'`，或设 `RECORD_MODE=1`）对真实 API 录制，然后切回 replay 并提交 `e2e/recordings/` 中更新后的文件。
+在 record 模式下重新运行（`RECORD_MODE=1`，即 `test:e2e:record` 脚本）对真实 API 录制，然后提交 `e2e/recordings/` 中更新后的文件。
 
 ## 能否在回放测试中强制返回错误、空列表或慢响应？{#override-responses}
 

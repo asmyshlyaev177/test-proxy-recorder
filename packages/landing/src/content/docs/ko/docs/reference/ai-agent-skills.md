@@ -2,7 +2,7 @@
 title: AI 에이전트 스킬
 description: test-proxy-recorder 스킬을 설치하여 AI 코딩 에이전트(Claude Code, Cursor, Copilot)가 올바른 프록시, 픽스처, SSR 설정 코드를 생성하게 하세요.
 i18nSource: docs/reference/ai-agent-skills.md
-i18nSourceBlob: 2622ae8f436b9a9a1d57fdf8831308a039a8981d
+i18nSourceBlob: 8214769e2ee6aa9a875b70e13d00aeee8c361beb
 ---
 
 AI 코딩 에이전트(Claude Code, Cursor, Copilot 등)를 사용한다면, 에이전트가 올바른 설정 코드를 생성하도록 스킬 로딩을 설정하세요. 스킬은 [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent)를 통해 `test-proxy-recorder` 패키지 안에 포함되어, 일반적인 패키지 매니저 업데이트를 따라 이동합니다.
@@ -20,6 +20,8 @@ npx @tanstack/intent@latest install
 ```
 
 일반적인 검색 지침 대신 명시적인 작업-스킬 매핑을 에이전트 설정에 작성하고 싶다면 `--map`을 전달하세요.
+
+`install`에는 대화형 터미널이 필요합니다. 대화형 터미널 없이 실행되는 에이전트는 `node_modules/test-proxy-recorder/skills/*/SKILL.md`에서 스킬을 읽을 수 있습니다.
 
 그러면 에이전트는 별도 지침 없이도 올바른 프록시/픽스처 설정, 기록 vs. 재생 워크플로, Next.js SSR 헤더 패턴을 알게 됩니다.
 

@@ -70,8 +70,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // Browser requests to the proxy URL are also covered.
 const CLIENT_SIDE_URL = /localhost:8100/;
 
-// Change to 'record' to update recordings.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 updates the recordings; otherwise tests replay.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
@@ -85,12 +85,14 @@ test('homepage loads', async ({ page }) => {
 
 ### 4. Record
 
+Before recording, put the backend's database in the state the tests expect with your own seed script.
+
 ```bash
 # Terminal 1
 npm run serve:proxy
 
 # Terminal 2 — .mock.json and .har files are written automatically
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
 ### 5. Switch to replay and commit
@@ -138,8 +140,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // In replay mode they are served from disk — no network needed.
 const CLIENT_SIDE_URL = /api\.example\.com/;
 
-// Change to 'record' to hit the real API and update recordings.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 hits the real API and updates the recordings; otherwise tests replay.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 export const test = base.extend<{ page: Page }>({
   page: async ({ context }, use, testInfo) => {
@@ -165,15 +167,15 @@ test('homepage loads', async ({ page }) => {
 ### 5. Record — run once against the real API
 
 ```bash
-# In fixtures.ts: const MODE = 'record' as const;
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 # .har files are written to e2e/recordings/ automatically
 ```
 
-### 6. Switch to replay and commit
+### 6. Commit the recordings
+
+Without `RECORD_MODE`, `npx playwright test` replays from them.
 
 ```bash
-# In fixtures.ts: const MODE = 'replay' as const;
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```

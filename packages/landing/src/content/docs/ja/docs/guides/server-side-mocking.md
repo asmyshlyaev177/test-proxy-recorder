@@ -4,7 +4,7 @@ description: 'Next.js と TanStack Start で page.route() がサーバーサイ�
 sidebar:
   label: サーバーサイドのモック
 i18nSource: docs/guides/server-side-mocking.md
-i18nSourceBlob: f5b4c780da98c479c1bc9c0491d2ae9747da5b85
+i18nSourceBlob: 6fd6662395c2237b6c951527806be5bd6116dec1
 ---
 
 Next.js や TanStack Start のアプリでは、サーバーがページをレンダリングする間に API を呼び出します。Playwright のリクエストのモック機能には、そうした呼び出しはまったく見えません。以下ではその理由を説明し、Playwright テストでそれらを制御する 4 つの方法を比較します。Next.js テストモード、サーバー内の MSW、mockttp のようなフォワードプロキシ、そして test-proxy-recorder による実際のレスポンスの記録です。他のツールに関する事実は、2026-10-03 にそれぞれのドキュメントとソースで確認したものです。
@@ -92,7 +92,7 @@ Playwright チームはこのアプローチを「サーバーの言語やフレ
 
 - **プロキシ:** テスト実行のため、アプリと並べて `test-proxy-recorder <target-url>` を起動します。`TEST_PROXY_RECORDER_ENABLED` が設定されている間は、アプリの API ベース URL をプロキシに向けます。各プロキシは 1 つのバックエンド、つまり起動時に指定した `<target-url>` に転送します。
 - **`registerProxyFetch()`:** サーバーで 1 回呼び出すと、グローバルな `fetch` にパッチを当てます。現在のリクエストの `x-test-rcrd-id` ヘッダーを、すべての外向きのリクエストにコピーします。プロキシはこのヘッダーを読み取り、サーバーサイドの各呼び出しをそれぞれのテストの記録に振り分けます。`TEST_PROXY_RECORDER_ENABLED` が設定されていない限り、本番ではこの呼び出しは何もしません（no-op）。
-- **テストごとの id:** `playwrightProxy.before(page, testInfo, mode)` は、spec ファイルとテストのタイトルからセッション id を組み立てます。その id をページのリクエストに `x-test-rcrd-id` として付けて送り、そのセッションを `record` または `replay` に切り替えます。並列のワーカーは 1 つのアプリサーバーと 1 つのプロキシを共有しますが、それでも各テストは専用の記録を持ちます。
+- **テストごとの id:** `playwrightProxy.before(page, testInfo, mode)` は、spec ファイル、その `describe` のタイトル、テストのタイトルからセッション id を組み立てます。その id をページのリクエストに `x-test-rcrd-id` として付けて送り、そのセッションを `record` または `replay` に切り替えます。並列のワーカーは 1 つのアプリサーバーと 1 つのプロキシを共有しますが、それでも各テストは専用の記録を持ちます。
 
 ```typescript
 // Next.js: app/layout.tsx

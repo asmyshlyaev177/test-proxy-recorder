@@ -1,10 +1,14 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 
+import fc from 'fast-check';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import type { RecordingSession } from '../types.js';
 import {
+  findHarPath,
+  findRecordingPath,
+  getHarPath,
   getRecordingPath,
   loadRecordingSession,
   saveRecordingSession,
@@ -88,6 +92,110 @@ describe('fileUtils', () => {
       // Special characters should be replaced
       expect(filename).not.toMatch(/[<>:"|?*]/);
       expect(filename).toMatch(/^[a-zA-Z0-9_-]+\.mock\.json$/);
+    });
+  });
+
+  describe('recording file names', () => {
+    const baseOf = (filePath: string) =>
+      path.basename(filePath).replace(/\.(mock\.json|har)$/, '');
+    // What Windows forbids in a name; macOS and Linux forbid less.
+    const RESERVED_CHARACTER = /[<>:"/\\|?*]/;
+    const hasControlCharacter = (text: string) =>
+      [...text].some((char) => char.codePointAt(0)! < 0x20);
+    const WINDOWS_DEVICE_NAME = /^(con|prn|aux|nul|com\d|lpt\d)(\.|$)/i;
+
+    it('names the HAR and the proxy recording of a session the same', () => {
+      const id = 'auth/login__shows: "error"?';
+
+      expect(path.basename(getHarPath(TEST_RECORDINGS_DIR, id))).toBe(
+        'auth__login__shows_ _error_.har',
+      );
+      expect(baseOf(getRecordingPath(TEST_RECORDINGS_DIR, id))).toBe(
+        baseOf(getHarPath(TEST_RECORDINGS_DIR, id)),
+      );
+    });
+
+    it('keeps names that were already safe, so their recordings keep working', () => {
+      expect(
+        path.basename(
+          getRecordingPath(
+            TEST_RECORDINGS_DIR,
+            'jobs/Create__admin__create-a-job',
+          ),
+        ),
+      ).toBe('jobs__Create__admin__create-a-job.mock.json');
+    });
+
+    it('caps the name at 120 bytes, counting multibyte characters as bytes', () => {
+      // 300 characters, 540 bytes: under the old 245-character cap, over 255 bytes.
+      const base = baseOf(
+        getRecordingPath(TEST_RECORDINGS_DIR, 'тест-'.repeat(60)),
+      );
+
+      expect(Buffer.byteLength(base)).toBeLessThanOrEqual(120);
+      expect(base).toMatch(/_[0-9a-f]{8}$/);
+    });
+
+    it('prefixes a Windows device name followed by an extension', () => {
+      expect(
+        path.basename(getHarPath(TEST_RECORDINGS_DIR, 'nul.e2e__loads')),
+      ).toBe('_nul.e2e__loads.har');
+    });
+
+    it('gives every id a name valid on Windows, macOS and Linux', () => {
+      fc.assert(
+        fc.property(fc.string({ unit: 'binary', maxLength: 400 }), (id) => {
+          const base = baseOf(getHarPath(TEST_RECORDINGS_DIR, id));
+          expect(base.length).toBeGreaterThan(0);
+          expect(Buffer.byteLength(base)).toBeLessThanOrEqual(120);
+          expect(base).not.toMatch(RESERVED_CHARACTER);
+          expect(hasControlCharacter(base)).toBe(false);
+          expect(base).not.toMatch(WINDOWS_DEVICE_NAME);
+          expect(base).not.toMatch(/[. ]$/);
+        }),
+      );
+    });
+
+    it('gives different ids different names, even past the cap', () => {
+      const longId = 'a'.repeat(200);
+
+      expect(getRecordingPath(TEST_RECORDINGS_DIR, `${longId}1`)).not.toBe(
+        getRecordingPath(TEST_RECORDINGS_DIR, `${longId}2`),
+      );
+    });
+  });
+
+  describe('findRecordingPath and findHarPath', () => {
+    // 130 characters: the old names kept it whole, the current ones cap it.
+    const id = 'a'.repeat(130);
+    const write = (fileName: string) =>
+      fs.writeFile(path.join(TEST_RECORDINGS_DIR, fileName), '{}');
+
+    it('read a file saved under the old name when only it exists', async () => {
+      await write(`${id}.mock.json`);
+      await write('login__shows: error.har');
+
+      expect(await findRecordingPath(TEST_RECORDINGS_DIR, id)).toBe(
+        path.join(TEST_RECORDINGS_DIR, `${id}.mock.json`),
+      );
+      expect(
+        await findHarPath(TEST_RECORDINGS_DIR, 'login__shows: error'),
+      ).toBe(path.join(TEST_RECORDINGS_DIR, 'login__shows: error.har'));
+    });
+
+    it('prefer the current name when both exist', async () => {
+      await write(`${id}.mock.json`);
+      await write(path.basename(getRecordingPath(TEST_RECORDINGS_DIR, id)));
+
+      expect(await findRecordingPath(TEST_RECORDINGS_DIR, id)).toBe(
+        getRecordingPath(TEST_RECORDINGS_DIR, id),
+      );
+    });
+
+    it('return the current name when neither exists', async () => {
+      expect(
+        await findHarPath(TEST_RECORDINGS_DIR, 'login__shows: error'),
+      ).toBe(getHarPath(TEST_RECORDINGS_DIR, 'login__shows: error'));
     });
   });
 

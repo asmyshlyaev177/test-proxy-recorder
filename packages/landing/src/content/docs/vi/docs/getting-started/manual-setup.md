@@ -2,7 +2,7 @@
 title: Thiết lập thủ công
 description: Kết nối test-proxy-recorder vào một ứng dụng full-stack (SSR + browser) hoặc một SPA/extension chỉ chạy trên trình duyệt bằng tay, rồi ghi lại một lần và phát lại trên CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
+i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
 ---
 
 Hầu hết mọi người nên chạy [`init`](/vi/docs/getting-started/quick-start/) — nó viết mọi file bên dưới cho bạn. Trang này là tài liệu tham chiếu về những gì `init` tạo ra, để bạn có thể tự kết nối bằng tay, bỏ qua phần tạo mã, hoặc hiểu từng thành phần.
@@ -72,8 +72,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // Các request trình duyệt tới URL của proxy cũng được xử lý.
 const CLIENT_SIDE_URL = /localhost:8100/;
 
-// Đổi thành 'record' để cập nhật các bản ghi.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 cập nhật các bản ghi; nếu không, test sẽ phát lại.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
@@ -87,12 +87,14 @@ test('homepage loads', async ({ page }) => {
 
 ### 4. Ghi lại
 
+Trước khi ghi lại, hãy đưa cơ sở dữ liệu của backend về trạng thái mà các test mong đợi bằng script seed của riêng bạn.
+
 ```bash
 # Terminal 1
 npm run serve:proxy
 
 # Terminal 2 — các file .mock.json và .har được ghi tự động
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
 ### 5. Chuyển sang phát lại và commit
@@ -140,8 +142,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // Ở chế độ phát lại, chúng được trả về từ đĩa — không cần mạng.
 const CLIENT_SIDE_URL = /api\.example\.com/;
 
-// Đổi thành 'record' để gọi API thật và cập nhật các bản ghi.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 gọi API thật và cập nhật các bản ghi; nếu không, test sẽ phát lại.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 export const test = base.extend<{ page: Page }>({
   page: async ({ context }, use, testInfo) => {
@@ -167,15 +169,15 @@ test('homepage loads', async ({ page }) => {
 ### 5. Ghi lại — chạy một lần dựa trên API thật
 
 ```bash
-# Trong fixtures.ts: const MODE = 'record' as const;
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 # Các file .har được ghi vào e2e/recordings/ một cách tự động
 ```
 
-### 6. Chuyển sang phát lại và commit
+### 6. Commit các bản ghi
+
+Khi không có `RECORD_MODE`, `npx playwright test` phát lại từ các bản ghi đó.
 
 ```bash
-# Trong fixtures.ts: const MODE = 'replay' as const;
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```

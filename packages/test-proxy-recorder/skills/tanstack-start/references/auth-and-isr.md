@@ -1,7 +1,6 @@
 # TanStack Start — authenticated apps & cache-header ISR
 
-Detail for the two patterns summarized in SKILL.md. Both compose with
-`registerProxyFetch()` from the main skill.
+Detail for the two patterns summarized in SKILL.md. Both compose with `registerProxyFetch()` from the main skill.
 
 ## Authenticated apps (real auth provider)
 
@@ -14,25 +13,15 @@ An authenticated app has two kinds of traffic that need opposite treatment:
 
 The flow (mirrors `apps/example-tanstack-start`):
 
-1. A Playwright **`setup` project** logs in **once** with the proxy in
-   `transparent` mode and saves `storageState` (the token) to a gitignored
-   `e2e/auth-state.json`. The login is passed straight through and never recorded.
-   The provider call (e.g. Cognito `InitiateAuth`) also goes to a different host
-   than the proxy, so it can't be recorded either way.
-2. The **authenticated specs** depend on `setup`, load that `storageState`, and
-   start already authenticated. Their app-data requests run in `record` / `replay`.
-3. Each recorded request carries `Authorization: Bearer …`; the recorder redacts
-   it, so no token reaches the repo.
+1. A Playwright **`setup` project** logs in **once** with the proxy in `transparent` mode and saves `storageState` (the token) to a gitignored `e2e/auth-state.json`. The login is passed straight through and never recorded. The provider call (e.g. Cognito `InitiateAuth`) also goes to a different host than the proxy, so it can't be recorded either way.
+2. The **authenticated specs** depend on `setup`, load that `storageState`, and start already authenticated. Their app-data requests run in `record` / `replay`.
+3. Each recorded request carries `Authorization: Bearer …`; the recorder redacts it, so no token reaches the repo.
 
 ### Where the token lives decides the mechanism
 
-- **`localStorage` token → client fetch (HAR).** The server can't read
-  `localStorage`, so **do not SSR-prefetch** the protected resource. Read the
-  token after mount and fetch on the client; `playwrightProxy.before(page,
-  testInfo, mode, { url: /localhost:8100/ })` records it via HAR — exactly like a
-  non-authenticated browser fetch.
+- **`localStorage` token → client fetch (HAR).** The server can't read `localStorage`, so **do not SSR-prefetch** the protected resource. Read the token after mount and fetch on the client; `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })` records it via HAR — exactly like a non-authenticated browser fetch.
 
-  ```typescript
+  ```tsx
   // src/routes/dashboard.tsx
   function DashboardPage() {
     const navigate = useNavigate();
@@ -47,9 +36,7 @@ The flow (mirrors `apps/example-tanstack-start`):
   }
   ```
 
-- **Cookie session → loader fetch (`.mock.json`).** A cookie rides the SSR request
-  automatically, so a loader *can* fetch the protected resource server-side.
-  Forward the recording id with `createHeadersWithRecordingId()`:
+- **Cookie session → loader fetch (`.mock.json`).** A cookie rides the SSR request automatically, so a loader *can* fetch the protected resource server-side. Forward the recording id with `createHeadersWithRecordingId()`:
 
   ```typescript
   loader: async () => {
@@ -82,9 +69,7 @@ setupAuth('authenticate', async ({ page }) => {
 
 ### playwright.config.ts — gate the auth suite on credentials
 
-Real login needs a test user. Gate the `setup` + `auth` projects on the creds
-being present so a credential-less clone (and forks without secrets) still replays
-every other spec offline. Load `.env.local` (gitignored) for the creds.
+Real login needs a test user. Gate the `setup` + `auth` projects on the creds being present so a credential-less clone (and forks without secrets) still replays every other spec offline. Load `.env.local` (gitignored) for the creds.
 
 ```typescript
 try { process.loadEnvFile('.env'); } catch {}
@@ -109,8 +94,7 @@ export default defineConfig({
 
 ### Redaction guard
 
-The token is dynamic (a fresh JWT per login), so assert that **no** JWT survives
-in any recording, and that the login produced no recording:
+The token is dynamic (a fresh JWT per login), so assert that **no** JWT survives in any recording, and that the login produced no recording:
 
 ```javascript
 // e2e/assert-redactions.mjs (excerpt)
@@ -125,18 +109,11 @@ for (const prefix of ['setup-auth', 'authenticate']) {
 
 ### Do not commit the provider's pool config
 
-Even the "public" `VITE_COGNITO_REGION` / `VITE_COGNITO_CLIENT_ID` (baked into the
-client bundle) tie the repo to a real account. Keep them — and the secret
-`COGNITO_TEST_*` — in a gitignored `.env.local` (or CI secrets). Vite still bakes
-`VITE_*` in at build time from `.env.local`. Verify with
-`git grep <client-id>` before committing.
+Even the "public" `VITE_COGNITO_REGION` / `VITE_COGNITO_CLIENT_ID` (baked into the client bundle) tie the repo to a real account. Keep them — and the secret `COGNITO_TEST_*` — in a gitignored `.env.local` (or CI secrets). Vite still bakes `VITE_*` in at build time from `.env.local`. Verify with `git grep <client-id>` before committing.
 
 ## Cache-header ISR
 
-TanStack Start ISR is HTTP-cache-header based: a CDN caches the HTML and
-revalidates in the background. The recorder coexists with it — the SSR prefetch's
-`fetch` is still tagged by `registerProxyFetch()`, so record captures it and
-parallel replay serves it from the right session.
+TanStack Start ISR is HTTP-cache-header based: a CDN caches the HTML and revalidates in the background. The recorder coexists with it — the SSR prefetch's `fetch` is still tagged by `registerProxyFetch()`, so record captures it and parallel replay serves it from the right session.
 
 ```typescript
 // src/routes/isr.tsx
@@ -149,10 +126,6 @@ export const Route = createFileRoute('/isr')({
 });
 ```
 
-Use a query key distinct from the live home page so the cached route's render is
-independent. On-demand invalidation (a CDN purge in production) is triggered by a
-token-authenticated server route (`src/routes/api/revalidate.ts`); gate it behind a
-secret supplied via Playwright `extraHTTPHeaders`, exactly as in the Next.js ISR
-pattern.
+Use a query key distinct from the live home page so the cached route's render is independent. On-demand invalidation (a CDN purge in production) is triggered by a token-authenticated server route (`src/routes/api/revalidate.ts`); gate it behind a secret supplied via Playwright `extraHTTPHeaders`, exactly as in the Next.js ISR pattern.
 
 Source: apps/example-tanstack-start/src/routes/isr.tsx, src/routes/api/revalidate.ts, e2e/isr.spec.ts

@@ -2,7 +2,7 @@
 title: CLI
 description: La interfaz de línea de comandos de test-proxy-recorder — opciones, ritmo de reproducción de WebSocket y cómo reiniciar un proxy atascado.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
+i18nSourceBlob: 1b481900a2093001d8adee923a7a37c4db3294f4
 ---
 
 ```bash
@@ -12,7 +12,7 @@ test-proxy-recorder <target-url> [options]
 | Opción           | Por defecto    | Descripción                         |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(requerido)*  | URL del backend a proxiar           |
-| `--port, -p`     | `8000`         | Puerto de escucha del proxy         |
+| `--port, -p`     | `8100`         | Puerto de escucha del proxy; también se lee de `TEST_PROXY_RECORDER_PORT` |
 | `--dir, -d`      | `./recordings` | Directorio para los archivos de grabación |
 | `--timeout, -t`  | `120000`       | Timeout de auto-reinicio de sesión (ms) |
 | `--config, -c`   | *(auto)*       | Ruta a un archivo de configuración  |
@@ -40,7 +40,7 @@ El proxy vuelve automáticamente a `transparent` tras el timeout de cada sesión
 test-proxy-recorder reset    # or: npm run proxy:reset
 ```
 
-Esto hace POST de `{ "mode": "transparent" }` a `/__control` — el reemplazo soportado y seguro en paralelo para reiniciar a mano con `curl`. Es seguro ejecutarlo en cualquier momento: un proxy inalcanzable se trata como un no-op. El puerto se resuelve como **flag `--port` → env `TEST_PROXY_RECORDER_PORT` → archivo de configuración → `8000`**, así que apunta al puerto en el que se inició el proxy (pasa `--port` / `--config` para anular). `init` lo genera como el script `proxy:reset`.
+Esto hace POST de `{ "mode": "transparent" }` a `/__control` — el reemplazo soportado y seguro en paralelo para reiniciar a mano con `curl`. Es seguro ejecutarlo en cualquier momento: un proxy inalcanzable se trata como un no-op. El puerto se resuelve como **flag `--port` → env `TEST_PROXY_RECORDER_PORT` → archivo de configuración → `8100`**, así que apunta al puerto en el que se inició el proxy (pasa `--port` / `--config` para anular). `init` lo genera como el script `proxy:reset`.
 
 ## `init` — generar la configuración
 

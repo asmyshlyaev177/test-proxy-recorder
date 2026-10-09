@@ -2,7 +2,7 @@
 title: FAQ
 description: Các câu hỏi thường gặp về test-proxy-recorder — phát lại song song, commit các bản ghi vào git, target của proxy cho việc ghi HAR, máy chủ dev của Next.js, và cập nhật các bản ghi.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## Các test phát lại song song của tôi đôi khi gọi backend thật — tại sao? {#parallel-replay}
@@ -52,7 +52,7 @@ Playwright không chặn chúng, nên chúng đi ra mạng thật ở cả chế
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // HAR cũng ghi lại và phát lại cả CDN.
@@ -73,7 +73,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 ## Làm thế nào để cập nhật một bản ghi?
 
-Chạy lại ở chế độ ghi lại (đặt `MODE = 'record'` trong fixture của bạn, hoặc `RECORD_MODE=1`) dựa trên API thật, rồi chuyển về phát lại và commit các file đã cập nhật trong `e2e/recordings/`.
+Chạy lại ở chế độ ghi lại (`RECORD_MODE=1`, tức script `test:e2e:record`) dựa trên API thật, rồi commit các file đã cập nhật trong `e2e/recordings/`.
 
 ## Tôi có thể ép một lỗi, một danh sách rỗng hoặc một response chậm trong test phát lại không? {#override-responses}
 

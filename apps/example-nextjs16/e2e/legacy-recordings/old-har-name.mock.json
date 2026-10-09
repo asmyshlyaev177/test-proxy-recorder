@@ -1,0 +1,94 @@
+{
+  "id": "file-names__old-name__adds-a-todo:-\"old\"-name?",
+  "recordings": [
+    {
+      "request": {
+        "method": "GET",
+        "url": "/todos",
+        "headers": {
+          "host": "localhost:8100",
+          "connection": "keep-alive",
+          "x-test-rcrd-id": "file-names__old-name__adds-a-todo:-\"old\"-name?",
+          "accept": "*/*",
+          "accept-language": "*",
+          "sec-fetch-mode": "cors",
+          "user-agent": "node",
+          "pragma": "no-cache",
+          "cache-control": "no-cache",
+          "accept-encoding": "gzip, deflate"
+        },
+        "body": null
+      },
+      "response": {
+        "statusCode": 200,
+        "headers": {
+          "access-control-allow-origin": "*",
+          "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+          "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-test-rcrd-id",
+          "content-type": "application/json",
+          "date": "Fri, 09 Oct 2026 07:10:34 GMT",
+          "connection": "keep-alive",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "*"
+        },
+        "body": "[]"
+      },
+      "timestamp": "2026-10-09T07:10:34.144Z",
+      "key": "GET_todos.json",
+      "recordingId": 0,
+      "sequence": 0
+    },
+    {
+      "request": {
+        "method": "POST",
+        "url": "/todos",
+        "headers": {
+          "host": "localhost:8100",
+          "connection": "keep-alive",
+          "content-length": "28",
+          "pragma": "no-cache",
+          "cache-control": "no-cache",
+          "accept": "*/*",
+          "accept-language": "en-US",
+          "content-type": "application/json",
+          "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/147.0.7727.15 Safari/537.36",
+          "x-revalidate-token": "test-revalidate-secret",
+          "x-test-rcrd-id": "file-names__old-name__adds-a-todo:-\"old\"-name?",
+          "origin": "http://localhost:3000",
+          "sec-ch-ua": "\"HeadlessChrome\";v=\"147\", \"Not.A/Brand\";v=\"8\", \"Chromium\";v=\"147\"",
+          "sec-ch-ua-mobile": "?0",
+          "sec-ch-ua-platform": "\"Windows\"",
+          "sec-fetch-site": "same-site",
+          "sec-fetch-mode": "cors",
+          "sec-fetch-dest": "empty",
+          "referer": "http://localhost:3000/",
+          "accept-encoding": "gzip, deflate, br, zstd"
+        },
+        "body": "{\"text\":\"Named the old way\"}"
+      },
+      "response": {
+        "statusCode": 201,
+        "headers": {
+          "access-control-allow-origin": "http://localhost:3000",
+          "access-control-allow-methods": "GET, POST, PUT, DELETE, PATCH, OPTIONS",
+          "access-control-allow-headers": "Origin, X-Requested-With, Content-Type, Accept, Authorization, x-test-rcrd-id",
+          "content-type": "application/json",
+          "date": "Fri, 09 Oct 2026 07:10:34 GMT",
+          "connection": "keep-alive",
+          "keep-alive": "timeout=5",
+          "transfer-encoding": "chunked",
+          "access-control-allow-credentials": "true",
+          "access-control-expose-headers": "*"
+        },
+        "body": "{\"id\":\"7f5cfc55-999e-4b30-a521-a23b9dedf06c\",\"text\":\"Named the old way\",\"completed\":false,\"createdAt\":\"2026-10-09T07:10:34.269Z\"}"
+      },
+      "timestamp": "2026-10-09T07:10:34.270Z",
+      "key": "POST_todos.json",
+      "recordingId": 1,
+      "sequence": 0
+    }
+  ],
+  "websocketRecordings": []
+}

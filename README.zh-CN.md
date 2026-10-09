@@ -1,6 +1,6 @@
 <!-- i18n:start -->
 [English](./README.md) · 简体中文 · [日本語](./README.ja.md) · [한국어](./README.ko.md) · [Русский](./README.ru.md) · [Español](./README.es.md) · [Português (BR)](./README.pt-BR.md) · [Français](./README.fr.md) · [Tiếng Việt](./README.vi.md)
-<!-- i18n:meta locale=zh-CN source=README.md source-blob=359718563f326b04b65afe93496d24de99e1846b status=translated -->
+<!-- i18n:meta locale=zh-CN source=README.md source-blob=3339c08170c4b61bcf11c9527d6fdeda00ab5558 status=translated -->
 <!-- i18n:end -->
 
 # test-proxy-recorder
@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-然后把 `MODE` 设为 `'record'`，针对真实 API 运行一次，翻转到 `'replay'`，再提交 `e2e/recordings/`。现在 CI 在后端关闭的情况下运行。
+然后针对真实 API 运行一次 `npm run test:e2e:record`（它会设置 `RECORD_MODE=1`），再提交 `e2e/recordings/`。CI 运行 `npm run test:e2e`，在后端关闭的情况下回放。
 
 完整教程：[快速开始](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [手动配置](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/)。
 
@@ -130,7 +130,7 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install` 会把技能发现指引写入你的 agent 配置（`CLAUDE.md`、`.cursorrules`、……）；agent 会按需加载 `proxy-setup`、`nextjs-ssr` 和 `tanstack-start` 技能。可以用 `npx @tanstack/intent@latest list` 和 `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup` 直接列出或加载它们。完整指南：[AI agent 技能](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/)。
+`install` 会把技能发现指引写入你的 agent 配置（`CLAUDE.md`、`.cursorrules`、……）；agent 会按需加载 `proxy-setup`、`nextjs-ssr` 和 `tanstack-start` 技能。可以用 `npx @tanstack/intent@latest list` 和 `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup` 直接列出或加载它们。`install` 需要交互式终端；没有交互式终端的 agent 可以从 `node_modules/test-proxy-recorder/skills/*/SKILL.md` 读取技能。完整指南：[AI agent 技能](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/)。
 
 技能源码位于 [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/)。
 
@@ -141,16 +141,9 @@ npx @tanstack/intent@latest install
 这个项目源于我多年来一直在修复别人不稳定的测试套件。那正是我最擅长的工作：决定一个代码库在半年后是否仍然令人愉悦的无聊基础设施。
 
 - **最擅长** —— 组件库、状态管理，以及经得起重构的测试套件。
-- **也是我的项目** ——
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  （每周约 84k 次安装）、
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url)（带类型的 URL
-  状态）、[llm-queue](https://github.com/asmyshlyaev177/llm-queue)。
-- **所在地** —— 格鲁吉亚第比利斯（GMT+4），与 CET 完全重叠。已注册为承包商
-  实体，因此 B2B 合作无需雇主记录（employer-of-record）设置。
-- **联系我** —— [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **也是我的项目** —— [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)（每周约 84k 次安装）、[state-in-url](https://github.com/asmyshlyaev177/state-in-url)（带类型的 URL 状态）、[llm-queue](https://github.com/asmyshlyaev177/llm-queue)。
+- **所在地** —— 格鲁吉亚第比利斯（GMT+4），与 CET 完全重叠。已注册为承包商实体，因此 B2B 合作无需雇主记录（employer-of-record）设置。
+- **联系我** —— [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## 许可证
 

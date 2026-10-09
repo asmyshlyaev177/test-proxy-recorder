@@ -2,7 +2,7 @@
 title: Configuração manual
 description: Integre o test-proxy-recorder em uma aplicação full-stack (SSR + navegador) ou em uma SPA/extensão somente de navegador à mão, e depois grave uma vez e reproduza na CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
+i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
 ---
 
 A maioria das pessoas deve executar o [`init`](/pt-br/docs/getting-started/quick-start/) — ele escreve todos os arquivos abaixo para você. Esta página é a referência do que o `init` gera, para que você possa configurar à mão, dispensar a geração de código ou entender cada parte.
@@ -72,8 +72,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // Requisições do navegador para a URL do proxy também são cobertas.
 const CLIENT_SIDE_URL = /localhost:8100/;
 
-// Mude para 'record' para atualizar as gravações.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 atualiza as gravações; caso contrário, os testes rodam em replay.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
@@ -87,12 +87,14 @@ test('homepage loads', async ({ page }) => {
 
 ### 4. Grave
 
+Antes de gravar, coloque o banco de dados do backend no estado que os testes esperam com seu próprio script de dados iniciais (seed).
+
 ```bash
 # Terminal 1
 npm run serve:proxy
 
 # Terminal 2 — arquivos .mock.json e .har são gravados automaticamente
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
 ### 5. Mude para replay e faça commit
@@ -140,8 +142,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // No modo replay elas são servidas a partir do disco — sem necessidade de rede.
 const CLIENT_SIDE_URL = /api\.example\.com/;
 
-// Mude para 'record' para acessar a API real e atualizar as gravações.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 acessa a API real e atualiza as gravações; caso contrário, os testes rodam em replay.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 export const test = base.extend<{ page: Page }>({
   page: async ({ context }, use, testInfo) => {
@@ -167,15 +169,15 @@ test('homepage loads', async ({ page }) => {
 ### 5. Grave — execute uma vez contra a API real
 
 ```bash
-# No fixtures.ts: const MODE = 'record' as const;
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 # arquivos .har são gravados em e2e/recordings/ automaticamente
 ```
 
-### 6. Mude para replay e faça commit
+### 6. Faça commit das gravações
+
+Sem `RECORD_MODE`, o `npx playwright test` reproduz a partir delas.
 
 ```bash
-# No fixtures.ts: const MODE = 'replay' as const;
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```

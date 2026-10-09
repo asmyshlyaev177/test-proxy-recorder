@@ -90,7 +90,7 @@ With the three options above, you write every response yourself. test-proxy-reco
 
 - **The proxy.** Start `test-proxy-recorder <target-url>` next to your app for the test run. Point the app's API base URL at it while `TEST_PROXY_RECORDER_ENABLED` is set. Each proxy forwards to one backend, the `<target-url>` it was started with.
 - **`registerProxyFetch()`.** One call on the server patches the global `fetch`. It copies the current request's `x-test-rcrd-id` header onto every outgoing request. The proxy reads that header to file each server-side call under its test. The call is a no-op in production unless `TEST_PROXY_RECORDER_ENABLED` is set.
-- **The per-test id.** `playwrightProxy.before(page, testInfo, mode)` builds a session id from the spec file and the test title. It sends that id as `x-test-rcrd-id` on the page's requests and switches that session to `record` or `replay`. Parallel workers share one app server and one proxy, and each test still gets its own recording.
+- **The per-test id.** `playwrightProxy.before(page, testInfo, mode)` builds a session id from the spec file, its `describe` titles and the test title. It sends that id as `x-test-rcrd-id` on the page's requests and switches that session to `record` or `replay`. Parallel workers share one app server and one proxy, and each test still gets its own recording.
 
 ```typescript
 // Next.js: app/layout.tsx

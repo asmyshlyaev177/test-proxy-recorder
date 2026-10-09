@@ -8,9 +8,10 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  addDevDependencyCommand,
   CONFIG_FILENAME,
   detectNextjs,
   type InitOptions,
@@ -18,8 +19,11 @@ import {
   injectProxyIntoConfig,
   injectRegisterProxyFetch,
   parseInitArgs,
+  playwrightInstallCommands,
   renderAgentPrompt,
   renderConfig,
+  renderFixtures,
+  renderTeardown,
   runInit,
   type ScaffoldStatus,
 } from './init.js';
@@ -32,6 +36,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
+  vi.unstubAllEnvs();
 });
 
 const options = (overrides: Partial<InitOptions> = {}): InitOptions => ({
@@ -116,6 +121,289 @@ describe('runInit — Playwright config', () => {
     );
     expect(read('playwright.config.ts')).toContain(
       "globalTeardown: './e2e/global-teardown.ts'",
+    );
+  });
+
+  it('runs the original dev command as the app server, reusing a running one', () => {
+    vi.stubEnv('npm_config_user_agent', '');
+    writeFileSync(path.join(dir, 'pnpm-lock.yaml'), '');
+    writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({ scripts: { dev: 'vite' } }),
+    );
+
+    runInit(options(), dir);
+
+    const out = read('playwright.config.ts');
+    // dev is wrapped to run the proxy too, so the app entry runs dev:app: the
+    // proxy entry already starts the proxy.
+    expect(out).toContain("command: 'pnpm dev:app'");
+    expect(out).toContain('url: APP_URL');
+    expect(out).toContain('use: { baseURL: APP_URL }');
+    expect(out.match(/reuseExistingServer: true/g)).toHaveLength(2);
+    // pnpm -r/--parallel runs each package in its own process group, which the
+    // default SIGKILL of the command's group leaves running on its ports.
+    expect(out).toContain(
+      "gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 }",
+    );
+    expect(out).toContain('fullyParallel: !process.env.RECORD_MODE,');
+  });
+
+  describe('production build switch (E2E_BUILD)', () => {
+    const writePkg = (pkg: object) => {
+      vi.stubEnv('npm_config_user_agent', '');
+      writeFileSync(path.join(dir, 'pnpm-lock.yaml'), '');
+      writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg));
+    };
+    const scripts = () => JSON.parse(read('package.json')).scripts;
+
+    it('tests a Vite preview build from the e2e scripts, and dev from a plain run', () => {
+      writePkg({
+        scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
+      });
+
+      runInit(options(), dir);
+
+      const out = read('playwright.config.ts');
+      expect(out).toContain('const IS_BUILD = Boolean(process.env.E2E_BUILD);');
+      expect(out).toContain(
+        "const APP_URL = IS_BUILD ? 'http://localhost:4173' : 'http://localhost:5173';",
+      );
+      // Passed explicitly: TanStack Start's Nitro plugin moves vite preview to 3000.
+      expect(out).toContain(
+        "command: 'pnpm build && pnpm preview --port 4173'",
+      );
+      expect(out).toContain("command: 'pnpm dev:app'");
+      expect(out).toContain(
+        "gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 }",
+      );
+      expect(out).toContain("env: { TEST_PROXY_RECORDER_ENABLED: 'true' }");
+      expect(scripts()['test:e2e']).toBe('E2E_BUILD=1 playwright test');
+      expect(scripts()['test:e2e:record']).toBe(
+        'E2E_BUILD=1 RECORD_MODE=1 playwright test --workers 1',
+      );
+    });
+
+    it('serves a Next.js build with next start on its own port', () => {
+      writePkg({
+        dependencies: { next: '16.0.0' },
+        scripts: { dev: 'next dev', build: 'next build', start: 'next start' },
+      });
+
+      runInit(options(), dir);
+
+      const out = read('playwright.config.ts');
+      expect(out).toContain("command: 'pnpm build && pnpm start'");
+      expect(out).toContain(
+        "env: { TEST_PROXY_RECORDER_ENABLED: 'true', PORT: '3100' }",
+      );
+      expect(out).toContain("IS_BUILD ? 'http://localhost:3100'");
+    });
+
+    it('passes npm the preview port after --', () => {
+      vi.stubEnv('npm_config_user_agent', 'npm/11.0.0');
+      writeFileSync(
+        path.join(dir, 'package.json'),
+        JSON.stringify({
+          scripts: {
+            dev: 'vite',
+            build: 'vite build',
+            preview: 'vite preview',
+          },
+        }),
+      );
+
+      runInit(options(), dir);
+
+      expect(read('playwright.config.ts')).toContain(
+        "command: 'npm run build && npm run preview -- --port 4173'",
+      );
+    });
+
+    it('keeps a port the preview script sets itself', () => {
+      writePkg({
+        scripts: {
+          dev: 'vite dev --port 3000',
+          build: 'vite build',
+          preview: 'vite preview --port 4300',
+        },
+      });
+
+      runInit(options(), dir);
+
+      const out = read('playwright.config.ts');
+      expect(out).toContain("command: 'pnpm build && pnpm preview'");
+      expect(out).toContain("IS_BUILD ? 'http://localhost:4300'");
+    });
+
+    it('skips the switch when start pins its own port, which would ignore PORT', () => {
+      writePkg({
+        dependencies: { next: '16.0.0' },
+        scripts: {
+          dev: 'next dev',
+          build: 'next build',
+          start: 'next start -p 3000',
+        },
+      });
+
+      runInit(options(), dir);
+
+      expect(read('playwright.config.ts')).not.toContain('IS_BUILD');
+      expect(scripts()['test:e2e']).toBe('playwright test');
+    });
+
+    it('keeps E2E_BUILD in the scripts when init runs again with --force', () => {
+      writePkg({
+        scripts: { dev: 'vite', build: 'vite build', preview: 'vite preview' },
+      });
+      runInit(options(), dir);
+
+      const result = runInit(options({ force: true }), dir);
+
+      expect(scripts()['test:e2e']).toBe('E2E_BUILD=1 playwright test');
+      expect(result.buildSwitch).toBe('on');
+    });
+
+    it('reports a switch the kept test:e2e script never sets', () => {
+      writePkg({
+        scripts: {
+          dev: 'vite',
+          build: 'vite build',
+          preview: 'vite preview',
+          'test:e2e': 'playwright test',
+        },
+      });
+
+      const result = runInit(options(), dir);
+
+      expect(scripts()['test:e2e']).toBe('playwright test');
+      expect(result.buildSwitch).toBe('missing-in-scripts');
+    });
+
+    it('skips the switch without a dev script to fall back to', () => {
+      writePkg({ scripts: { build: 'vite build', preview: 'vite preview' } });
+
+      runInit(options(), dir);
+
+      expect(read('playwright.config.ts')).not.toContain('IS_BUILD');
+      expect(scripts()['test:e2e']).toBe('playwright test');
+    });
+  });
+
+  describe('app URL', () => {
+    const appUrlFor = (pkg: object) => {
+      vi.stubEnv('npm_config_user_agent', '');
+      writeFileSync(path.join(dir, 'pnpm-lock.yaml'), '');
+      writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg));
+      runInit(options(), dir);
+      return read('playwright.config.ts').match(
+        /^const APP_URL = (.*);$/m,
+      )?.[1];
+    };
+
+    // Each dev server's default port; a guessed 3000 waits for a server that
+    // never comes, or reuses another app already listening there.
+    it.each([
+      ['Next.js', { next: '16.0.0' }, 'next dev', "'http://localhost:3000'"],
+      [
+        'React Router',
+        { '@react-router/dev': '7.0.0', vite: '6.0.0' },
+        'react-router dev',
+        "'http://localhost:5173'",
+      ],
+      [
+        'Angular',
+        { '@angular/core': '20.0.0' },
+        'ng serve',
+        "'http://localhost:4200'",
+      ],
+      ['Astro', { astro: '5.0.0' }, 'astro dev', "'http://localhost:4321'"],
+      ['Nuxt', { nuxt: '4.0.0' }, 'nuxt dev', "'http://localhost:3000'"],
+      ['plain Vite', { vite: '6.0.0' }, 'vite', "'http://localhost:5173'"],
+      [
+        'a port set in the dev script',
+        { vite: '6.0.0' },
+        'vite dev --port 3000',
+        "'http://localhost:3000'",
+      ],
+    ])('uses the dev server port for %s', (_name, dependencies, dev, url) => {
+      expect(appUrlFor({ dependencies, scripts: { dev } })).toBe(url);
+    });
+
+    it('leaves the app entry out when it cannot tell the port', () => {
+      expect(appUrlFor({ scripts: { dev: 'node server.js' } })).toBe(
+        "'http://localhost:3000'",
+      );
+      const out = read('playwright.config.ts');
+      expect(out).toContain(
+        '// Set APP_URL to the URL your dev server serves the app on',
+      );
+      // Filled in as it stands, the entry still stops pnpm --parallel's children.
+      expect(out).toContain(`    // {
+    //   command: 'pnpm dev:app',
+    //   url: APP_URL,
+    //   reuseExistingServer: true,`);
+      expect(out).toContain(
+        "    //   gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },",
+      );
+    });
+
+    it('builds with a Vite preview only when preview runs vite', () => {
+      expect(
+        appUrlFor({
+          dependencies: { astro: '5.0.0' },
+          scripts: {
+            dev: 'astro dev',
+            build: 'astro build',
+            preview: 'astro preview',
+          },
+        }),
+      ).toBe("'http://localhost:4321'");
+      expect(read('playwright.config.ts')).not.toContain('IS_BUILD');
+    });
+
+    it('builds with a SvelteKit preview on 4173 and develops on 5173', () => {
+      expect(
+        appUrlFor({
+          devDependencies: { '@sveltejs/kit': '2.0.0', vite: '6.0.0' },
+          scripts: {
+            dev: 'vite dev',
+            build: 'vite build',
+            preview: 'vite preview',
+          },
+        }),
+      ).toBe("IS_BUILD ? 'http://localhost:4173' : 'http://localhost:5173'");
+    });
+  });
+
+  it('leaves the app entry commented out when the project has no dev script', () => {
+    runInit(options(), dir);
+
+    expect(read('playwright.config.ts')).toContain(
+      "    //   command: '<your dev command>',",
+    );
+  });
+
+  it('edits a config whose only webServer is commented out', () => {
+    // create-playwright writes a commented-out webServer block.
+    writeFileSync(
+      path.join(dir, 'playwright.config.ts'),
+      `import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  // webServer: {
+  //   command: 'npm run start',
+  // },
+});
+`,
+    );
+
+    const result = runInit(options(), dir);
+
+    expect(statusOf(result, 'playwright.config.ts')).toBe('updated');
+    expect(read('playwright.config.ts')).toContain(
+      "command: 'test-proxy-recorder'",
     );
   });
 
@@ -238,8 +526,9 @@ describe('runInit — package.json scripts', () => {
     // New keys are added.
     expect(pkg.scripts['proxy:reset']).toBe('test-proxy-recorder reset');
     expect(pkg.scripts['test:e2e']).toBe('playwright test');
+    // Unattended, so an agent or CI can record; the fixture reads RECORD_MODE.
     expect(pkg.scripts['test:e2e:record']).toBe(
-      'playwright test --workers 1 --ui',
+      'RECORD_MODE=1 playwright test --workers 1',
     );
   });
 
@@ -294,8 +583,26 @@ describe('runInit — package.json scripts', () => {
     expect(pkg.scripts.dev).toContain('concurrently');
     expect(pkg.scripts.dev).toContain('proxy');
     expect(pkg.scripts.dev).toContain('dev:app');
-    // concurrently is declared so the wrapped script can run.
+    // concurrently is declared so the wrapped script can run, and reported so
+    // the CLI installs it.
     expect(pkg.devDependencies.concurrently).toBeDefined();
+    expect(result.addedDevDependencies).toEqual(['concurrently']);
+  });
+
+  it('reports no added dependency when concurrently is already declared', () => {
+    writeFileSync(
+      path.join(dir, 'package.json'),
+      JSON.stringify({
+        scripts: { dev: 'next dev' },
+        devDependencies: { concurrently: '^8.0.0' },
+      }),
+    );
+
+    const result = runInit(options(), dir);
+
+    const pkg = JSON.parse(read('package.json'));
+    expect(pkg.devDependencies.concurrently).toBe('^8.0.0');
+    expect(result.addedDevDependencies).toEqual([]);
   });
 
   it('does not wrap dev when there is no dev script', () => {
@@ -528,6 +835,64 @@ describe('runInit — Next.js SSR (registerProxyFetch in root layout)', () => {
     expect(
       read('app/layout.tsx').match(/registerProxyFetch\(\)/g)?.length,
     ).toBe(1);
+  });
+});
+
+describe('playwrightInstallCommands', () => {
+  it('adds @playwright/test and downloads Chromium with the project package manager', () => {
+    expect(playwrightInstallCommands('pnpm', dir)).toEqual([
+      { cmd: 'pnpm', args: ['add', '-D', '@playwright/test'] },
+      { cmd: 'pnpm', args: ['exec', 'playwright', 'install', 'chromium'] },
+    ]);
+    expect(playwrightInstallCommands('npm', dir)).toEqual([
+      { cmd: 'npm', args: ['install', '-D', '@playwright/test'] },
+      { cmd: 'npx', args: ['playwright', 'install', 'chromium'] },
+    ]);
+  });
+});
+
+describe('addDevDependencyCommand', () => {
+  it('uses the project package manager', () => {
+    expect(addDevDependencyCommand('npm', dir, '@playwright/test')).toBe(
+      'npm install -D @playwright/test',
+    );
+    expect(addDevDependencyCommand('yarn', dir, '@playwright/test')).toBe(
+      'yarn add -D @playwright/test',
+    );
+    expect(addDevDependencyCommand('pnpm', dir, '@playwright/test')).toBe(
+      'pnpm add -D @playwright/test',
+    );
+  });
+
+  it('adds -w at a pnpm workspace root, where pnpm refuses a plain add', () => {
+    writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'packages: []\n');
+
+    expect(addDevDependencyCommand('pnpm', dir, '@playwright/test')).toBe(
+      'pnpm add -D -w @playwright/test',
+    );
+  });
+});
+
+describe('renderFixtures', () => {
+  it('records when RECORD_MODE is set and replays otherwise', () => {
+    // Agents reach for an env var, and the Playwright config can read it too.
+    expect(renderFixtures()).toContain(
+      "const MODE = process.env.RECORD_MODE ? 'record' : 'replay';",
+    );
+  });
+
+  it('records no HAR until CLIENT_SIDE_URL is set', () => {
+    // A placeholder pattern makes replay load a HAR that was never recorded.
+    expect(renderFixtures()).toContain(
+      'const CLIENT_SIDE_URL: RegExp | undefined = undefined;',
+    );
+  });
+});
+
+describe('renderTeardown', () => {
+  it('types the caught error and returns nothing from the catch callback', () => {
+    // strict typescript-eslint rejects an untyped catch and a void shorthand.
+    expect(renderTeardown()).toContain('.catch((err: unknown) => {');
   });
 });
 

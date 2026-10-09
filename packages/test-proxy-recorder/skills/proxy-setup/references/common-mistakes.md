@@ -1,7 +1,6 @@
 # test-proxy-recorder — Common Mistakes
 
-Failure modes when setting up record/replay, each with the wrong vs. correct
-pattern. Loaded on demand from the `proxy-setup` skill.
+Failure modes when setting up record/replay, each with the wrong vs. correct pattern. Loaded on demand from the `proxy-setup` skill.
 
 ### CRITICAL App env var not redirected through proxy
 
@@ -23,8 +22,7 @@ Correct:
 }
 ```
 
-The app's API base URL must point at the proxy, not the real backend. When
-omitted, requests bypass the proxy entirely and nothing is recorded.
+The app's API base URL must point at the proxy, not the real backend. When omitted, requests bypass the proxy entirely and nothing is recorded.
 
 Source: README.md — Full-stack Quick Start
 
@@ -52,10 +50,7 @@ await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
 await playwrightProxy.before(page, testInfo, MODE, { url: /api\.example\.com/ });
 ```
 
-`url` must match the external domains the browser calls directly — not the
-proxy. Server-side fetches through the proxy are already recorded to
-`.mock.json` automatically. `url` is only for browser-side HAR recording of
-requests that never touch the proxy (third-party services, CDNs, auth providers).
+`url` must match the external domains the browser calls directly — not the proxy. Server-side fetches through the proxy are already recorded to `.mock.json` automatically. `url` is only for browser-side HAR recording of requests that never touch the proxy (third-party services, CDNs, auth providers).
 
 Source: README.md — Playwright Integration; apps/example-extension/e2e/fixtures.ts
 
@@ -77,10 +72,7 @@ Correct:
 // Only call teardown() in globalTeardown (see Global Teardown pattern above).
 ```
 
-`teardown()` sets the **global** proxy mode to `transparent`. With
-`fullyParallel: true`, a fast test's `afterAll` fires while other tests are
-still replaying, switching the proxy mid-session and routing requests to the
-real network.
+`teardown()` sets the **global** proxy mode to `transparent`. With `fullyParallel: true`, a fast test's `afterAll` fires while other tests are still replaying, switching the proxy mid-session and routing requests to the real network.
 
 Source: README.md — Parallel Replay section
 
@@ -90,23 +82,31 @@ Source: README.md — Parallel Replay section
 
 Wrong:
 ```typescript
-webServer: {
-  command: 'test-proxy-recorder http://localhost:8000 --port 8100',
-  url: 'http://localhost:8100',  // root proxies to backend — may 502
-}
+// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  webServer: {
+    command: 'test-proxy-recorder http://localhost:8000 --port 8100',
+    url: 'http://localhost:8100', // root proxies to backend — may 502
+  },
+});
 ```
 
 Correct:
 ```typescript
-webServer: {
-  command: 'test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings',
-  url: 'http://localhost:8100/__control',
-}
+// playwright.config.ts
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  webServer: {
+    command: 'test-proxy-recorder http://localhost:8000 --port 8100 --dir ./e2e/recordings',
+    url: 'http://localhost:8100/__control',
+  },
+});
 ```
 
-Playwright uses `url` to health-check that the server is ready. The proxy root
-`/` forwards to the backend, which may be unavailable, causing Playwright to
-report the server as not ready. `/__control` is always available.
+Playwright uses `url` to health-check that the server is ready. The proxy root `/` forwards to the backend, which may be unavailable, causing Playwright to report the server as not ready. `/__control` is always available.
 
 Source: README.md; apps/example-extension/playwright.config.ts
 
@@ -128,8 +128,7 @@ Correct:
 /e2e/recordings/** linguist-generated=true
 ```
 
-CI has no recordings to replay from if the directory is gitignored. Tests will
-fail or hit the real network.
+CI has no recordings to replay from if the directory is gitignored. Tests will fail or hit the real network.
 
 Source: README.md — Switch to replay and commit
 
@@ -139,21 +138,17 @@ Source: README.md — Switch to replay and commit
 
 Wrong:
 ```bash
-# Recording against the dev server (MODE = 'record' in fixtures)
-next dev & npx playwright test --workers 1
+# Recording against the dev server
+next dev & RECORD_MODE=1 npx playwright test --workers 1
 ```
 
 Correct:
 ```bash
 # Build first, then record against the production build
-pnpm build && npx playwright test --workers 1 --ui
+pnpm build && RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-The Next.js dev server is slow and can cause SSR fetches to timeout or execute
-out of order, producing incomplete recordings that fail in replay. It can also
-reset a `registerProxyFetch` global-`fetch` patch between requests
-([vercel/next.js#47596](https://github.com/vercel/next.js/issues/47596)), so SSR
-fetches lose the session id — another reason to record against build+start.
+The Next.js dev server is slow and can cause SSR fetches to timeout or execute out of order, producing incomplete recordings that fail in replay. It can also reset a `registerProxyFetch` global-`fetch` patch between requests ([vercel/next.js#47596](https://github.com/vercel/next.js/issues/47596)), so SSR fetches lose the session id — another reason to record against build+start.
 
 Source: README.md — Full-stack Quick Start note; apps/example-nextjs16/package.json
 
@@ -162,20 +157,64 @@ Source: README.md — Full-stack Quick Start note; apps/example-nextjs16/package
 ### MEDIUM Recording with multiple workers corrupts session files
 
 Wrong:
+```bash
+# Parallel workers write to the same session files
+RECORD_MODE=1 npx playwright test
+```
+
+Correct:
+```bash
+# One worker while recording
+RECORD_MODE=1 npx playwright test --workers 1
+```
+
+Recording is a single-worker operation. Replay is what uses multiple workers (`fullyParallel: true`), and it needs no flag: without `RECORD_MODE` the fixture replays.
+
+Source: apps/example-nextjs16/package.json; maintainer guidance
+
+---
+
+### HIGH Separate backend, database or ports for tests
+
+Wrong:
 ```typescript
-// fixtures.ts — MODE set to 'record', running with default workers
-const MODE = 'record' as const;
-// playwright test  ← parallel workers write to same session files
+// playwright.config.ts — a test-only API on its own database and port
+import { defineConfig } from '@playwright/test';
+
+export default defineConfig({
+  webServer: [
+    { command: 'pnpm --filter server start', env: { PORT: '3101', DB_PATH: 'e2e/test.db' }, url: 'http://localhost:3101/health' },
+    { command: 'vite --port 5174', env: { API_URL: 'http://localhost:8100' }, url: 'http://localhost:5174' },
+  ],
+});
 ```
 
 Correct:
 ```typescript
-// fixtures.ts
-const MODE = 'record' as const;
-// npx playwright test --workers 1 --ui  ← single worker when recording
+// playwright.config.ts — the dev proxy and backend; a production build under E2E_BUILD
+import { defineConfig } from '@playwright/test';
+
+const IS_BUILD = Boolean(process.env.E2E_BUILD);
+const APP_URL = IS_BUILD ? 'http://localhost:4173' : 'http://localhost:5173';
+
+export default defineConfig({
+  use: { baseURL: APP_URL },
+  webServer: [
+    { command: 'test-proxy-recorder', url: 'http://localhost:8100/__control', reuseExistingServer: true },
+    IS_BUILD
+      ? { command: 'vite build && vite preview', env: { API_URL: 'http://localhost:8100' }, url: APP_URL }
+      : {
+          command: 'pnpm dev:app',
+          url: APP_URL,
+          reuseExistingServer: true,
+          // pnpm --parallel runs each package in its own process group, which the
+          // default SIGKILL leaves running on its port; on SIGTERM pnpm stops them.
+          gracefulShutdown: { signal: 'SIGTERM', timeout: 5_000 },
+        },
+  ],
+});
 ```
 
-Recording is a manual, single-worker operation. Replay is what uses multiple
-workers (`fullyParallel: true`). Set `MODE = 'record'` in the fixture file, then set it back to `'replay'` before committing.
+Tests run against the dev servers and database the user works with, so a failing test can be rerun by hand and its bug reproduced in the browser. Prepare data with the project's own seed script, run by hand before recording. A test-only stack also breaks the dev proxy: `target` points at a backend dev never starts.
 
-Source: apps/example-nextjs16/package.json; maintainer guidance
+Source: maintainer guidance

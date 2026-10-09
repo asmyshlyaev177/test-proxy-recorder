@@ -1,13 +1,11 @@
 # Example: Next.js 16 (server-side + browser recording)
 
-A full-stack example of using [test-proxy-recorder](../../packages/test-proxy-recorder) to test a
-**Next.js 16** app end-to-end without a live backend on CI.
+A full-stack example of using [test-proxy-recorder](../../packages/test-proxy-recorder) to test a **Next.js 16** app end-to-end without a live backend on CI.
 
 The app is a todo list that talks to an API from **two** places:
 
 - **Server-side** — the page (`app/page.tsx`) fetches the initial list during SSR.
-- **Browser-side** — the client component (`app/components/TodoApp.tsx`) adds, edits,
-  toggles, and deletes todos via `fetch`.
+- **Browser-side** — the client component (`app/components/TodoApp.tsx`) adds, edits, toggles, and deletes todos via `fetch`.
 
 This example records and replays **both**, using both of the library's mechanisms at once:
 
@@ -33,9 +31,7 @@ Three services are involved:
 
 - **Node + pnpm**, with workspace deps installed (`pnpm install` at the repo root).
 
-No `.env` is needed for testing: both `BACKEND_URL` (SSR) and `NEXT_PUBLIC_API_URL`
-(browser) default to the proxy at `http://localhost:8100`. `.env.example` only
-matters when pointing the app at a real backend in production.
+No `.env` is needed for testing: both `BACKEND_URL` (SSR) and `NEXT_PUBLIC_API_URL` (browser) default to the proxy at `http://localhost:8100`. `.env.example` only matters when pointing the app at a real backend in production.
 
 ## Quick start — replay
 
@@ -43,10 +39,7 @@ matters when pointing the app at a real backend in production.
 pnpm test:e2e
 ```
 
-This one command is self-contained: it builds the app, starts all three services,
-runs the Playwright tests in replay mode (served entirely from
-[`e2e/recordings/`](e2e/recordings/)), and tears everything down. No network and no
-backend are needed.
+This one command is self-contained: it builds the app, starts all three services, runs the Playwright tests in replay mode (served entirely from [`e2e/recordings/`](e2e/recordings/)), and tears everything down. No network and no backend are needed.
 
 > **Recordings are not committed to git here.** This example's backend is a
 > local mock, so `test:e2e:ci` records against it first and then replays. A
@@ -56,8 +49,7 @@ backend are needed.
 
 ## Record your own
 
-Recording hits the **real** API (here, the local mock backend) and saves the
-traffic to disk so future replay runs are offline and deterministic.
+Recording hits the **real** API (here, the local mock backend) and saves the traffic to disk so future replay runs are offline and deterministic.
 
 In one terminal, start the services:
 
@@ -71,27 +63,16 @@ In another, record:
 pnpm test:e2e:record    # RECORD_MODE=1, opens the Playwright UI
 ```
 
-Every test's requests are written to `e2e/recordings/` — a `.mock.json` for the
-server-side SSR fetch and a `.har` for the browser-side calls. Switch back to
-`pnpm test:e2e` to run offline from those recordings.
+Every test's requests are written to `e2e/recordings/` — a `.mock.json` for the server-side SSR fetch and a `.har` for the browser-side calls. Switch back to `pnpm test:e2e` to run offline from those recordings.
 
 ## How recording works
 
-The interesting part of this example is that two different request origins are
-captured by two different mechanisms, keyed to the same test:
+The interesting part of this example is that two different request origins are captured by two different mechanisms, keyed to the same test:
 
-- **Browser → `.har`.** [`e2e/todos.spec.ts`](e2e/todos.spec.ts) calls
-  `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })`, which
-  uses Playwright's HAR intercept to record/replay the browser's `fetch` calls.
-- **SSR → `.mock.json`.** The proxy records server-side requests itself. For the
-  proxy to associate an SSR fetch with the right test, the per-test recording-id
-  header must travel from the incoming page request to the outgoing SSR fetch —
-  `registerProxyFetch()` in [`app/layout.tsx`](app/layout.tsx) copies it onto
-  every server-side `fetch`. No middleware is needed.
-- **`mode`** is `record` when `RECORD_MODE` is set, otherwise `replay`
-  ([`e2e/todos.spec.ts`](e2e/todos.spec.ts)).
-- Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so
-  recordings start from a known-empty state.
+- **Browser → `.har`.** [`e2e/todos.spec.ts`](e2e/todos.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })`, which uses Playwright's HAR intercept to record/replay the browser's `fetch` calls.
+- **SSR → `.mock.json`.** The proxy records server-side requests itself. For the proxy to associate an SSR fetch with the right test, the per-test recording-id header must travel from the incoming page request to the outgoing SSR fetch — `registerProxyFetch()` in [`app/layout.tsx`](app/layout.tsx) copies it onto every server-side `fetch`. No middleware is needed.
+- **`mode`** is `record` when `RECORD_MODE` is set, otherwise `replay` ([`e2e/todos.spec.ts`](e2e/todos.spec.ts)).
+- Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so recordings start from a known-empty state.
 
 ## Files
 
@@ -108,16 +89,7 @@ captured by two different mechanisms, keyed to the same test:
 
 ## Adapting this to your own app
 
-- **Point the app at the proxy in dev/test** — set `BACKEND_URL` (SSR) and
-  `NEXT_PUBLIC_API_URL` (browser) to the proxy's address so both request origins
-  are recorded; in production, point them at the real backend. See
-  [`.env.example`](.env.example).
-- **Keep `registerProxyFetch()`** — the call in [`app/layout.tsx`](app/layout.tsx)
-  is what makes server-side recording work; without it, SSR fetches can't be
-  keyed to a test.
-- **Match your API origin** — the `CLIENT_SIDE_URL` regex in
-  [`e2e/todos.spec.ts`](e2e/todos.spec.ts) decides which browser requests are
-  recorded/replayed.
-- **Browser-only app?** If your app never fetches from the server, you don't need
-  `registerProxyFetch()` or the `.mock.json` side — see the
-  [Chrome extension example](../example-extension) for the HAR-only setup.
+- **Point the app at the proxy in dev/test** — set `BACKEND_URL` (SSR) and `NEXT_PUBLIC_API_URL` (browser) to the proxy's address so both request origins are recorded; in production, point them at the real backend. See [`.env.example`](.env.example).
+- **Keep `registerProxyFetch()`** — the call in [`app/layout.tsx`](app/layout.tsx) is what makes server-side recording work; without it, SSR fetches can't be keyed to a test.
+- **Match your API origin** — the `CLIENT_SIDE_URL` regex in [`e2e/todos.spec.ts`](e2e/todos.spec.ts) decides which browser requests are recorded/replayed.
+- **Browser-only app?** If your app never fetches from the server, you don't need `registerProxyFetch()` or the `.mock.json` side — see the [Chrome extension example](../example-extension) for the HAR-only setup.

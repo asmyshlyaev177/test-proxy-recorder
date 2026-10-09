@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { type CliOptions, parseCliArgs } from './cli.js';
 
@@ -20,6 +20,7 @@ beforeEach(() => {
 
 afterEach(() => {
   rmSync(dir, { recursive: true, force: true });
+  vi.unstubAllEnvs();
 });
 
 /** Write a config file and return its absolute path. */
@@ -89,13 +90,27 @@ describe('parseCliArgs precedence', () => {
 
     const opts = await run(['--config', config]);
 
-    expect(opts.port).toBe(8000);
+    // Same default as the Playwright helpers and `init`, so they find the proxy.
+    expect(opts.port).toBe(8100);
     expect(opts.recordingsDir).toBe(
       path.resolve(process.cwd(), './recordings'),
     );
     expect(opts.timeout).toBe(120_000);
     // Redaction is on by default — an enabled config with no extra headers.
     expect(enabledRedaction(opts.redaction).headers).toEqual([]);
+  });
+
+  it('reads TEST_PROXY_RECORDER_PORT over the config, below --port', async () => {
+    const config = writeConfig(
+      `export default { target: 'http://localhost:7001', port: 7000 };`,
+    );
+    vi.stubEnv('TEST_PROXY_RECORDER_PORT', '9100');
+
+    const fromEnv = await run(['--config', config]);
+    const fromFlag = await run(['--config', config, '--port', '9200']);
+
+    expect(fromEnv.port).toBe(9100);
+    expect(fromFlag.port).toBe(9200);
   });
 
   it('lets --timeout override config.timeout', async () => {

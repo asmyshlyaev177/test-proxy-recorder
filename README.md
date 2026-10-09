@@ -84,7 +84,7 @@ const API_BASE = ['true', '1'].includes(recorderEnv)
   : 'https://api.example.com';
 ```
 
-Then set `MODE = 'record'`, run once against the real API, flip to `'replay'`, and commit `e2e/recordings/`. CI now runs with the backend off.
+Then run `npm run test:e2e:record` (it sets `RECORD_MODE=1`) once against the real API and commit `e2e/recordings/`. CI runs `npm run test:e2e`, which replays with the backend off.
 
 Full walkthrough: [quick start](https://test-proxy-recorder.dev/docs/getting-started/quick-start/) · [manual setup](https://test-proxy-recorder.dev/docs/getting-started/manual-setup/).
 
@@ -130,32 +130,20 @@ npm install --save-dev test-proxy-recorder
 npx @tanstack/intent@latest install
 ```
 
-`install` adds skill-discovery guidance to your agent config (`CLAUDE.md`, `.cursorrules`, …); the agent loads the `proxy-setup`, `nextjs-ssr`, and `tanstack-start` skills on demand. List or load them directly with `npx @tanstack/intent@latest list` and `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. Full guide: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
+`install` adds skill-discovery guidance to your agent config (`CLAUDE.md`, `.cursorrules`, …); the agent loads the `proxy-setup`, `nextjs-ssr`, and `tanstack-start` skills on demand. List or load them directly with `npx @tanstack/intent@latest list` and `npx @tanstack/intent@latest load test-proxy-recorder#proxy-setup`. `install` needs an interactive terminal; an agent running without one can read the skills from `node_modules/test-proxy-recorder/skills/*/SKILL.md`. Full guide: [AI agent skills](https://test-proxy-recorder.dev/docs/reference/ai-agent-skills/).
 
 The skill sources live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
 ## Hire me
 
-I'm **Aleksandr Smyshliaev** — author and maintainer of this tool. Senior
-frontend engineer (React / Next.js / TypeScript, 8+ years), and **available for
-full-time remote work right now**.
+I'm **Aleksandr Smyshliaev** — author and maintainer of this tool. Senior frontend engineer (React / Next.js / TypeScript, 8+ years), and **available for full-time remote work right now**.
 
-This project exists because I spent years fixing other people's flaky test
-suites. That's the kind of work I'm best at: the boring infrastructure that
-decides whether a codebase is still pleasant six months in.
+This project exists because I spent years fixing other people's flaky test suites. That's the kind of work I'm best at: the boring infrastructure that decides whether a codebase is still pleasant six months in.
 
-- **Best at** — component libraries, state management, and test suites that
-  survive a refactor.
-- **Also mine** —
-  [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu)
-  (~84k weekly installs),
-  [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (typed URL
-  state), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
-- **Where** — Tbilisi, Georgia (GMT+4), full CET overlap. Registered contractor
-  entity, so B2B engagement needs no employer-of-record setup.
-- **Reach me** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) ·
-  [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) ·
-  [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
+- **Best at** — component libraries, state management, and test suites that survive a refactor.
+- **Also mine** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu) (~84k weekly installs), [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (typed URL state), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
+- **Where** — Tbilisi, Georgia (GMT+4), full CET overlap. Registered contractor entity, so B2B engagement needs no employer-of-record setup.
+- **Reach me** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
 
 ## License
 

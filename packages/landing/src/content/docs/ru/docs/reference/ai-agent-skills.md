@@ -2,7 +2,7 @@
 title: Навыки для ИИ-агентов
 description: Установите навыки test-proxy-recorder, чтобы ИИ-агенты для кодинга (Claude Code, Cursor, Copilot) генерировали корректный код настройки.
 i18nSource: docs/reference/ai-agent-skills.md
-i18nSourceBlob: 2622ae8f436b9a9a1d57fdf8831308a039a8981d
+i18nSourceBlob: 8214769e2ee6aa9a875b70e13d00aeee8c361beb
 ---
 
 Если вы используете ИИ-агента для кодинга (Claude Code, Cursor, Copilot и подобные), настройте загрузку навыков, чтобы агент генерировал корректный код настройки. Навыки поставляются внутри пакета `test-proxy-recorder` через [`@tanstack/intent`](https://www.npmjs.com/package/@tanstack/intent) и обновляются вместе с ним при обычном обновлении менеджера пакетов.
@@ -20,6 +20,8 @@ npx @tanstack/intent@latest install
 ```
 
 Передайте `--map`, если предпочитаете записать в конфиг агента явные сопоставления «задача → навык» вместо общей инструкции по обнаружению.
+
+`install` требует интерактивного терминала. Агент, работающий без него, может прочитать навыки из `node_modules/test-proxy-recorder/skills/*/SKILL.md`.
 
 После этого агент будет знать правильную настройку прокси/фикстуры, рабочий процесс record vs. replay и паттерны SSR-заголовков Next.js без дополнительных подсказок.
 

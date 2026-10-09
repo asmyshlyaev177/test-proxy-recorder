@@ -71,10 +71,11 @@ npx test-proxy-recorder init <your-backend-api-url> --port 8100 --dir ./e2e/reco
 ## Core rules — read first
 
 1. **Point the app's API base URL at the proxy only when the recorder is enabled**, at the real backend otherwise. The proxy never runs in production. Gate on `TEST_PROXY_RECORDER_ENABLED`.
-2. **Record against a production build, never a dev server.** Next.js: `next build && next start` (not `next dev`). TanStack Start: `vite build` then `node .output/server/index.mjs` (not `vite dev`). Dev-server module reloading corrupts recordings.
-3. **Tag server-side (SSR) fetches.** Browser requests already carry the recording-session id (Playwright sets it); SSR fetches do not until you register the proxy (see below). Browser-only apps (SPA, extension) can skip this.
-4. **Commit the `.mock.json` / HAR recordings.** CI replays them with the backend off.
-5. **Secrets are redacted by default** — `Authorization`, `Cookie`, `Set-Cookie` headers. Never commit real tokens; tune with `--redact-headers` / `--redact-body` / `--no-redact`.
+2. **Test against the dev backend and database you use by hand.** Playwright's `webServer` reuses the proxy `dev` runs (`reuseExistingServer: true`); never start a separate backend or database for tests. The `test:e2e` scripts set `E2E_BUILD=1` to test a production build of the app, and a plain `playwright test` uses the dev server. Before recording, put the dev database in the state the tests expect with the project's own seed script, run by hand.
+3. **Record Next.js and TanStack Start against a production build.** Next.js: `next build && next start` (not `next dev`). TanStack Start: `vite build` then `node .output/server/index.mjs` (not `vite dev`). Their dev servers can drop the session id on server-side fetches.
+4. **Tag server-side (SSR) fetches.** Browser requests already carry the recording-session id (Playwright sets it); SSR fetches do not until you register the proxy (see below). Browser-only apps (SPA, extension) can skip this.
+5. **Commit the `.mock.json` / HAR recordings.** CI replays them with the backend off.
+6. **Secrets are redacted by default** — `Authorization`, `Cookie`, `Set-Cookie` headers. Never commit real tokens; tune with `--redact-headers` / `--redact-body` / `--no-redact`.
 
 ## Modes
 
@@ -149,7 +150,7 @@ Load with `--config`. CLI flags override config values.
 
 | Mistake | Fix |
 |---|---|
-| Recording against `next dev` / `vite dev` | Record against a production build (`next build && next start`; `vite build` + `node .output/server/index.mjs`) |
+| Recording a Next.js or TanStack Start app against its dev server | Record against a production build (`next build && next start`; `vite build` + `node .output/server/index.mjs`) |
 | Pointing the app at the proxy in production | Gate the proxy URL on `TEST_PROXY_RECORDER_ENABLED`; the proxy is dev/test only |
 | SSR responses not recorded / cross-test bleed | Call `registerProxyFetch()` (or `registerProxyAxios`) so server fetches carry `x-test-rcrd-id` |
 | Assuming the Next.js middleware tags fetches | It does not — it only exposes the id; use `registerProxyFetch` to tag |

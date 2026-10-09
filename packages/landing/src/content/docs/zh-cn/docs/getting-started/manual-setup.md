@@ -2,7 +2,7 @@
 title: 手动配置
 description: 为全栈（SSR + 浏览器）应用，或纯浏览器的 SPA / 扩展手动接入 test-proxy-recorder，然后录制一次并在 CI 中回放。
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: d546231f7610578f7510506279eeb48a29c9ac0f
+i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
 ---
 
 大多数人应当运行 [`init`](/zh-cn/docs/getting-started/quick-start/) —— 它替你写下下面所有文件。本页是 `init` 所生成内容的参考，便于你手动接线、移除 codegen 或理解每个部分。
@@ -72,8 +72,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // Browser requests to the proxy URL are also covered.
 const CLIENT_SIDE_URL = /localhost:8100/;
 
-// Change to 'record' to update recordings.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 updates the recordings; otherwise tests replay.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   await playwrightProxy.before(page, testInfo, MODE, { url: CLIENT_SIDE_URL });
@@ -87,12 +87,14 @@ test('homepage loads', async ({ page }) => {
 
 ### 4. 录制
 
+录制之前，请用你自己的种子脚本（seed script）把后端的数据库置于测试所期望的状态。
+
 ```bash
 # Terminal 1
 npm run serve:proxy
 
 # Terminal 2 — .mock.json and .har files are written automatically
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
 ### 5. 切换到回放并提交
@@ -140,8 +142,8 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // In replay mode they are served from disk — no network needed.
 const CLIENT_SIDE_URL = /api\.example\.com/;
 
-// Change to 'record' to hit the real API and update recordings.
-const MODE = 'replay' as const;
+// RECORD_MODE=1 hits the real API and updates the recordings; otherwise tests replay.
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 export const test = base.extend<{ page: Page }>({
   page: async ({ context }, use, testInfo) => {
@@ -167,15 +169,15 @@ test('homepage loads', async ({ page }) => {
 ### 5. 录制 —— 对真实 API 运行一次
 
 ```bash
-# In fixtures.ts: const MODE = 'record' as const;
-npx playwright test
+RECORD_MODE=1 npx playwright test --workers 1
 # .har files are written to e2e/recordings/ automatically
 ```
 
-### 6. 切换到回放并提交
+### 6. 提交录制内容
+
+不设置 `RECORD_MODE` 时，`npx playwright test` 会从这些录制内容回放。
 
 ```bash
-# In fixtures.ts: const MODE = 'replay' as const;
 git add e2e/recordings/
 git commit -m "add e2e recordings"
 ```

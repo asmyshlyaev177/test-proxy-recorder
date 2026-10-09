@@ -2,7 +2,7 @@
 title: CLI
 description: Giao diện dòng lệnh của test-proxy-recorder — các tùy chọn, nhịp phát lại WebSocket, và cách reset một proxy bị kẹt.
 i18nSource: docs/guides/cli.md
-i18nSourceBlob: 6d6db2b7f207d35d62e0705ed3ec49aa7169b145
+i18nSourceBlob: 1b481900a2093001d8adee923a7a37c4db3294f4
 ---
 
 ```bash
@@ -12,7 +12,7 @@ test-proxy-recorder <target-url> [options]
 | Tùy chọn         | Mặc định       | Mô tả                              |
 | ---------------- | -------------- | ----------------------------------- |
 | `<target-url>`   | *(bắt buộc)*   | URL backend cần proxy               |
-| `--port, -p`     | `8000`         | Cổng lắng nghe của proxy            |
+| `--port, -p`     | `8100`         | Cổng lắng nghe của proxy; cũng được đọc từ `TEST_PROXY_RECORDER_PORT` |
 | `--dir, -d`      | `./recordings` | Thư mục chứa các file bản ghi       |
 | `--timeout, -t`  | `120000`       | Thời gian timeout tự reset session (ms) |
 | `--config, -c`   | *(tự động)*    | Đường dẫn tới file cấu hình         |
@@ -40,7 +40,7 @@ Proxy tự trở về `transparent` sau khi mỗi session hết timeout, và `gl
 test-proxy-recorder reset    # hoặc: npm run proxy:reset
 ```
 
-Lệnh này POST `{ "mode": "transparent" }` tới `/__control` — giải pháp thay thế được hỗ trợ và an toàn khi chạy song song thay vì reset thủ công bằng `curl`. An toàn khi chạy bất cứ lúc nào: một proxy không thể truy cập được xem như no-op. Cổng được xác định theo thứ tự **cờ `--port` → biến env `TEST_PROXY_RECORDER_PORT` → file cấu hình → `8000`**, nên nó nhắm đúng cổng mà proxy đã khởi động (truyền `--port` / `--config` để ghi đè). `init` dựng sẵn cái này dưới dạng script `proxy:reset`.
+Lệnh này POST `{ "mode": "transparent" }` tới `/__control` — giải pháp thay thế được hỗ trợ và an toàn khi chạy song song thay vì reset thủ công bằng `curl`. An toàn khi chạy bất cứ lúc nào: một proxy không thể truy cập được xem như no-op. Cổng được xác định theo thứ tự **cờ `--port` → biến env `TEST_PROXY_RECORDER_PORT` → file cấu hình → `8100`**, nên nó nhắm đúng cổng mà proxy đã khởi động (truyền `--port` / `--config` để ghi đè). `init` dựng sẵn cái này dưới dạng script `proxy:reset`.
 
 ## `init` — dựng sẵn thiết lập
 

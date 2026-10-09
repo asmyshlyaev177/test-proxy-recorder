@@ -2,7 +2,7 @@
 title: FAQ
 description: test-proxy-recorder に関するよくある質問 — 並列再生、記録の git へのコミット、HAR 記録のためのプロキシターゲット、Next.js の開発サーバー、記録の更新。
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 59a850f40bf95a3cbc42808fac8a58ee42a6465a
+i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
 ---
 
 ## 並列の再生テストが時々実際のバックエンドを呼ぶのはなぜ? {#parallel-replay}
@@ -52,7 +52,7 @@ Playwright はそれらをインターセプトしないため、記録時も再
 import { test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
-const MODE = 'replay' as const;
+const MODE = process.env.RECORD_MODE ? 'record' : 'replay';
 
 test.beforeEach(async ({ page }, testInfo) => {
   // The HAR also records and replays the CDN.
@@ -73,7 +73,7 @@ test.beforeEach(async ({ page }, testInfo) => {
 
 ## 記録はどう更新しますか?
 
-record モードで再実行し（フィクスチャで `MODE = 'record'`、または `RECORD_MODE=1`）実際の API に対して記録してから、replay に戻して `e2e/recordings/` の更新されたファイルをコミットしてください。
+record モードで再実行し（`RECORD_MODE=1`、つまり `test:e2e:record` スクリプト）実際の API に対して記録してから、`e2e/recordings/` の更新されたファイルをコミットしてください。
 
 ## 再生するテストでエラー、空のリスト、遅いレスポンスを強制できますか? {#override-responses}
 

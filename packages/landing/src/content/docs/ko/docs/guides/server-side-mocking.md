@@ -4,7 +4,7 @@ description: 'Next.js와 TanStack Start에서 page.route()가 서버 측 fetch�
 sidebar:
   label: 서버 측 모킹
 i18nSource: docs/guides/server-side-mocking.md
-i18nSourceBlob: f5b4c780da98c479c1bc9c0491d2ae9747da5b85
+i18nSourceBlob: 6fd6662395c2237b6c951527806be5bd6116dec1
 ---
 
 Next.js나 TanStack Start 앱에서는 서버가 페이지를 렌더링하는 동안 API를 호출합니다. Playwright의 요청 모킹은 이런 호출을 전혀 보지 못합니다. 아래에서는 그 이유를 설명한 다음, Playwright 테스트에서 이런 호출을 제어하는 네 가지 방법을 비교합니다. Next.js 테스트 모드, 서버 안의 MSW, mockttp 같은 포워드 프록시, 그리고 test-proxy-recorder로 실제 응답을 기록하는 방법입니다. 다른 도구에 관한 사실은 2026-10-03에 각 도구의 문서와 소스로 확인했습니다.
@@ -92,7 +92,7 @@ Playwright 팀은 이 방식을 "서버 언어와 프레임워크에 구애받�
 
 - **프록시.** 테스트 실행 동안 앱 옆에서 `test-proxy-recorder <target-url>`을 시작하세요. `TEST_PROXY_RECORDER_ENABLED`가 설정되어 있는 동안 앱의 API 기본 URL이 프록시를 가리키게 하세요. 각 프록시는 시작할 때 지정한 `<target-url>`, 즉 백엔드 하나로 전달합니다.
 - **`registerProxyFetch()`.** 서버에서 한 번 호출하면 전역 `fetch`를 패치합니다. 현재 요청의 `x-test-rcrd-id` 헤더를 나가는 모든 요청에 복사합니다. 프록시는 이 헤더를 읽어 각 서버 측 호출을 해당 테스트 아래에 분류합니다. `TEST_PROXY_RECORDER_ENABLED`가 설정되지 않으면 프로덕션에서 이 호출은 아무 동작도 하지 않습니다.
-- **테스트별 id.** `playwrightProxy.before(page, testInfo, mode)`는 스펙 파일과 테스트 제목으로 세션 id를 만듭니다. 이 id를 페이지의 요청에 `x-test-rcrd-id`로 보내고, 그 세션을 `record` 또는 `replay`로 전환합니다. 병렬 워커가 앱 서버 하나와 프록시 하나를 공유해도 각 테스트는 자신만의 기록을 갖습니다.
+- **테스트별 id.** `playwrightProxy.before(page, testInfo, mode)`는 스펙 파일, 그 안의 `describe` 제목, 테스트 제목으로 세션 id를 만듭니다. 이 id를 페이지의 요청에 `x-test-rcrd-id`로 보내고, 그 세션을 `record` 또는 `replay`로 전환합니다. 병렬 워커가 앱 서버 하나와 프록시 하나를 공유해도 각 테스트는 자신만의 기록을 갖습니다.
 
 ```typescript
 // Next.js: app/layout.tsx

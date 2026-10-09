@@ -25,7 +25,7 @@ describe('resolveResetPort precedence', () => {
   });
 
   it('falls back to the default port when nothing is set', () => {
-    expect(resolveResetPort({})).toBe(8000);
+    expect(resolveResetPort({})).toBe(8100);
   });
 
   it('rejects out-of-range and non-numeric ports', () => {

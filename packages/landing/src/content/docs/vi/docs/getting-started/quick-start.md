@@ -2,7 +2,7 @@
 title: Bắt đầu nhanh
 description: Thiết lập test-proxy-recorder bằng một lệnh init duy nhất — tốt nhất là để AI agent điều khiển. Trỏ API của bạn về proxy, ghi lại một lần, phát lại trên CI.
 i18nSource: docs/getting-started/quick-start.md
-i18nSourceBlob: 884059468d8978c50dd94ad1ba5b6b55589bd0f0
+i18nSourceBlob: 2069e312fd2960771c4b3d1a68714cae12c23410
 ---
 
 ## Thiết lập bằng AI agent (khuyến nghị)
@@ -77,11 +77,13 @@ Dùng axios cho các lời gọi phía máy chủ? Thay vào đó hãy dùng `re
 
 ### 3. Ghi lại một lần, phát lại mãi mãi
 
+Các test dùng backend dev của bạn và cơ sở dữ liệu của nó. Các script `test:e2e` sẽ test bản production build của ứng dụng khi `init` tìm thấy một bản như vậy (một script `preview`, hoặc `start` của Next.js), còn một lệnh `npx playwright test` hoặc `--ui` thông thường thì dùng máy chủ dev của bạn, nên bạn có thể tự chạy lại một test thất bại và tái hiện lỗi trong trình duyệt. Trước khi ghi lại, hãy khởi động `dev` và đưa cơ sở dữ liệu dev về trạng thái mà các test mong đợi bằng script seed của riêng bạn.
+
 ```bash
-# fixtures.ts: MODE = 'record' — ghi lại các response thật
+# Đặt RECORD_MODE=1 — ghi lại các response thật
 npm run test:e2e:record
 
-# fixtures.ts: MODE = 'replay' — sau đó commit các bản ghi
+# Sau đó commit các bản ghi; npm run test:e2e sẽ phát lại chúng
 git add e2e/recordings/ && git commit -m "add e2e recordings"
 ```
 
