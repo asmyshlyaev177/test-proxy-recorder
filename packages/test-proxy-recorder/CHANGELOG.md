@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.3.1...v1.4.0) (2026-10-09)
+
+
+### Features
+
+* naming, deps, and documentation fixes ([d856008](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/d8560083a196aa5787ff451b9ee919a6a3960a6e))
+* naming, deps, and documentation fixes ([17e043d](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/17e043df3362fa74ace260a6ab9a113201dc4c05))
+
 ## [1.3.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.3.0...v1.3.1) (2026-08-05)
 
 
