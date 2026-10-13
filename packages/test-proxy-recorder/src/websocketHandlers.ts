@@ -17,6 +17,20 @@ export function getWsRecordingKey(url: string): string {
   return `WS_${url.replaceAll('/', '_')}`;
 }
 
+/**
+ * The backend URL for a WebSocket upgrade, joined the way http-proxy joins it in transparent
+ * mode: target path, then request path, with runs of slashes collapsed. The query is kept as sent.
+ */
+export function getBackendWsUrl(target: string, reqUrl: string): string {
+  const backend = new URL(target);
+  // http: → ws:, https: → wss:; a ws: or wss: target is kept as given.
+  backend.protocol = backend.protocol.replace(/^http/, 'ws');
+  const [reqPath = '', ...query] = reqUrl.split('?');
+  backend.pathname = `${backend.pathname}/${reqPath}`.replaceAll(/\/+/g, '/');
+  backend.search = query.join('?');
+  return backend.toString();
+}
+
 // WebSocket handshake internals that must not be recorded or forwarded —
 // the ws client generates its own key/version, and connection/upgrade/host
 // are hop-by-hop
@@ -107,10 +121,15 @@ export function recordWebSocket(
   // Create WebSocket connection to backend, forwarding the client's
   // subprotocols and handshake headers (auth tokens, cookies, custom
   // headers) so the backend sees the same handshake the client sent
-  const backendWsUrl = `${target.replace('http', 'ws')}${url}`;
-  const backendWs = new WebSocket(backendWsUrl, getClientSubprotocols(req), {
-    headers: getForwardableWsHeaders(req),
-  });
+  const backendWs = new WebSocket(
+    getBackendWsUrl(target, url),
+    getClientSubprotocols(req),
+    {
+      headers: getForwardableWsHeaders(req),
+      // Matches the `secure: false` transparent mode proxies with (UPSTREAM_PROXY_OPTIONS).
+      rejectUnauthorized: false,
+    },
+  );
 
   // Create WebSocket server for client, answering with the subprotocol the
   // backend negotiated (the callback only runs when the client offered one)

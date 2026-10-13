@@ -14,7 +14,10 @@ import {
   MISSING_RECORDING_ENDPOINT,
   RECORDING_ID_HEADER,
 } from './constants.js';
-import { recordAndProxyRequest } from './httpRecorder.js';
+import {
+  recordAndProxyRequest,
+  UPSTREAM_PROXY_OPTIONS,
+} from './httpRecorder.js';
 import { MissingRecordingNotifier } from './missingRecordings.js';
 import {
   getServedTracker,
@@ -112,8 +115,7 @@ export class ProxyServer {
     this.recordingPromises = [];
     this.flushPromise = null;
     this.proxy = httpProxy.createProxyServer({
-      secure: false,
-      changeOrigin: true,
+      ...UPSTREAM_PROXY_OPTIONS,
       ws: true,
     });
 
