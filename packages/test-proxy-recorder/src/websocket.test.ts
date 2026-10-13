@@ -962,7 +962,9 @@ describe('ProxyServer WebSocket Tests', () => {
   });
 
   describe('Replay Timing', () => {
-    const TIMING_PORT = 9884;
+    // Unique across test files: vitest runs files in parallel, and 9884 (the
+    // concurrent-replay mock backend) made this listen fail with EADDRINUSE.
+    const TIMING_PORT = 9885;
     const TIMING_DIR = path.join(process.cwd(), 'test-recordings-ws-timing');
     const timingSessionId = 'ws-timing-session';
     const DELTA_MS = 150;
@@ -1049,8 +1051,10 @@ describe('ProxyServer WebSocket Tests', () => {
       );
       await timingProxy.init();
       timingHttp = timingProxy.listen(TIMING_PORT);
-      await new Promise<void>((resolve) => {
-        timingHttp!.on('listening', () => resolve());
+      // Without the 'error' branch a taken port hangs here until the test timeout.
+      await new Promise<void>((resolve, reject) => {
+        timingHttp!.once('listening', () => resolve());
+        timingHttp!.once('error', reject);
       });
     }
 
