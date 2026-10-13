@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.4.0...v1.4.1) (2026-10-13)
+
+
+### Bug Fixes
+
+* encoding ([4529a57](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/4529a5737d5d5c9d00bae6c8f2cb75f0991c33b4))
+* encoding ([ae90f89](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/ae90f89edbe5517b2de5607915959f6296ab1d27))
+
 ## [1.4.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.3.1...v1.4.0) (2026-10-09)
 
 
