@@ -69,7 +69,7 @@ Every test's requests are written to `e2e/recordings/` — a `.mock.json` for th
 
 The interesting part of this example is that two different request origins are captured by two different mechanisms, keyed to the same test:
 
-- **Browser → `.har`.** [`e2e/todos.spec.ts`](e2e/todos.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })`, which uses Playwright's HAR intercept to record/replay the browser's `fetch` calls.
+- **Browser → `.har`.** [`e2e/direct.spec.ts`](e2e/direct.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:3002/ })`. The [`/direct`](app/direct/page.tsx) page fetches the API itself, as a browser does with a third-party service, so Playwright's HAR recorder captures those calls and replay serves them from the `.har` in recorded order. The home page's browser calls go to the proxy instead, so in replay the proxy answers them from `.mock.json`, even though [`e2e/todos.spec.ts`](e2e/todos.spec.ts) records them to a `.har` as well.
 - **SSR → `.mock.json`.** The proxy records server-side requests itself. For the proxy to associate an SSR fetch with the right test, the per-test recording-id header must travel from the incoming page request to the outgoing SSR fetch — `registerProxyFetch()` in [`app/layout.tsx`](app/layout.tsx) copies it onto every server-side `fetch`. No middleware is needed.
 - **`mode`** is `record` when `RECORD_MODE` is set, otherwise `replay` ([`e2e/todos.spec.ts`](e2e/todos.spec.ts)).
 - Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so recordings start from a known-empty state.
@@ -80,6 +80,8 @@ The interesting part of this example is that two different request origins are c
 | ---- | ------- |
 | [`app/page.tsx`](app/page.tsx) | Server component; SSR-fetches the initial todo list from `BACKEND_URL`. |
 | [`app/components/TodoApp.tsx`](app/components/TodoApp.tsx) | Client component; browser `fetch` to `NEXT_PUBLIC_API_URL` for mutations. |
+| [`app/direct/page.tsx`](app/direct/page.tsx) | Client component; browser `fetch` straight to the API (`NEXT_PUBLIC_DIRECT_API_URL`), bypassing the proxy — the requests the `.har` replays. |
+| [`e2e/direct.spec.ts`](e2e/direct.spec.ts) | Adds a todo and reads the list back; asserts the two identical `GET /todos` calls each get their own recorded response from the `.har`, in order. |
 | [`app/layout.tsx`](app/layout.tsx) | Root layout; `registerProxyFetch()` tags each server-side fetch with the test's recording id, so the proxy keys SSR recordings per test. |
 | [`mock-backend/server.mjs`](mock-backend/server.mjs) | Standalone Node HTTP API (port 3002) backed by [`data/todos.json`](data/todos.json) — the "real" backend in record mode. |
 | [`e2e/todos.spec.ts`](e2e/todos.spec.ts) | The tests; wires `playwrightProxy.before` for record/replay. |

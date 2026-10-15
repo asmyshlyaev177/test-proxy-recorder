@@ -4,7 +4,7 @@ description: test-proxy-recorder는 서버 측 요청을 위한 프록시와 브
 sidebar:
   label: 작동 원리
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
+i18nSourceBlob: 26b907ff9c82df698a55827441e0b4b432a42262
 ---
 
 test-proxy-recorder는 요청이 발생하는 위치에 따라 두 가지 기록 메커니즘을 지원합니다. 둘은 함께 또는 독립적으로 사용할 수 있습니다.
@@ -30,9 +30,9 @@ test-proxy-recorder는 요청이 발생하는 위치에 따라 두 가지 기록
 
 | 재생 시 | 프록시(`.mock.json`) | HAR(`.har`) |
 | --- | --- | --- |
-| 매칭 기준 | 메서드, 경로, 쿼리 문자열의 MD5 해시. 본문은 비교하지 않습니다. | 메서드와 URL, 그리고 `POST`라면 본문([Playwright 규칙](https://playwright.dev/docs/mock#replaying-from-har)). |
-| 같은 요청이 다시 오면 | 기록된 순서에 따라 다음 기록. | 일치하는 헤더가 가장 많은 항목. 기록된 순서는 무시합니다. |
-| 기록이 없으면 | 요청을 명시한 JSON 본문과 함께 404. 또한 `playwrightProxy.before()`가 페이지를 닫아 테스트가 즉시 실패합니다(`failOnMissingRecording: false`로 끌 수 있습니다). | 요청이 중단됩니다. |
+| 매칭 기준 | 메서드, 경로, 쿼리 문자열의 MD5 해시. 본문은 비교하지 않습니다. | 메서드, URL, 본문. 그다음 요청 헤더가 가장 많이 겹치는 항목을 고릅니다. 같은 URL과 본문이라도 헤더로 구분되는 서로 다른 작업일 수 있기 때문입니다. 어떤 항목에도 없는 본문은 메서드와 URL만으로 매칭하며, multipart 경계(boundary)는 무시합니다. |
+| 같은 요청이 다시 오면 | 기록된 순서에 따라 다음 기록. | 기록된 순서에 따라 다음 기록. 쓰기 요청에는 규칙이 하나 있습니다(아래 참고). |
+| 기록이 없으면 | 요청을 명시한 JSON 본문과 함께 404. 또한 `playwrightProxy.before()`가 페이지를 닫아 테스트가 즉시 실패합니다(`failOnMissingRecording: false`로 끌 수 있습니다). | 요청이 중단되고, `[Client-Side Replay] No recorded response for <method> <url>` 로그가 남습니다. |
 | 실제 API 도달 | `transparent` 모드에서만. | `url`과 일치하지 않는 요청만. |
 
 ### 서버 측 요청(프록시)
@@ -56,12 +56,14 @@ test-proxy-recorder는 요청이 발생하는 위치에 따라 두 가지 기록
 
 ### 브라우저 요청(HAR)
 
-`url`을 전달하면 `playwrightProxy.before()`가 브라우저 요청을 Playwright의 HAR 라우팅에 넘깁니다.
+`url`을 전달하면 `playwrightProxy.before()`가 일치하는 브라우저 요청을 Playwright의 HAR 레코더로 기록합니다.
 
 ```typescript
-await page.routeFromHAR(harPath, { url, update: mode === 'record', updateContent: 'embed' });
+await page.routeFromHAR(harPath, { url, update: true, updateContent: 'embed' });
 ```
 
-Playwright의 `notFound` 옵션은 기본값이 `'abort'`이므로, 재생 중에 `url`과 일치하지만 `.har`에 없는 요청은 중단됩니다. `url`과 일치하지 않는 요청은 가로채지 않습니다. 이런 요청은 기록 모드든 재생 모드든 실제 네트워크로 나갑니다.
+재생은 `page.routeFromHAR()`가 아니라 이 파일을 읽는 라이브러리 자체의 `page.route()` 핸들러가 맡습니다. Playwright의 재생은 같은 요청이 반복될 때마다 처음 일치한 항목을 돌려주므로([microsoft/playwright#18288](https://github.com/microsoft/playwright/issues/18288)), `POST` 다음의 `GET`이 `POST` 이전의 목록을 보여 주었습니다. 이 핸들러는 대신 각 기록을 기록된 순서대로 한 번씩 제공하고, 페이지가 기록할 때보다 더 자주 요청할 때만 기록을 재사용합니다. 쓰기 요청 전후의 읽기 요청 순서는 규칙 하나가 정합니다. 어떤 경로에 대한 쓰기 요청(`GET`, `HEAD`, `OPTIONS`를 제외한 모든 메서드이므로 GraphQL 쿼리도 해당합니다)이 재생되면, 그 경로나 그 하위 경로에 대한 읽기 요청은 쓰기 요청 이후에 기록된 사본을 우선 사용합니다. 다음에 오는 이런 쓰기 요청 전까지 남은 사본이 없는 읽기 요청은 그 쓰기 요청 이전의 가장 최근 사본을 재사용합니다. 이 규칙 덕분에 React Strict Mode에서 fetch가 두 번 실행되는 경우처럼 앱의 읽기 횟수가 기록할 때와 달라도 재생이 올바르게 동작합니다. 기록된 리디렉션은 `.har` 안에서 따라갑니다. 브라우저의 후속 요청은 `page.route()`에 도달하지 않기 때문입니다. fetch는 최종 응답을 받고, 내비게이션은 리디렉션 대상으로 보내집니다.
+
+`url`과 일치하지만 `.har`에 없는 요청은 중단됩니다. `url`과 일치하지 않는 요청은 가로채지 않으며, `transparent` 모드에서는 어떤 요청도 가로채지 않습니다. 이런 요청은 실제 네트워크로 나갑니다.
 
 프록시 자체(`localhost:8100`)로 가는 요청은 예외입니다. `before()`는 HAR 핸들러 다음에 이 요청들을 위한 자체 핸들러를 등록하고, Playwright는 나중에 등록된 핸들러를 먼저 실행합니다. 이 핸들러가 요청을 프록시로 넘기면, 프록시는 서버 측 요청과 마찬가지로 `.mock.json`에서 재생합니다.

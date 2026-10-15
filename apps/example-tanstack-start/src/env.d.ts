@@ -8,6 +8,11 @@ interface ImportMetaEnv {
    */
   readonly VITE_API_URL?: string;
   /**
+   * Base URL the /direct route calls from the browser without the proxy, as an
+   * app does with a third-party service. Baked in at build time.
+   */
+  readonly VITE_DIRECT_API_URL?: string;
+  /**
    * Public AWS Cognito config for the authenticated dashboard (/login →
    * /dashboard). Baked into the client bundle at build time; NOT secret. The
    * test-user credentials, by contrast, are secret and live in the Playwright

@@ -21,8 +21,16 @@ Earlier versions ignored `describe` titles, so two tests with the same title in 
 
 ## Replay matching
 
+The proxy (`.mock.json`):
+
 - A request matches a recording by method, path and query. Headers and the request body are ignored, so assert what the page sent with Playwright's `page.on('request')`, not through replay.
 - Repeated calls to the same method, path and query are served in recorded order. Once they run out, the last one is reused and the proxy logs `[REPLAY WARNING]` instead of failing.
+
+Browser-side calls matched by `url` (`.har`):
+
+- A request matches an entry by method, URL and body, then by the most shared request headers (the same URL and body can be different operations told apart by a header). A body no entry has matches by method and URL, and a multipart boundary is ignored.
+- Each entry is served once, in recorded order, not the first match every time as Playwright's own `routeFromHAR` replay does; one is reused only when the page asks more often than the recording did. Once a write (any method but `GET`, `HEAD` and `OPTIONS`) to a path is replayed, reads of that path or of a path under it prefer entries recorded after it, and a read with none left before the next such write reuses the latest one before it. A recorded redirect is followed inside the `.har`, since the browser's follow-up request never reaches `page.route()`.
+- A request with no entry is aborted and `[Client-Side Replay] No recorded response for <method> <url>` is logged, so the test fails on the failed fetch rather than through the proxy's 404 below.
 
 ## A request with no recording
 

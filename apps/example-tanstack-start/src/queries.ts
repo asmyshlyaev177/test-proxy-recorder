@@ -1,6 +1,11 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { fetchProtectedTodos, fetchSecret, fetchTodos } from './lib/api';
+import {
+  fetchDirectTodos,
+  fetchProtectedTodos,
+  fetchSecret,
+  fetchTodos,
+} from './lib/api';
 
 // Shared query definitions. The same `todosQueryOptions` is prefetched in the
 // route loader on the server (tagged by registerProxyFetch → recorded as
@@ -22,6 +27,14 @@ export const isrTodosQueryOptions = queryOptions({
 export const secretQueryOptions = queryOptions({
   queryKey: ['secret'],
   queryFn: fetchSecret,
+  retry: false,
+});
+
+// Client-only, read straight from the API with no proxy in between: recorded via
+// HAR and replayed from it in recorded order.
+export const directTodosQueryOptions = queryOptions({
+  queryKey: ['direct-todos'],
+  queryFn: fetchDirectTodos,
   retry: false,
 });
 

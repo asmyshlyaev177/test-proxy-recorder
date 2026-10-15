@@ -21,10 +21,12 @@ import {
 import {
   deserializeRedactionConfig,
   type Har,
+  type HarEntry,
   redactHar,
   type RedactionConfig,
   type SerializedRedactionConfig,
 } from '../utils/redact.js';
+import { createHarReplayHandler, loadHarEntries } from './harReplay.js';
 
 export type PlaywrightTestInfo = Pick<TestInfo, 'title' | 'titlePath'>;
 
@@ -410,43 +412,56 @@ async function redactHarRecordings(): Promise<void> {
 }
 
 /**
- * Setup client-side recording/replay using Playwright's routeFromHAR
+ * Playwright's own recorder writes the HAR. It captures traffic rather than
+ * routing it, so the proxy handler registered after it hides nothing from it.
  */
-/** The HAR a session records to, or replays from (an older name when only it exists). */
-async function harPathForSession(
+async function recordClientSide(
+  page: Page,
   sessionId: string,
-  mode: Mode,
-): Promise<string> {
-  const recordingsDir = await getRecordingsDir();
-  return mode === Modes.record
-    ? getHarPath(recordingsDir, sessionId)
-    : findHarPath(recordingsDir, sessionId);
+  url: string | RegExp,
+): Promise<void> {
+  const harPath = getHarPath(await getRecordingsDir(), sessionId);
+  await page.routeFromHAR(harPath, {
+    url,
+    update: true,
+    updateContent: 'embed',
+  });
 }
 
-async function setupClientSideRecording(
+/**
+ * Replay is this library's handler, not `routeFromHAR`: Playwright's picks the
+ * same entry for every repeat of a request, so a read after a write showed the
+ * state before it (microsoft/playwright#18288). An older file name is read
+ * when only it exists.
+ */
+async function replayClientSide(
+  page: Page,
+  sessionId: string,
+  url: string | RegExp,
+): Promise<void> {
+  const harPath = await findHarPath(await getRecordingsDir(), sessionId);
+  let entries: HarEntry[];
+  try {
+    entries = await loadHarEntries(harPath);
+  } catch (error) {
+    console.error(
+      `[Client-Side Replay] Failed to load HAR file. Run tests in record mode first.`,
+      error,
+    );
+    throw error;
+  }
+  await page.route(url, createHarReplayHandler(entries));
+}
+
+/** Transparent mode leaves browser-side requests alone, as the proxy does with its own. */
+async function setupClientSide(
   page: Page,
   sessionId: string,
   mode: Mode,
   url: string | RegExp,
 ): Promise<void> {
-  const harPath = await harPathForSession(sessionId, mode);
-
-  try {
-    await page.routeFromHAR(harPath, {
-      url,
-      update: mode === Modes.record,
-      updateContent: 'embed',
-    });
-  } catch (error) {
-    if (mode === Modes.replay) {
-      console.error(
-        `[Client-Side Replay] Failed to load HAR file. Run tests in record mode first.`,
-        error,
-      );
-      throw error;
-    }
-    // In record mode, if HAR doesn't exist yet, that's ok - it will be created
-  }
+  if (mode === Modes.record) await recordClientSide(page, sessionId, url);
+  if (mode === Modes.replay) await replayClientSide(page, sessionId, url);
 }
 
 /**
@@ -459,6 +474,7 @@ export interface ClientSideRecordingOptions {
    * Uses Playwright's native format (string or RegExp)
    * Example: /cognito-.*amazonaws\.com|\.stream-io-api\.com/
    * Example: 'https://api.example.com/**'
+   * Replay matches on method, URL and body and serves repeats of a request in recorded order.
    */
   url?: string | RegExp | undefined;
   /**
@@ -578,12 +594,7 @@ export const playwrightProxy = {
     // This is important because Playwright processes routes in REVERSE order of registration
     // We want proxy route handler to run FIRST, so we register it LAST
     if (clientSideOptions?.url) {
-      await setupClientSideRecording(
-        page,
-        sessionId,
-        mode,
-        clientSideOptions.url,
-      );
+      await setupClientSide(page, sessionId, mode, clientSideOptions.url);
     }
 
     // IMPORTANT: Register proxy route handler LAST so it runs FIRST (highest priority)

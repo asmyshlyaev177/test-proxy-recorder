@@ -5,6 +5,8 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts', 'src/**/*.integration.test.ts'],
+    // Browser-driven tests run through vitest.browser.config.ts instead.
+    exclude: ['src/**/*.browser.test.ts'],
     testTimeout: 10000,
     hookTimeout: 10000,
     coverage: {

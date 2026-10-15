@@ -41,6 +41,7 @@ pnpm build         # core library
 pnpm lint
 pnpm typecheck
 pnpm test
+pnpm test:browser  # the library tests that drive Chromium (src/**/*.browser.test.ts); CI runs them with the e2e job
 pnpm example:test:e2e:ci                      # nextjs16 example — record then replay
 pnpm example-edge:test:e2e:ci                 # edge example
 pnpm example-tanstack:test:e2e:ci             # TanStack Start example

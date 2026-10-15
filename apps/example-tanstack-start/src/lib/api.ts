@@ -53,6 +53,34 @@ export async function deleteTodo(id: string): Promise<void> {
   if (!res.ok) throw new Error(`DELETE /todos/${id} failed: ${res.status}`);
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Direct calls — the /direct route talks to the API from the browser without
+// the proxy, as an app does with a third-party service the proxy can't front
+// (an auth provider, a chat SDK). The proxy never sees these requests, so they
+// are recorded to the test's .har and replayed from it. Browser-only, so there
+// is no server branch.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function directApiBase(): string {
+  return import.meta.env.VITE_DIRECT_API_URL ?? 'http://localhost:3002';
+}
+
+export async function fetchDirectTodos(): Promise<Todo[]> {
+  const res = await fetch(`${directApiBase()}/todos`);
+  if (!res.ok) throw new Error(`GET /todos failed: ${res.status}`);
+  return (await res.json()) as Todo[];
+}
+
+export async function createDirectTodo(text: string): Promise<Todo> {
+  const res = await fetch(`${directApiBase()}/todos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text }),
+  });
+  if (!res.ok) throw new Error(`POST /todos failed: ${res.status}`);
+  return (await res.json()) as Todo;
+}
+
 export interface SecretResponse {
   ok: boolean;
   message: string;

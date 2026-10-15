@@ -128,6 +128,148 @@ describe('Playwright Integration', () => {
     });
   });
 
+  describe('client-side HAR', () => {
+    const testInfo: PlaywrightTestInfo = {
+      title: 'renders',
+      titlePath: ['todos.spec.ts', 'alpha block', 'renders'],
+    };
+    const url = /api\.test/;
+    const TODOS = 'http://api.test/todos';
+    const harEntry = (method: string, body: string, postData?: string) => ({
+      request: {
+        method,
+        url: TODOS,
+        headers: [],
+        ...(postData === undefined ? {} : { postData: { text: postData } }),
+      },
+      response: {
+        status: 200,
+        headers: [{ name: 'content-type', value: 'application/json' }],
+        content: { text: body },
+      },
+    });
+    const har = {
+      log: {
+        entries: [
+          harEntry('GET', '[]'),
+          harEntry('POST', '["milk"]', '{"text":"milk"}'),
+          harEntry('GET', '["milk"]'),
+        ],
+      },
+    };
+    const fakeRoute = (method: string, postData: string | null = null) => ({
+      request: () => ({
+        method: () => method,
+        url: () => TODOS,
+        postData: () => postData,
+        headers: () => ({}),
+        isNavigationRequest: () => false,
+      }),
+      fulfill: vi.fn().mockResolvedValue(undefined),
+      abort: vi.fn().mockResolvedValue(undefined),
+    });
+
+    beforeEach(() => {
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 204,
+        json: async () => ({ recordingsDir: '/rec' }),
+      });
+      mockAccess.mockResolvedValue(undefined);
+    });
+
+    afterEach(() => {
+      mockReadFile.mockReset();
+    });
+
+    it('replays with its own handler, serving repeats in recorded order', async () => {
+      mockReadFile.mockResolvedValue(JSON.stringify(har));
+      const page = createMockPage();
+
+      await playwrightProxy.before(
+        page as unknown as Page,
+        testInfo,
+        'replay',
+        {
+          url,
+        },
+      );
+
+      expect(page.routeFromHAR).not.toHaveBeenCalled();
+      expect(mockReadFile).toHaveBeenCalledWith(
+        '/rec/todos__alpha-block__renders.har',
+        'utf8',
+      );
+      const [, handler] = page.route.mock.calls.find(
+        ([matcher]) => matcher === url,
+      )!;
+      const served = [
+        fakeRoute('GET'),
+        fakeRoute('POST', '{"text":"milk"}'),
+        fakeRoute('GET'),
+      ];
+      for (const route of served) await handler(route);
+      expect(
+        served.map((route) => route.fulfill.mock.calls[0][0].body.toString()),
+      ).toEqual(['[]', '["milk"]', '["milk"]']);
+    });
+
+    it('records with routeFromHAR and registers no replay handler', async () => {
+      const page = createMockPage();
+
+      await playwrightProxy.before(
+        page as unknown as Page,
+        testInfo,
+        'record',
+        {
+          url,
+        },
+      );
+
+      expect(page.routeFromHAR).toHaveBeenCalledWith(
+        '/rec/todos__alpha-block__renders.har',
+        { url, update: true, updateContent: 'embed' },
+      );
+      expect(page.route.mock.calls.some(([matcher]) => matcher === url)).toBe(
+        false,
+      );
+    });
+
+    it('leaves browser-side requests alone in transparent mode', async () => {
+      const page = createMockPage();
+
+      await playwrightProxy.before(
+        page as unknown as Page,
+        testInfo,
+        'transparent',
+        { url },
+      );
+
+      expect(page.routeFromHAR).not.toHaveBeenCalled();
+      expect(page.route.mock.calls.some(([matcher]) => matcher === url)).toBe(
+        false,
+      );
+    });
+
+    it('fails replay when the HAR is missing', async () => {
+      mockReadFile.mockRejectedValue(new Error('ENOENT'));
+      const error = vi.spyOn(console, 'error').mockImplementation(() => {});
+      const page = createMockPage();
+
+      await expect(
+        playwrightProxy.before(page as unknown as Page, testInfo, 'replay', {
+          url,
+        }),
+      ).rejects.toThrow('ENOENT');
+
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('Run tests in record mode first'),
+        expect.any(Error),
+      );
+      error.mockRestore();
+    });
+  });
+
   describe('missing recordings in replay', () => {
     const testInfo: PlaywrightTestInfo = {
       title: 'loads',
