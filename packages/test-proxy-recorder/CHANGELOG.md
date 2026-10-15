@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.2](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.4.1...v1.4.2) (2026-10-15)
+
+
+### Bug Fixes
+
+* har replay order ([71991b4](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/71991b45a36a54262efdee49a214817f2882c5c3))
+* har replay order ([bef3548](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/bef354847142a26279d315c405ee353e2428ec0c))
+
 ## [1.4.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.4.0...v1.4.1) (2026-10-13)
 
 
