@@ -4,7 +4,7 @@ description: test-proxy-recorder ghi lại traffic qua hai cơ chế, một prox
 sidebar:
   label: Cách thức hoạt động
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
+i18nSourceBlob: 26b907ff9c82df698a55827441e0b4b432a42262
 ---
 
 test-proxy-recorder hỗ trợ hai cơ chế ghi lại tùy theo nơi request của bạn xuất phát. Cả hai có thể dùng cùng nhau hoặc độc lập.
@@ -30,9 +30,9 @@ Proxy và file HAR tra cứu một response đã ghi theo những cách khác nh
 
 | Khi phát lại | Proxy (`.mock.json`) | HAR (`.har`) |
 | --- | --- | --- |
-| Khớp theo | Method, path và một hash MD5 của query string. Body không được so sánh. | Method và URL, cộng thêm body nếu request là `POST` ([quy tắc của Playwright](https://playwright.dev/docs/mock#replaying-from-har)). |
-| Cùng một request lặp lại | Bản ghi tiếp theo, theo thứ tự đã ghi. | Mục (entry) có nhiều header khớp nhất. Thứ tự ghi bị bỏ qua. |
-| Không có bản ghi | Một 404 với body JSON nêu tên request, và `playwrightProxy.before()` đóng trang để test thất bại ngay lập tức (`failOnMissingRecording: false` tắt hành vi này). | Request bị hủy. |
+| Khớp theo | Method, path và một hash MD5 của query string. Body không được so sánh. | Method, URL và body, sau đó là các mục có nhiều header request trùng nhất, vì cùng một URL và body có thể là các thao tác khác nhau được phân biệt bằng một header. Body không có trong mục nào thì quay về khớp theo method và URL, và boundary của multipart được bỏ qua. |
+| Cùng một request lặp lại | Bản ghi tiếp theo, theo thứ tự đã ghi. | Bản ghi tiếp theo, theo thứ tự đã ghi, với một quy tắc cho các request thay đổi dữ liệu (xem bên dưới). |
+| Không có bản ghi | Một 404 với body JSON nêu tên request, và `playwrightProxy.before()` đóng trang để test thất bại ngay lập tức (`failOnMissingRecording: false` tắt hành vi này). | Request bị hủy và dòng `[Client-Side Replay] No recorded response for <method> <url>` được ghi vào log. |
 | Khi nào gọi tới API thật | Chỉ ở chế độ `transparent`. | Chỉ với các request không khớp `url`. |
 
 ### Request phía máy chủ (proxy)
@@ -56,12 +56,14 @@ Proxy chỉ gửi request tới backend thật ở chế độ `transparent`. M�
 
 ### Request trình duyệt (HAR)
 
-Khi bạn truyền `url`, `playwrightProxy.before()` giao các request trình duyệt cho cơ chế định tuyến HAR của Playwright:
+Khi bạn truyền `url`, `playwrightProxy.before()` ghi lại các request trình duyệt khớp với nó bằng trình ghi HAR của Playwright:
 
 ```typescript
-await page.routeFromHAR(harPath, { url, update: mode === 'record', updateContent: 'embed' });
+await page.routeFromHAR(harPath, { url, update: true, updateContent: 'embed' });
 ```
 
-Tùy chọn `notFound` của Playwright mặc định là `'abort'`, nên khi phát lại, một request khớp `url` nhưng không có trong `.har` sẽ bị hủy. Các request không khớp `url` không bị chặn. Chúng đi ra mạng thật, ở cả chế độ ghi lại lẫn phát lại.
+Việc phát lại do handler `page.route()` riêng của thư viện đảm nhận trên file đó, không phải `page.routeFromHAR()`. Cơ chế phát lại của Playwright trả về mục (entry) khớp đầu tiên cho mọi lần lặp lại của một request ([microsoft/playwright#18288](https://github.com/microsoft/playwright/issues/18288)), nên một `GET` sau một `POST` hiển thị danh sách từ trước `POST`. Thay vào đó, handler trả mỗi bản ghi đúng một lần, theo thứ tự đã ghi, và chỉ dùng lại một bản ghi khi trang yêu cầu nhiều lần hơn lúc ghi lại. Một quy tắc sắp xếp các request đọc so với các request thay đổi dữ liệu. Khi một request thay đổi dữ liệu tới một path (bất kỳ method nào ngoài `GET`, `HEAD` và `OPTIONS`, nên một query GraphQL cũng được tính) đã được phát lại, request đọc tới path đó hoặc tới một path nằm dưới nó sẽ ưu tiên các bản sao được ghi sau request thay đổi dữ liệu đó. Một request đọc không còn bản sao nào trước request thay đổi dữ liệu kế tiếp thuộc loại này sẽ dùng lại bản sao mới nhất trước request đó. Quy tắc này giữ cho việc phát lại đúng khi ứng dụng đọc với số lần khác so với lúc ghi lại, chẳng hạn fetch hai lần trong strict mode của React. Một redirect đã ghi được đi theo ngay bên trong `.har`, vì request tiếp theo của trình duyệt không bao giờ tới được `page.route()`: một fetch nhận response cuối cùng, còn một navigation được chuyển tiếp tới đích của redirect.
+
+Một request khớp `url` nhưng không có trong `.har` sẽ bị hủy. Các request không khớp `url` không bị chặn, và ở chế độ `transparent` thì không request nào bị chặn. Chúng đi ra mạng thật.
 
 Request tới chính proxy (`localhost:8100`) là ngoại lệ. `before()` đăng ký handler riêng cho chúng sau handler HAR, và handler đăng ký sau sẽ được Playwright chạy trước. Handler đó chuyển tiếp chúng tới proxy, nơi phát lại chúng từ `.mock.json` giống như các request phía máy chủ.

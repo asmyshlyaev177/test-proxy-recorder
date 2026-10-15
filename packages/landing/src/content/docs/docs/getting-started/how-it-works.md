@@ -28,9 +28,9 @@ The proxy and the HAR file look up a recorded response in different ways.
 
 | In replay | Proxy (`.mock.json`) | HAR (`.har`) |
 | --- | --- | --- |
-| Matched on | Method, path and an MD5 hash of the query string. The body is not compared. | Method and URL, plus the body for a `POST` ([Playwright's rules](https://playwright.dev/docs/mock#replaying-from-har)). |
-| Same request again | The next recording, in recorded order. | The entry with the most matching headers. Recorded order is ignored. |
-| No recording | A 404 with a JSON body that names the request, and `playwrightProxy.before()` closes the page so the test fails at once (`failOnMissingRecording: false` turns that off). | The request is aborted. |
+| Matched on | Method, path and an MD5 hash of the query string. The body is not compared. | Method, URL and body, then the entries sharing the most request headers, since the same URL and body can be different operations told apart by a header. A body no entry has falls back to method and URL, and a multipart boundary is ignored. |
+| Same request again | The next recording, in recorded order. | The next recording, in recorded order, with one rule for writes (below). |
+| No recording | A 404 with a JSON body that names the request, and `playwrightProxy.before()` closes the page so the test fails at once (`failOnMissingRecording: false` turns that off). | The request is aborted and `[Client-Side Replay] No recorded response for <method> <url>` is logged. |
 | Real API reached | Only in `transparent` mode. | Only by requests that don't match `url`. |
 
 ### Server-side requests (proxy)
@@ -54,12 +54,14 @@ The proxy sends requests to the real backend only in `transparent` mode. A repla
 
 ### Browser requests (HAR)
 
-When you pass `url`, `playwrightProxy.before()` hands browser requests to Playwright's HAR routing:
+When you pass `url`, `playwrightProxy.before()` records matching browser requests with Playwright's HAR recorder:
 
 ```typescript
-await page.routeFromHAR(harPath, { url, update: mode === 'record', updateContent: 'embed' });
+await page.routeFromHAR(harPath, { url, update: true, updateContent: 'embed' });
 ```
 
-Playwright's `notFound` option defaults to `'abort'`, so in replay a request that matches `url` but isn't in the `.har` is aborted. Requests that don't match `url` aren't intercepted. They go to the real network, in record and replay alike.
+Replay is the library's own `page.route()` handler over that file, not `page.routeFromHAR()`. Playwright's replay serves every repeat of a request the first matching entry ([microsoft/playwright#18288](https://github.com/microsoft/playwright/issues/18288)), so a `GET` after a `POST` showed the list from before the `POST`. The handler serves each recording once, in recorded order, and reuses one only when the page asks more often than the recording did. One rule orders reads around writes. Once a write (any method but `GET`, `HEAD` and `OPTIONS`, so a GraphQL query counts) to a path has been replayed, a read of that path or of a path under it prefers the copies recorded after the write. A read with no copy left before the next such write reuses the latest one before it. The rule keeps replay right when the app reads a different number of times than it did while recording, such as a double fetch under React strict mode. A recorded redirect is followed inside the `.har`, because the browser's follow-up request never reaches `page.route()`: a fetch gets the final response, and a navigation is sent on to the redirect's target.
+
+A request that matches `url` but isn't in the `.har` is aborted. Requests that don't match `url` aren't intercepted, and in `transparent` mode none are. They go to the real network.
 
 Requests to the proxy itself (`localhost:8100`) are the exception. `before()` registers its own handler for them after the HAR one, and Playwright runs the later handler first. The handler sends them on to the proxy, which replays them from `.mock.json` like server-side requests.

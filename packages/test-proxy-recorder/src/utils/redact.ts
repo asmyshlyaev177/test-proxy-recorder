@@ -273,17 +273,20 @@ function redactHeaderString(
 }
 
 /** Minimal structural typing for the parts of a HAR file we touch. */
-interface HarNameValue {
+export interface HarNameValue {
   name: string;
   value: string;
 }
-interface HarEntry {
+export interface HarEntry {
   request?: {
+    method?: string;
+    url?: string;
     headers?: HarNameValue[];
     cookies?: HarNameValue[];
     postData?: { text?: string } & Record<string, unknown>;
   } & Record<string, unknown>;
   response?: {
+    status?: number;
     headers?: HarNameValue[];
     cookies?: HarNameValue[];
     content?: { text?: string; encoding?: string } & Record<string, unknown>;

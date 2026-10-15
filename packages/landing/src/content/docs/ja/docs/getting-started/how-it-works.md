@@ -4,7 +4,7 @@ description: test-proxy-recorder は、サーバーサイドのリクエスト�
 sidebar:
   label: 仕組み
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
+i18nSourceBlob: 26b907ff9c82df698a55827441e0b4b432a42262
 ---
 
 test-proxy-recorder は、リクエストの発生場所に応じて 2 つの記録メカニズムをサポートします。両方を併用することも、独立して使うこともできます。
@@ -30,9 +30,9 @@ test-proxy-recorder は、リクエストの発生場所に応じて 2 つの記
 
 | 再生時 | プロキシ (`.mock.json`) | HAR (`.har`) |
 | --- | --- | --- |
-| 照合に使うもの | メソッド、パス、クエリ文字列の MD5 ハッシュ。ボディは比較しません。 | メソッドと URL、`POST` の場合はボディも（[Playwright のルール](https://playwright.dev/docs/mock#replaying-from-har)）。 |
-| 同じリクエストが再び来た場合 | 記録された順で次の記録。 | 一致するヘッダーが最も多いエントリ。記録された順序は無視されます。 |
-| 記録がない場合 | リクエストを示す JSON ボディ付きの 404。さらに `playwrightProxy.before()` がページを閉じるため、テストは即座に失敗します（`failOnMissingRecording: false` で無効にできます）。 | リクエストは中断されます。 |
+| 照合に使うもの | メソッド、パス、クエリ文字列の MD5 ハッシュ。ボディは比較しません。 | メソッド、URL、ボディ。続いて、共通するリクエストヘッダーが最も多いエントリを選びます。同じ URL とボディでも、ヘッダーで区別される別の操作であることがあるためです。どのエントリにもないボディはメソッドと URL での照合にフォールバックし、multipart の境界（boundary）は無視されます。 |
+| 同じリクエストが再び来た場合 | 記録された順で次の記録。 | 記録された順で次の記録。書き込みには 1 つのルールがあります（後述）。 |
+| 記録がない場合 | リクエストを示す JSON ボディ付きの 404。さらに `playwrightProxy.before()` がページを閉じるため、テストは即座に失敗します（`failOnMissingRecording: false` で無効にできます）。 | リクエストは中断され、`[Client-Side Replay] No recorded response for <method> <url>` がログに出力されます。 |
 | 実際の API への到達 | `transparent` モードのときのみ。 | `url` に一致しないリクエストのみ。 |
 
 ### サーバーサイドのリクエスト（プロキシ）
@@ -56,12 +56,14 @@ test-proxy-recorder は、リクエストの発生場所に応じて 2 つの記
 
 ### ブラウザのリクエスト（HAR）
 
-`url` を渡すと、`playwrightProxy.before()` はブラウザのリクエストを Playwright の HAR ルーティングに渡します:
+`url` を渡すと、`playwrightProxy.before()` は一致するブラウザのリクエストを Playwright の HAR レコーダーで記録します:
 
 ```typescript
-await page.routeFromHAR(harPath, { url, update: mode === 'record', updateContent: 'embed' });
+await page.routeFromHAR(harPath, { url, update: true, updateContent: 'embed' });
 ```
 
-Playwright の `notFound` オプションのデフォルトは `'abort'` なので、再生時に `url` に一致するが `.har` にないリクエストは中断されます。`url` に一致しないリクエストはインターセプトされず、記録時も再生時も実際のネットワークに送られます。
+再生には `page.routeFromHAR()` ではなく、このファイルを読むライブラリ独自の `page.route()` ハンドラーを使います。Playwright の再生は、同じリクエストが繰り返されるたびに最初に一致したエントリを返すため（[microsoft/playwright#18288](https://github.com/microsoft/playwright/issues/18288)）、`POST` の後の `GET` には `POST` 前の一覧が表示されていました。このハンドラーは代わりに、各記録を記録された順に 1 回ずつ返し、ページが記録時より多くリクエストした場合にのみ記録を再利用します。書き込みに対する読み取りの順序は 1 つのルールで決まります。あるパスへの書き込み（`GET`、`HEAD`、`OPTIONS` 以外のメソッド。そのため GraphQL のクエリも該当します）が再生されると、そのパスまたはその配下のパスへの読み取りは、書き込みの後に記録されたコピーを優先します。次の同様の書き込みまでに残りのコピーがない読み取りは、その書き込みより前の最新のコピーを再利用します。このルールにより、React の Strict Mode で fetch が二重に実行される場合のように、アプリの読み取り回数が記録時と異なっても再生は正しく保たれます。記録されたリダイレクトは `.har` の中でたどります。ブラウザの後続リクエストは `page.route()` に届かないためです。fetch は最終的なレスポンスを受け取り、ナビゲーションはリダイレクト先へ送られます。
+
+`url` に一致するが `.har` にないリクエストは中断されます。`url` に一致しないリクエストはインターセプトされず、`transparent` モードではどのリクエストもインターセプトされません。これらは実際のネットワークに送られます。
 
 プロキシ自体（`localhost:8100`）へのリクエストは例外です。`before()` は HAR のハンドラーの後にそれら専用のハンドラーを登録し、Playwright は後から登録されたハンドラーを先に実行します。このハンドラーはリクエストをプロキシへ転送し、プロキシはサーバーサイドのリクエストと同じように `.mock.json` から再生します。

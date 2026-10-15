@@ -94,6 +94,11 @@ jobs:
       - name: Build library
         run: pnpm run build
 
+      # The library's own browser-driven tests (src/**/*.browser.test.ts) run
+      # here rather than in the test job because this container has Chromium.
+      - name: Run browser-driven library tests
+        run: pnpm run test:browser
+
       - name: Run e2e record and replay
         # The example's test:e2e:ci script owns its whole stack: it builds the
         # app, starts mock + proxy + next via concurrently, then runs the record

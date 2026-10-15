@@ -52,6 +52,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest",
     "test:run": "vitest run",
+    "test:browser": "vitest run --config vitest.browser.config.ts",
     "test:coverage": "vitest run --coverage",
     "prepare": "tsup",
     "sync-readme": "node scripts/sync-readme.mjs",

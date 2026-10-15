@@ -4,7 +4,7 @@ description: test-proxy-recorder graba tráfico mediante dos mecanismos, un prox
 sidebar:
   label: Cómo funciona
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: 32bdd456b9abbf2556d3314806353dd2cc86c971
+i18nSourceBlob: 26b907ff9c82df698a55827441e0b4b432a42262
 ---
 
 test-proxy-recorder admite dos mecanismos de grabación según dónde se originan tus peticiones. Ambos pueden usarse juntos o de forma independiente.
@@ -30,9 +30,9 @@ El proxy y el archivo HAR buscan una respuesta grabada de formas distintas.
 
 | Al reproducir | Proxy (`.mock.json`) | HAR (`.har`) |
 | --- | --- | --- |
-| Se empareja por | Método, ruta y un hash MD5 de la cadena de consulta (query string). El cuerpo no se compara. | Método y URL, más el cuerpo en un `POST` ([reglas de Playwright](https://playwright.dev/docs/mock#replaying-from-har)). |
-| La misma petición otra vez | La siguiente grabación, en el orden grabado. | La entrada con más cabeceras coincidentes. El orden grabado se ignora. |
-| Sin grabación | Un 404 con un cuerpo JSON que indica la petición, y `playwrightProxy.before()` cierra la página para que la prueba falle de inmediato (`failOnMissingRecording: false` lo desactiva). | La petición se aborta. |
+| Se empareja por | Método, ruta y un hash MD5 de la cadena de consulta (query string). El cuerpo no se compara. | Método, URL y cuerpo, y luego las entradas que comparten más cabeceras de la petición, ya que la misma URL y el mismo cuerpo pueden ser operaciones distintas que se diferencian por una cabecera. Si ninguna entrada tiene ese cuerpo, se empareja solo por método y URL, y el delimitador (boundary) de multipart se ignora. |
+| La misma petición otra vez | La siguiente grabación, en el orden grabado. | La siguiente grabación, en el orden grabado, con una regla para las escrituras (ver más abajo). |
+| Sin grabación | Un 404 con un cuerpo JSON que indica la petición, y `playwrightProxy.before()` cierra la página para que la prueba falle de inmediato (`failOnMissingRecording: false` lo desactiva). | La petición se aborta y se registra `[Client-Side Replay] No recorded response for <method> <url>` en el log. |
 | Llega a la API real | Solo en modo `transparent`. | Solo las peticiones que no coinciden con `url`. |
 
 ### Peticiones del lado del servidor (proxy)
@@ -56,12 +56,14 @@ El proxy envía peticiones al backend real solo en modo `transparent`. Una ejecu
 
 ### Peticiones del navegador (HAR)
 
-Cuando pasas `url`, `playwrightProxy.before()` entrega las peticiones del navegador al enrutamiento HAR de Playwright:
+Cuando pasas `url`, `playwrightProxy.before()` graba con el grabador HAR de Playwright las peticiones del navegador que coinciden:
 
 ```typescript
-await page.routeFromHAR(harPath, { url, update: mode === 'record', updateContent: 'embed' });
+await page.routeFromHAR(harPath, { url, update: true, updateContent: 'embed' });
 ```
 
-La opción `notFound` de Playwright vale `'abort'` por defecto, así que, al reproducir, una petición que coincide con `url` pero no está en el `.har` se aborta. Las peticiones que no coinciden con `url` no se interceptan. Van a la red real, tanto al grabar como al reproducir.
+La reproducción la hace un handler `page.route()` propio de la librería sobre ese archivo, no `page.routeFromHAR()`. La reproducción de Playwright responde a cada repetición de una petición con la primera entrada que coincide ([microsoft/playwright#18288](https://github.com/microsoft/playwright/issues/18288)), así que un `GET` después de un `POST` mostraba la lista de antes del `POST`. El handler, en cambio, sirve cada grabación una sola vez, en el orden grabado, y solo reutiliza una cuando la página pide más veces que en la grabación. Una regla ordena las lecturas respecto a las escrituras. Una vez reproducida una escritura en una ruta (cualquier método salvo `GET`, `HEAD` y `OPTIONS`, así que una query de GraphQL cuenta), una lectura de esa ruta o de una ruta por debajo de ella prefiere las copias grabadas después de la escritura. Una lectura a la que no le quedan copias antes de la siguiente escritura de ese tipo reutiliza la más reciente anterior a esa escritura. La regla mantiene correcta la reproducción cuando la app lee un número de veces distinto al de la grabación, como un doble fetch en el modo estricto de React. Una redirección grabada se sigue dentro del `.har`, porque la petición posterior del navegador nunca llega a `page.route()`: un fetch recibe la respuesta final y una navegación se envía al destino de la redirección.
+
+Una petición que coincide con `url` pero no está en el `.har` se aborta. Las peticiones que no coinciden con `url` no se interceptan, y en el modo `transparent` no se intercepta ninguna. Van a la red real.
 
 Las peticiones al propio proxy (`localhost:8100`) son la excepción. `before()` registra su propio handler para ellas después del de HAR, y Playwright ejecuta primero el handler registrado más tarde. Ese handler las reenvía al proxy, que las reproduce desde `.mock.json` igual que las peticiones del lado del servidor.

@@ -78,7 +78,7 @@ Every test's requests are written to `e2e/recordings/` — a `.mock.json` for th
 
 The interesting part of this example is that two different request origins are captured by two different mechanisms, keyed to the same test:
 
-- **Browser → `.har`.** [`e2e/todos.spec.ts`](e2e/todos.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:8100/ })`, which uses Playwright's HAR intercept to record/replay the browser's `fetch` calls.
+- **Browser → `.har`.** [`e2e/direct.spec.ts`](e2e/direct.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:3002/ })`. The [`/direct`](src/routes/direct.tsx) route fetches the API itself, as a browser does with a third-party service, so Playwright's HAR recorder captures those calls and replay serves them from the `.har` in recorded order. The home route's browser calls go to the proxy instead, so in replay the proxy answers them from `.mock.json`, even though [`e2e/todos.spec.ts`](e2e/todos.spec.ts) records them to a `.har` as well.
 - **SSR → `.mock.json`.** The proxy records server-side requests itself. For the proxy to associate an SSR fetch with the right test, the per-test recording-id header (`x-test-rcrd-id`) must travel from the incoming page request to the outgoing SSR fetch — that is exactly what [`registerProxyFetch()`](../../packages/test-proxy-recorder/src/tanstack-start/registerProxyFetch.ts) in [`src/router.tsx`](src/router.tsx) does. It patches the server `fetch` to read the current request's id (via TanStack Start's `getRequestHeader`) and forward it — which transparently tags the `fetch` that TanStack Query's loader prefetch runs during SSR, so the data layer needs no recorder-specific code.
 - **`mode`** is `record` when `RECORD_MODE` is set, otherwise `replay`.
 - Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so recordings start from a known-empty state.
@@ -94,6 +94,8 @@ The interesting part of this example is that two different request origins are c
 | [`src/router.tsx`](src/router.tsx) | Creates the `QueryClient` + SSR-query integration, and calls `registerProxyFetch()` so SSR fetches carry the recording-id header — the TanStack Start counterpart of the Next.js `app/layout.tsx` call. |
 | [`src/routes/isr.tsx`](src/routes/isr.tsx) | Cache-header (CDN) ISR route; a Query prefetch proves the recorder coexists with a cached route. |
 | [`src/routes/secret.tsx`](src/routes/secret.tsx) | Client `useQuery` carrying an `Authorization` header + secret response — exercises redaction. |
+| [`src/routes/direct.tsx`](src/routes/direct.tsx) | Client `useQuery` straight to the API (`VITE_DIRECT_API_URL`), bypassing the proxy — the requests the `.har` replays; the add mutation invalidates the list so it is read again. |
+| [`e2e/direct.spec.ts`](e2e/direct.spec.ts) | Adds a todo and reads the list back; asserts the two identical `GET /todos` calls each get their own recorded response from the `.har`, in order. |
 | [`src/routes/websocket.tsx`](src/routes/websocket.tsx) | WebSocket chat; traffic recorded server-side in `.mock.json`. |
 | [`src/routes/api/revalidate.ts`](src/routes/api/revalidate.ts) | Token-authenticated server route for on-demand ISR revalidation (CDN purge in prod). |
 | [`mock-backend/server.mjs`](mock-backend/server.mjs) | Standalone Node HTTP + WebSocket API (port 3002) — the "real" backend in record mode. |
