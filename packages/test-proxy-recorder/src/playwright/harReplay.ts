@@ -3,6 +3,7 @@ import path from 'node:path';
 
 import type { Request, Route } from '@playwright/test';
 
+import { stripMultipartBoundary } from '../utils/httpHelpers.js';
 import type { Har, HarEntry, HarNameValue } from '../utils/redact.js';
 
 // Methods that leave the server as they found it; everything else is a write.
@@ -22,14 +23,6 @@ function headerValue(
   name: string,
 ): string | undefined {
   return headers.find((header) => header.name.toLowerCase() === name)?.value;
-}
-
-// Browsers pick a fresh multipart boundary per request, so it cannot be part of the identity.
-function stableBody(body: string, headers: HarNameValue[]): string {
-  const contentType = headerValue(headers, 'content-type');
-  if (!contentType?.includes('multipart/form-data')) return body;
-  const boundary = /boundary=(\S+)/.exec(contentType)?.[1];
-  return boundary ? body.replaceAll(boundary, '') : body;
 }
 
 function pathOf(url: string): string {
@@ -71,7 +64,10 @@ function indexEntry(entry: HarEntry): IndexedEntry {
     method,
     url,
     path: pathOf(url),
-    body: stableBody(request.postData?.text ?? '', headers),
+    body: stripMultipartBoundary(
+      request.postData?.text ?? '',
+      headerValue(headers, 'content-type'),
+    ),
     headers: new Set(headerKeys(headers)),
     isWrite: !READ_METHODS.has(method),
   };
@@ -107,7 +103,10 @@ export class HarReplaySequence {
   // entry has (a timestamp, a client-made id) still matches by method and URL.
   private _candidates(request: ReplayRequest): Candidate[] {
     const method = request.method.toUpperCase();
-    const body = stableBody(request.body, request.headers);
+    const body = stripMultipartBoundary(
+      request.body,
+      headerValue(request.headers, 'content-type'),
+    );
     const sent = headerKeys(request.headers);
     const sameUrl = this.entries.flatMap((entry, index) =>
       entry.method === method && entry.url === request.url

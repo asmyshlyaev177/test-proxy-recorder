@@ -1,13 +1,12 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { PROXY_URL_PATTERN } from './ports';
+
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
 
-// Browser fetches go to the proxy (port 8100); recorded via the HAR mechanism.
-const CLIENT_SIDE_URL = /localhost:8100/;
-
 test.beforeEach(async ({ page }, testInfo) => {
-  await playwrightProxy.before(page, testInfo, mode, { url: CLIENT_SIDE_URL });
+  await playwrightProxy.before(page, testInfo, mode, { url: PROXY_URL_PATTERN });
 });
 
 // A normal browser test: it renders a page whose client-side fetch carries an

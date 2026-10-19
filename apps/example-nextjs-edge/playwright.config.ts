@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const APP_PORT = process.env.APP_PORT || 3010;
+// The playwrightProxy fixture defaults to 8100; this example's proxy listens on 8110.
+process.env.TEST_PROXY_RECORDER_PORT ??= '8110';
 const isRecord = !!process.env.RECORD_MODE;
 
 export default defineConfig({

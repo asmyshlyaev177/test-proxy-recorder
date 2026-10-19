@@ -14,6 +14,8 @@ import { fileURLToPath } from "node:url";
 
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { getFreePorts } from "./free-port";
+
 /**
  * Truly black-box e2e test for `test-proxy-recorder init`.
  *
@@ -42,9 +44,9 @@ const CLI_BIN = path.join(
   "proxy.js",
 );
 
-const PROXY_PORT = 8233;
-const BACKEND_PORT = 8234;
-const BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
+let PROXY_PORT: number;
+let BACKEND_PORT: number;
+let BACKEND_URL: string;
 const SESSION_ID = "init-smoke";
 const RECORDED_BODY = JSON.stringify({ todos: ["scaffolded"] });
 
@@ -53,7 +55,10 @@ let backend: http.Server | null = null;
 let backendHits = 0;
 let proxy: ChildProcess | null = null;
 
-beforeAll(() => {
+beforeAll(async () => {
+  [PROXY_PORT, BACKEND_PORT] = await getFreePorts(2);
+  BACKEND_URL = `http://localhost:${BACKEND_PORT}`;
+
   // The black box is the published artifact; build it if it is missing/stale
   // so the test is self-contained.
   if (!existsSync(CLI_BIN)) {
@@ -169,8 +174,12 @@ describe("test-proxy-recorder init -> config -> record/replay", () => {
     // 2. Start the backend and the proxy. The proxy gets NO arguments, so every
     //    setting (target, port, dir) must come from the generated config.
     await listen(backend!, BACKEND_PORT);
+    // The env var outranks the config file, so an inherited one would hide
+    // whether the generated port was discovered.
+    const { TEST_PROXY_RECORDER_PORT: _ignored, ...proxyEnv } = process.env;
     proxy = spawn("node", [CLI_BIN], {
       cwd: workDir,
+      env: proxyEnv,
       stdio: ["ignore", "inherit", "inherit"],
     });
     await waitForControl(PROXY_PORT);

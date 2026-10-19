@@ -1,13 +1,14 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL } from './ports';
+
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
-const BACKEND_URL = 'http://localhost:3002';
 
 async function seed(text: string) {
-  const del = await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
+  const del = await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' });
   if (!del.ok) throw new Error(`seed DELETE failed: ${del.status} ${del.statusText}`);
-  const post = await fetch(`${BACKEND_URL}/todos`, {
+  const post = await fetch(`${MOCK_BACKEND_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),

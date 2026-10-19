@@ -34,7 +34,7 @@ The default headers always apply (while redaction is on); you can add to them.
 - `--no-redact` — disable secret redaction (on by default).
 - `--redact` — enable secret redaction; only needed to re-enable when the config sets `redaction: false`.
 - `--redact-headers <names>` — comma-separated extra header names to redact (merged with the defaults).
-- `--redact-body <patterns>` — comma-separated regex patterns to redact from request/response bodies.
+- `--redact-body <patterns>` — comma-separated regex patterns to redact from request/response bodies. Replay applies them to the live request body before comparing it with the recorded one, so a request whose secret changed since recording still matches.
 - `--allow-headers <names>` — comma-separated header names to exempt from redaction (for example `set-cookie`).
 - `--allow-cookies <names>` — comma-separated cookie names to keep unredacted inside `Cookie`/`Set-Cookie`.
 

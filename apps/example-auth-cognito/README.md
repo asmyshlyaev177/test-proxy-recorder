@@ -33,11 +33,13 @@ Everything else (the todo UI, the stand-in backend) is just a demo app. The test
 
 `assert-redactions.mjs` is an extra safety net here (it fails the build if a JWT leaks into a recording); your app doesn't need it, but it's a good idea.
 
-| Service | Port | Role |
-| ------- | ---- | ---- |
-| Mock backend (`example-auth-shared`) — *stands in for your API* | 3202 | The protected API. |
-| Proxy (`test-proxy-recorder`) | 8100 | Records/replays. |
-| Next.js | 3200 | The app under test. |
+| Service | Port | Env var | Role |
+| ------- | ---- | ------- | ---- |
+| Mock backend (`example-auth-shared`) — *stands in for your API* | 3202 | `MOCK_BACKEND_PORT` | The protected API. |
+| Proxy (`test-proxy-recorder`) | 8100 | `TEST_PROXY_RECORDER_PORT` | Records/replays. |
+| Next.js | 3200 | `APP_PORT` | The app under test. |
+
+Set any of the env vars to move that service, e.g. `APP_PORT=3250 pnpm --filter example-auth-cognito test:e2e`. The `record` and `test:e2e` scripts build the app with `NEXT_PUBLIC_API_URL` pointing at the proxy port, because Next inlines it at build time.
 
 See [the roadmap](../example-auth-shared/ROADMAP.md) for the multi-provider plan, and [example-auth-mock](../example-auth-mock) for the same pattern with no cloud account.
 

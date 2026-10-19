@@ -23,8 +23,11 @@ Earlier versions ignored `describe` titles, so two tests with the same title in 
 
 The proxy (`.mock.json`):
 
-- A request matches a recording by method, path and query. Headers and the request body are ignored, so assert what the page sent with Playwright's `page.on('request')`, not through replay.
-- Repeated calls to the same method, path and query are served in recorded order. Once they run out, the last one is reused and the proxy logs `[REPLAY WARNING]` instead of failing.
+- A request matches a recording by method, path, query and request body, so requests sent in parallel get their own responses whatever order they arrive in. `GET` and `HEAD` requests match by method, path and query alone.
+- The body comparison applies the proxy's body redaction to both bodies and ignores a multipart boundary.
+- A request whose body no recording has fails like a request with no recording, and the reason names the body. Keep bodies the same between runs: a current date or a random id in a body fails replay.
+- Headers are ignored, so assert what the page sent with Playwright's `page.on('request')`, not through replay.
+- Repeated calls with the same method, path, query and body are served in recorded order. Once they run out, the last one is reused and the proxy logs `[REPLAY WARNING]` instead of failing.
 
 Browser-side calls matched by `url` (`.har`):
 

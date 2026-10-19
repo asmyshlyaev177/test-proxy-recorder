@@ -38,7 +38,7 @@ It reads the current request's `x-test-rcrd-id` (via `next/headers`) and copies 
 
 ## Layout
 
-- **App / proxy / mock / recordings** all use ports distinct from the other examples (`3010` / `8110` / `3012`) so they can run side by side.
+- **App / proxy / mock / recordings** all use ports distinct from the other examples (`3010` / `8110` / `3012`) so they can run side by side. Each moves with one env var: `APP_PORT` (3010), `TEST_PROXY_RECORDER_PORT` (8110) and `MOCK_BACKEND_PORT` (3012).
 - The page is SSR-only on purpose — there is no client-side fetching, so the test exercises the server-side (Edge) fetch path and nothing else.
 
 ## Running

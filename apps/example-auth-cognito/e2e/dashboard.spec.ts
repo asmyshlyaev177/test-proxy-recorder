@@ -1,21 +1,20 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL, PROXY_URL_PATTERN } from './ports';
+
 // These specs start ALREADY authenticated: the `setup` project logged in to
 // Cognito and saved a storageState (the access token in localStorage) that
 // playwright.config.ts loads for this project. Each protected request carries the
 // Cognito JWT as a Bearer header — the recorder redacts it from the recordings.
 
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
-// Browser fetches go to the proxy (port 8100); recorded via the HAR mechanism.
-const CLIENT_SIDE_URL = /localhost:8100/;
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3202';
 
 async function resetData() {
   // Reset directly against the backend (not through the proxy). Only runs in
   // record mode, where the backend is up — so fail fast if it doesn't succeed,
   // rather than recording against stale data.
-  const res = await fetch(`${BACKEND_URL}/protected/todos`, {
+  const res = await fetch(`${MOCK_BACKEND_URL}/protected/todos`, {
     method: 'DELETE',
     headers: { authorization: 'Bearer reset' },
   });
@@ -28,7 +27,8 @@ test.beforeEach(async ({ page }, testInfo) => {
   if (mode === 'record') {
     await resetData();
   }
-  await playwrightProxy.before(page, testInfo, mode, { url: CLIENT_SIDE_URL });
+  // Browser fetches go to the proxy; recorded via the HAR mechanism.
+  await playwrightProxy.before(page, testInfo, mode, { url: PROXY_URL_PATTERN });
 });
 
 test('loads the protected dashboard when authenticated', async ({ page }) => {

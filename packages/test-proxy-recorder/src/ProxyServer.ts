@@ -20,15 +20,18 @@ import {
 } from './httpRecorder.js';
 import { MissingRecordingNotifier } from './missingRecordings.js';
 import {
+  getRecordsForBody,
   getServedTracker,
   getSortedRecordings,
   ReplaySessionManager,
+  type ReplaySessionState,
   selectReplayRecord,
 } from './replaySessions.js';
 import {
   type ControlRequest,
   type Mode,
   Modes,
+  type RecordedResponse,
   type Recording,
   type RecordingSession,
   type WebSocketReplayConfig,
@@ -44,6 +47,8 @@ import { getReqID } from './utils/getReqID';
 import { readRequestBody, sendJsonResponse } from './utils/httpHelpers.js';
 import { getRecordingIdFromRequest } from './utils/recordingId.js';
 import {
+  type BodyRedactor,
+  createBodyRedactor,
   type RedactionConfig,
   serializeRedactionConfig,
 } from './utils/redact.js';
@@ -52,6 +57,26 @@ import {
   recordWebSocket,
   replayWebSocket,
 } from './websocketHandlers.js';
+
+// GET and HEAD carry no body in practice, so they skip the read and match by recorded order alone.
+const METHODS_WITHOUT_BODY = new Set(['GET', 'HEAD']);
+
+/** The request body, '' for GET and HEAD, or null when the client went away while sending it. */
+async function readBodyForMatching(
+  req: http.IncomingMessage,
+): Promise<string | null> {
+  if (METHODS_WITHOUT_BODY.has(req.method ?? '')) return '';
+  try {
+    return await readRequestBody(req);
+  } catch (error) {
+    // A page that cancels an upload by navigating away has no missing recording.
+    console.warn(
+      `[REPLAY] ${req.method} ${req.url}: the client went away while sending its body`,
+      error,
+    );
+    return null;
+  }
+}
 
 /**
  * Body redaction rewrites the stored body but not its recorded content-length,
@@ -89,6 +114,7 @@ export class ProxyServer {
   private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
   private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
   private redaction?: RedactionConfig | false; // Secret-redaction config applied before saving (false/undefined = off)
+  private redactBody: BodyRedactor;
   private wsReplay?: WebSocketReplayConfig; // WebSocket replay pacing
   private missingRecordings = new MissingRecordingNotifier();
 
@@ -102,6 +128,7 @@ export class ProxyServer {
     this.target = target;
     this.timeoutMs = timeoutMs ?? DEFAULT_TIMEOUT_MS;
     this.redaction = redaction;
+    this.redactBody = createBodyRedactor(redaction);
     this.wsReplay = wsReplay;
     this.mode = Modes.transparent;
     this.recordingId = null;
@@ -371,6 +398,7 @@ export class ProxyServer {
     // This ensures served recordings tracker is cleared when re-entering replay mode
     sessionState.servedRecordingIdsByKey.clear();
     sessionState.sortedRecordingsByKey.clear();
+    sessionState.bodyIdentityByRecordingId.clear();
 
     // Load the session file immediately instead of on first request
     // If the file doesn't exist, we'll still switch to replay mode but requests will fail
@@ -519,51 +547,34 @@ export class ProxyServer {
     const recordingId = this.getRecordingIdOrError(req, res);
     if (!recordingId) return;
 
+    // Read before any session state: nothing may await between picking a recording and marking it served.
+    const requestBody = await readBodyForMatching(req);
+    if (requestBody === null) return;
+
     const key = getReqID(req);
     const filePath = getRecordingPath(this.recordingsDir, recordingId);
 
     try {
-      // Session is already loaded in switchToReplayMode (or load failed)
-      const sessionState = this.replaySessions.getOrCreate(recordingId);
-
-      // If session failed to load, throw appropriate error
-      if (!sessionState.loadedSession) {
-        throw Object.assign(
-          new Error(`Recording session file not found: ${filePath}`),
-          { code: 'ENOENT' },
-        );
-      }
-
+      const sessionState = this.getLoadedSession(recordingId, filePath);
       const servedForThisKey = getServedTracker(sessionState, key);
-      const host = req.headers.host || 'unknown';
 
       // Use cached sorted recordings to avoid re-filtering and re-sorting
       const recordsWithKey = getSortedRecordings(sessionState, key);
+      const matching = this.getRecordsForRequest(
+        req,
+        sessionState,
+        recordsWithKey,
+        requestBody,
+      );
 
-      if (recordsWithKey.length === 0) {
-        const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}`;
-        console.error(`[REPLAY ERROR] ${errorMsg} (session: ${recordingId})`);
-        this.missingRecordings.report(
-          recordingId,
-          `No recording for ${req.method} ${req.url} in session ${recordingId}`,
-        );
-        console.error(
-          `[REPLAY ERROR] This request was not made during recording - possible test non-determinism`,
-        );
-
-        const errorResponse = {
-          error: 'No recording found',
-          message: errorMsg,
+      if (matching.length === 0) {
+        this.sendNoRecordingFound(
+          req,
+          res,
           key,
-          sessionId: recordingId,
-        };
-
-        const corsHeaders = getCorsHeaders(req);
-        res.writeHead(HTTP_STATUS_NOT_FOUND, {
-          'Content-Type': 'application/json',
-          ...corsHeaders,
-        });
-        res.end(JSON.stringify(errorResponse));
+          recordingId,
+          recordsWithKey.length,
+        );
         return;
       }
 
@@ -573,33 +584,24 @@ export class ProxyServer {
       );
 
       const record = selectReplayRecord(
-        recordsWithKey,
+        matching,
         servedForThisKey,
         key,
         recordingId,
       );
 
-      if (!record || !record.response) {
+      // Unreachable, as getSortedRecordings keeps only recordings with a response.
+      if (!record?.response) {
         throw new Error(
-          `No response recorded for this request: ${req.method} ${host}${req.url}`,
+          `No response recorded for this request: ${req.method} ${req.url}`,
         );
       }
 
       servedForThisKey.add(record.recordingId);
-
       console.log(
-        `[replay serving] recordingId: ${record.recordingId}, session: ${recordingId}, body_len: ${record.response?.body?.length || 0}`,
+        `[replay serving] recordingId: ${record.recordingId}, session: ${recordingId}, body_len: ${record.response.body?.length || 0}`,
       );
-
-      const { statusCode, headers, body } = record.response;
-
-      const responseHeaders = {
-        ...withReplayedContentLength(req.method, headers, body),
-        ...getCorsHeaders(req),
-      };
-
-      res.writeHead(statusCode, responseHeaders);
-      res.end(body);
+      this.sendRecordedResponse(req, res, record.response);
     } catch (error) {
       this.missingRecordings.report(
         recordingId,
@@ -607,6 +609,86 @@ export class ProxyServer {
       );
       this.handleReplayError(req, res, error, key, filePath);
     }
+  }
+
+  private sendRecordedResponse(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    { statusCode, headers, body }: RecordedResponse,
+  ): void {
+    res.writeHead(statusCode, {
+      ...withReplayedContentLength(req.method, headers, body),
+      ...getCorsHeaders(req),
+    });
+    res.end(body);
+  }
+
+  // Session is already loaded in switchToReplayMode (or load failed)
+  private getLoadedSession(
+    recordingId: string,
+    filePath: string,
+  ): ReplaySessionState {
+    const sessionState = this.replaySessions.getOrCreate(recordingId);
+    if (!sessionState.loadedSession) {
+      throw Object.assign(
+        new Error(`Recording session file not found: ${filePath}`),
+        { code: 'ENOENT' },
+      );
+    }
+    return sessionState;
+  }
+
+  private getRecordsForRequest(
+    req: http.IncomingMessage,
+    sessionState: ReplaySessionState,
+    recordsWithKey: Recording[],
+    requestBody: string,
+  ): Recording[] {
+    if (METHODS_WITHOUT_BODY.has(req.method ?? '')) return recordsWithKey;
+    return getRecordsForBody(
+      sessionState,
+      recordsWithKey,
+      requestBody,
+      req.headers['content-type'],
+      this.redactBody,
+    );
+  }
+
+  private sendNoRecordingFound(
+    req: http.IncomingMessage,
+    res: http.ServerResponse,
+    key: string,
+    recordingId: string,
+    otherBodies: number,
+  ): void {
+    const host = req.headers.host || 'unknown';
+    const withBody = otherBodies > 0 ? ' with this request body' : '';
+    const others =
+      otherBodies > 0 ? ` (${otherBodies} recorded with other bodies)` : '';
+    const errorMsg = `No recording found for ${key} at ${req.method} ${host}${req.url}${withBody}${others}`;
+    console.error(`[REPLAY ERROR] ${errorMsg} (session: ${recordingId})`);
+    this.missingRecordings.report(
+      recordingId,
+      `No recording for ${req.method} ${req.url}${withBody} in session ${recordingId}${others}`,
+    );
+    console.error(
+      otherBodies > 0
+        ? '[REPLAY ERROR] The request body differs from every recording of this endpoint - re-record, or keep the body the same between runs (no current date or random id)'
+        : '[REPLAY ERROR] This request was not made during recording - possible test non-determinism',
+    );
+
+    res.writeHead(HTTP_STATUS_NOT_FOUND, {
+      'Content-Type': 'application/json',
+      ...getCorsHeaders(req),
+    });
+    res.end(
+      JSON.stringify({
+        error: 'No recording found',
+        message: errorMsg,
+        key,
+        sessionId: recordingId,
+      }),
+    );
   }
 
   private handleReplayError(

@@ -3,17 +3,17 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "mock": "MOCK_BACKEND_PORT=3102 PROTECTED_DATA_FILE=./data/protected-todos.json node ../example-auth-shared/mock-backend/server.mjs",
+    "mock": "MOCK_BACKEND_PORT=${MOCK_BACKEND_PORT:-3102} PROTECTED_DATA_FILE=./data/protected-todos.json node ../example-auth-shared/mock-backend/server.mjs",
     "proxy": "test-proxy-recorder",
     "proxy:reset": "test-proxy-recorder reset",
-    "dev": "next dev --port 3100",
+    "dev": "next dev --port ${APP_PORT:-3100}",
     "build": "next build",
-    "start": "next start --port 3100",
+    "start": "next start --port ${APP_PORT:-3100}",
     "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm start\"",
-    "test:e2e": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3100 http://127.0.0.1:8100/__control && APP_PORT=3100 playwright test --retries 1 && node e2e/assert-redactions.mjs\"",
-    "test:e2e:ci": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3100 http://127.0.0.1:8100/__control --timeout 120000 && APP_PORT=3100 RECORD_MODE=1 playwright test --workers 1 && node e2e/assert-redactions.mjs && APP_PORT=3100 playwright test --retries 1\"",
-    "test:e2e:ui": "APP_PORT=3100 playwright test --ui --retries 1",
-    "test:e2e:record": "APP_PORT=3100 RECORD_MODE=1 playwright test --workers 1 --ui"
+    "test:e2e": "NEXT_PUBLIC_API_URL=http://localhost:${TEST_PROXY_RECORDER_PORT:-8100} pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:${APP_PORT:-3100} http://127.0.0.1:${TEST_PROXY_RECORDER_PORT:-8100}/__control && playwright test --retries 1 && node e2e/assert-redactions.mjs\"",
+    "test:e2e:ci": "NEXT_PUBLIC_API_URL=http://localhost:${TEST_PROXY_RECORDER_PORT:-8100} pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:${APP_PORT:-3100} http://127.0.0.1:${TEST_PROXY_RECORDER_PORT:-8100}/__control --timeout 120000 && RECORD_MODE=1 playwright test --workers 1 && node e2e/assert-redactions.mjs && playwright test --retries 1\"",
+    "test:e2e:ui": "playwright test --ui --retries 1",
+    "test:e2e:record": "RECORD_MODE=1 playwright test --workers 1 --ui"
   },
   "dependencies": {
     "example-auth-shared": "workspace:*",

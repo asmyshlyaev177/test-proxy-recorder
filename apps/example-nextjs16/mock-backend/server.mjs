@@ -110,6 +110,15 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // An embeddings API in miniature: one vector per input text, so a response
+    // given to the wrong batch shows up as the wrong count (e2e/parallel.spec.ts).
+    if (req.method === 'POST' && url.pathname === '/embeddings') {
+      const { input } = JSON.parse(await getBody(req));
+      res.writeHead(200);
+      res.end(JSON.stringify({ data: input.map((text, index) => ({ index, embedding: [text.length] })) }));
+      return;
+    }
+
     // DELETE /todos — reset all (used by tests in beforeEach)
     if (req.method === 'DELETE' && url.pathname === '/todos') {
       await writeTodos([]);

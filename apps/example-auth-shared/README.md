@@ -6,7 +6,7 @@ Provider-agnostic **app-runtime** pieces shared by the `example-auth-*` apps. **
 | ------ | ---- |
 | `example-auth-shared/TodoApp` | Protected-resource UI. Optional `basePath` + `extraHeaders` (for the `Authorization` header). |
 | `example-auth-shared/globals.css` | Shared styles. |
-| `example-auth-shared/mock-backend` | `createMockBackend()` — the application backend: `/protected/todos` (accepts any Bearer token or `session` cookie) plus a mock `/login`. Exports the `MOCK_ACCESS_TOKEN` constant. Runnable directly: `node mock-backend/server.mjs`. |
+| `example-auth-shared/mock-backend` | `createMockBackend()` — the application backend: `/protected/todos` (accepts any Bearer token or `session` cookie) plus a mock `/login`. Exports the `MOCK_ACCESS_TOKEN` constant. Runnable directly: `node mock-backend/server.mjs`, listening on `MOCK_BACKEND_PORT` (default 3102). |
 
 Deliberately scoped to the above: each app owns **all** of its own e2e code (a plain `playwright.config.ts`, `setup-auth.ts`, specs, and `assert-redactions.mjs`), so every example is self-contained and readable on its own.
 

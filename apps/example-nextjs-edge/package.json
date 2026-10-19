@@ -3,16 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "mock": "MOCK_BACKEND_PORT=3012 node mock-backend/server.mjs",
+    "mock": "node mock-backend/server.mjs",
     "proxy": "test-proxy-recorder",
     "proxy:reset": "test-proxy-recorder reset",
-    "dev": "BACKEND_URL=http://localhost:8110 next dev --port 3010",
+    "dev": "BACKEND_URL=http://localhost:${TEST_PROXY_RECORDER_PORT:-8110} next dev --port ${APP_PORT:-3010}",
     "build": "next build",
-    "start": "BACKEND_URL=http://localhost:8110 TEST_PROXY_RECORDER_ENABLED=true next start --port 3010",
+    "start": "BACKEND_URL=http://localhost:${TEST_PROXY_RECORDER_PORT:-8110} TEST_PROXY_RECORDER_ENABLED=true next start --port ${APP_PORT:-3010}",
     "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm start\"",
-    "test:e2e": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3010 http://127.0.0.1:8110/__control && APP_PORT=3010 TEST_PROXY_RECORDER_PORT=8110 playwright test\"",
-    "test:e2e:ci": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3010 http://127.0.0.1:8110/__control --timeout 120000 && APP_PORT=3010 TEST_PROXY_RECORDER_PORT=8110 RECORD_MODE=1 playwright test --workers 1 && APP_PORT=3010 TEST_PROXY_RECORDER_PORT=8110 playwright test\"",
-    "test:e2e:record": "APP_PORT=3010 TEST_PROXY_RECORDER_PORT=8110 RECORD_MODE=1 playwright test --workers 1"
+    "test:e2e": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:${APP_PORT:-3010} http://127.0.0.1:${TEST_PROXY_RECORDER_PORT:-8110}/__control && playwright test\"",
+    "test:e2e:ci": "pnpm build && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:${APP_PORT:-3010} http://127.0.0.1:${TEST_PROXY_RECORDER_PORT:-8110}/__control --timeout 120000 && RECORD_MODE=1 playwright test --workers 1 && playwright test\"",
+    "test:e2e:record": "RECORD_MODE=1 playwright test --workers 1"
   },
   "dependencies": {
     "next": "^16.2.4",

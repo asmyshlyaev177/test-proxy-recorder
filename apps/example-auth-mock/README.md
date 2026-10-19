@@ -15,11 +15,13 @@ Two kinds of traffic, treated oppositely:
 2. [e2e/dashboard.spec.ts](e2e/dashboard.spec.ts) depends on it, starts already authenticated, and records/replays the protected todo CRUD.
 3. Every recorded request carries `Authorization: Bearer …` + the cookie — the recorder redacts both. [e2e/assert-redactions.mjs](e2e/assert-redactions.mjs) proves the login was never recorded and the dashboard recording is scrubbed.
 
-| Service | Port | Role |
-| ------- | ---- | ---- |
-| Mock backend (`example-auth-shared`) | 3102 | Stands in for the API + mock identity. |
-| Proxy (`test-proxy-recorder`) | 8100 | Records/replays. The app points here. |
-| Next.js | 3100 | The app under test. |
+| Service | Port | Env var | Role |
+| ------- | ---- | ------- | ---- |
+| Mock backend (`example-auth-shared`) | 3102 | `MOCK_BACKEND_PORT` | Stands in for the API + mock identity. |
+| Proxy (`test-proxy-recorder`) | 8100 | `TEST_PROXY_RECORDER_PORT` | Records/replays. The app points here. |
+| Next.js | 3100 | `APP_PORT` | The app under test. |
+
+Set any of the env vars to move that service, e.g. `APP_PORT=3150 pnpm --filter example-auth-mock test:e2e`. The e2e scripts build the app with `NEXT_PUBLIC_API_URL` pointing at the proxy port, because Next inlines it at build time.
 
 Demo credentials (prefilled on the login form): `test@example.com` / `Password123`.
 

@@ -252,7 +252,7 @@ test-proxy-recorder http://localhost:3002 --no-redact
 ```
 
 - `--redact-headers <names>` — comma-separated extra header names, merged with the defaults.
-- `--redact-body <patterns>` — comma-separated regex patterns replaced in request/response bodies.
+- `--redact-body <patterns>` — comma-separated regex patterns replaced in request/response bodies. Replay applies them to the live request body too before comparing it with the recorded one.
 - `--allow-headers <names>` — comma-separated header names to exempt from redaction (e.g. `set-cookie`).
 - `--allow-cookies <names>` — comma-separated cookie names kept unredacted inside `Cookie`/`Set-Cookie`; every other cookie in those headers is still redacted. Use when only some cookies are sensitive (session vs. theme/A-B-test).
 - `--no-redact` — turn redaction off.
@@ -386,7 +386,7 @@ await playwrightProxy.before(
 
 ### Recording names and replay matching
 
-Each test's recordings are named from its file, `describe` titles and title. Replay matches by method, path and query, ignores bodies, and fails the test at once on a request with no recording (opt out with `failOnMissingRecording: false`). Details: [references/replay-matching.md](references/replay-matching.md).
+Each test's recordings are named from its file, `describe` titles and title. Replay matches by method, path, query and request body (not for `GET`/`HEAD`), and fails the test at once on a request with no recording or with a body no recording has (opt out with `failOnMissingRecording: false`). Details: [references/replay-matching.md](references/replay-matching.md).
 
 ### Control endpoint
 

@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL } from './ports';
+
 // Guards the SSR recording-id forwarding: the home page is server-rendered from a
 // fetch through the proxy (the `fetchTodos` server function in src/routes/index.tsx),
 // tagged by registerProxyFetch() in src/router.tsx. Each test seeds a DISTINCT todo
@@ -12,12 +14,10 @@ const mode = process.env.RECORD_MODE ? 'record' : 'replay';
 // Seed directly against the mock backend (not through the proxy), only in record
 // mode where the backend is up. In replay the proxy serves each session's
 // recording from disk.
-const BACKEND_URL = 'http://localhost:3002';
-
 async function seed(text: string) {
-  const del = await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
+  const del = await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' });
   if (!del.ok) throw new Error(`seed DELETE failed: ${del.status} ${del.statusText}`);
-  const post = await fetch(`${BACKEND_URL}/todos`, {
+  const post = await fetch(`${MOCK_BACKEND_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),

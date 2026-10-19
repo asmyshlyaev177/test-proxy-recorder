@@ -49,6 +49,8 @@ What happens:
 
 `test:e2e:record` opens the Playwright UI with a single worker, which is the most convenient way to watch the recording happen and re-run it.
 
+The proxy listens on port 8100. If another project holds it, set `TEST_PROXY_RECORDER_PORT` (for example `TEST_PROXY_RECORDER_PORT=8200 pnpm test:e2e`); `playwright.config.ts`, the fixture and the proxy CLI all read it.
+
 ## Adapting this to your own extension
 
 - **Point at your extension** — set `EXTENSION_PATH` (env var) or drop your built extension in [`extension/`](extension/). See [`e2e/fixtures.ts`](e2e/fixtures.ts).

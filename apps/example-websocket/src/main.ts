@@ -1,9 +1,9 @@
 // A live BTC-USD price ticker backed by Binance's public WebSocket feed.
 //
 // In production the browser connects straight to Binance. Under test we point
-// VITE_WS_URL at the test-proxy-recorder proxy (ws://localhost:8100/...); the
-// proxy records the real feed once, then replays it from disk on CI with no
-// network. Binance's @ticker stream pushes one update per second, so each
+// VITE_WS_URL at the test-proxy-recorder proxy (ws://localhost:8100/... by
+// default; vite.config.ts follows TEST_PROXY_RECORDER_PORT); the proxy records
+// the real feed once, then replays it from disk on CI with no network. Binance's @ticker stream pushes one update per second, so each
 // price change is observable.
 const WS_URL =
   import.meta.env.VITE_WS_URL ??
