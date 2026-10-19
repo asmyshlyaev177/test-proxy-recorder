@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.4.2...v2.0.0) (2026-10-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* a non-GET request whose body matches no recording now gets a 404 and fails the test, with a reason naming the body. Before, it got the next recording for its method and path. Keep request bodies the same between runs, for example with a fixed clock or seeded ids, and re-record tests whose requests changed.
+
+### Features
+
+* replay matches same-endpoint requests by body ([0096b55](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/0096b55e41c6485c0e4aae5f68489e90d87764b9))
+
 ## [1.4.2](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.4.1...v1.4.2) (2026-10-15)
 
 
