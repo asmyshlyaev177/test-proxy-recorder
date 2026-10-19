@@ -135,7 +135,7 @@ export const home: HomeCopy = {
     heading: 'Questions about replay',
     matching: {
       term: 'How are requests matched?',
-      body: "The proxy matches a server-side call on its method, path and exact query string, not its body, and serves repeated calls in the order they were recorded. Browser calls follow Playwright's HAR rules, which also compare POST bodies. A query string that changes every run, such as a timestamp, never matches, and no option ignores a parameter, so keep such values fixed during tests.",
+      body: "The proxy matches a server-side call on its method, path, exact query string and body, so calls sent in parallel each get their own response, and serves repeated calls in the order they were recorded. Browser calls are matched on method, URL and body as well. A query string or body that changes every run, such as a timestamp, never matches, and no option ignores a value, so keep such values fixed during tests.",
       link: 'How replay matches requests\u00a0→',
     },
     misses: {

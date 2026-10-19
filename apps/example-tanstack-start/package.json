@@ -5,18 +5,18 @@
   "type": "module",
   "sideEffects": false,
   "scripts": {
-    "mock": "MOCK_BACKEND_PORT=3002 node mock-backend/server.mjs",
+    "mock": "node mock-backend/server.mjs",
     "proxy": "test-proxy-recorder",
     "proxy:reset": "test-proxy-recorder reset",
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev --port ${APP_PORT:-3000}",
     "build": "vite build",
-    "build:test": "TEST_PROXY_RECORDER_ENABLED=true vite build",
-    "start": "TEST_PROXY_RECORDER_ENABLED=true PORT=3000 node --env-file-if-exists=.env .output/server/index.mjs",
+    "build:test": "TEST_PROXY_RECORDER_ENABLED=true VITE_API_URL=http://localhost:${TEST_PROXY_RECORDER_PORT:-8100} VITE_DIRECT_API_URL=http://localhost:${MOCK_BACKEND_PORT:-3002} vite build",
+    "start": "TEST_PROXY_RECORDER_ENABLED=true BACKEND_URL=http://localhost:${TEST_PROXY_RECORDER_PORT:-8100} PORT=${APP_PORT:-3000} node --env-file-if-exists=.env .output/server/index.mjs",
     "start:all": "concurrently \"pnpm mock\" \"pnpm proxy\" \"pnpm start\"",
-    "test:e2e": "pnpm build:test && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3000 http://127.0.0.1:8100/__control && APP_PORT=3000 playwright test --retries 1 && node e2e/assert-redactions.mjs\"",
-    "test:e2e:ci": "pnpm build:test && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:3000 http://127.0.0.1:8100/__control --timeout 120000 && APP_PORT=3000 RECORD_MODE=1 playwright test --workers 1 && node e2e/assert-redactions.mjs && APP_PORT=3000 playwright test --retries 1\"",
-    "test:e2e:ui": "APP_PORT=3000 playwright test --ui --retries 1",
-    "test:e2e:record": "APP_PORT=3000 RECORD_MODE=1 playwright test --workers 1 --ui"
+    "test:e2e": "pnpm build:test && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:${APP_PORT:-3000} http://127.0.0.1:${TEST_PROXY_RECORDER_PORT:-8100}/__control && playwright test --retries 1 && node e2e/assert-redactions.mjs\"",
+    "test:e2e:ci": "pnpm build:test && concurrently --kill-others --success first --names services,tests \"pnpm start:all\" \"wait-on http://127.0.0.1:${APP_PORT:-3000} http://127.0.0.1:${TEST_PROXY_RECORDER_PORT:-8100}/__control --timeout 120000 && RECORD_MODE=1 playwright test --workers 1 && node e2e/assert-redactions.mjs && playwright test --retries 1\"",
+    "test:e2e:ui": "playwright test --ui --retries 1",
+    "test:e2e:record": "RECORD_MODE=1 playwright test --workers 1 --ui"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.90.0",

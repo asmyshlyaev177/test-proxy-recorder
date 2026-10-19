@@ -27,6 +27,8 @@ Three services are involved:
 | Proxy (`test-proxy-recorder`) | 8100 | Records/replays traffic. Both SSR and browser point here. |
 | Next.js | 3000 | The app under test. |
 
+Each port moves with one env var, read by the scripts, the configs and the specs: `APP_PORT` (3000), `TEST_PROXY_RECORDER_PORT` (8100) and `MOCK_BACKEND_PORT` (3002). For example, `TEST_PROXY_RECORDER_PORT=8200 pnpm test:e2e` runs the suite beside another proxy on 8100.
+
 ## Prerequisites
 
 - **Node + pnpm**, with workspace deps installed (`pnpm install` at the repo root).
@@ -82,6 +84,8 @@ The interesting part of this example is that two different request origins are c
 | [`app/components/TodoApp.tsx`](app/components/TodoApp.tsx) | Client component; browser `fetch` to `NEXT_PUBLIC_API_URL` for mutations. |
 | [`app/direct/page.tsx`](app/direct/page.tsx) | Client component; browser `fetch` straight to the API (`NEXT_PUBLIC_DIRECT_API_URL`), bypassing the proxy — the requests the `.har` replays. |
 | [`e2e/direct.spec.ts`](e2e/direct.spec.ts) | Adds a todo and reads the list back; asserts the two identical `GET /todos` calls each get their own recorded response from the `.har`, in order. |
+| [`app/parallel/page.tsx`](app/parallel/page.tsx) | Server component; posts four batches of different sizes to one path at once, as an app filling an embeddings index does. |
+| [`e2e/parallel.spec.ts`](e2e/parallel.spec.ts) | Loads `/parallel`, then replays its four `POST /embeddings` calls in reverse order; asserts each batch gets the `.mock.json` recording made with its own body. |
 | [`app/layout.tsx`](app/layout.tsx) | Root layout; `registerProxyFetch()` tags each server-side fetch with the test's recording id, so the proxy keys SSR recordings per test. |
 | [`mock-backend/server.mjs`](mock-backend/server.mjs) | Standalone Node HTTP API (port 3002) backed by [`data/todos.json`](data/todos.json) — the "real" backend in record mode. |
 | [`e2e/todos.spec.ts`](e2e/todos.spec.ts) | The tests; wires `playwrightProxy.before` for record/replay. |

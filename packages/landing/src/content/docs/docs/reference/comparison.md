@@ -54,7 +54,7 @@ If you're moving from Polly.js, its concepts map to test-proxy-recorder as follo
 | Modes `record`, `replay` and `passthrough` ([configuration](https://netflix.github.io/pollyjs/#/configuration)) | Modes `record`, `replay` and `transparent`, set per test by `playwrightProxy.before()` |
 | A named recording per Polly instance, saved by a persister | A `.mock.json` (server) and a `.har` (browser) per Playwright test, in the recordings directory |
 | Adapters inside the process that makes the requests | A proxy process for server calls, HAR for browser calls, and `registerProxyFetch()` on the server |
-| Requests matched by method, headers, body, order and URL by default | Server-side requests matched by method, path and a hash of the query, in recorded order, with bodies not compared. Browser requests follow Playwright's HAR rules, which also compare POST bodies |
+| Requests matched by method, headers, body, order and URL by default | Server-side requests matched by method, path, a hash of the query and the body, with repeats served in recorded order and headers not compared. Browser requests matched by method, URL and body, then by shared headers |
 
 ## MSW with Next.js and Playwright {#msw}
 

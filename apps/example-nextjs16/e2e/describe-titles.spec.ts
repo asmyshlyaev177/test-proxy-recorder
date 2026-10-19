@@ -1,15 +1,16 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL } from './ports';
+
 // Two describe blocks hold a test with the same title and different data. The
 // session id includes the describe title, so each block replays its own
 // recording; when it did not, the second recording overwrote the first.
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
-const BACKEND_URL = 'http://localhost:3002';
 
 async function seed(text: string) {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
-  await fetch(`${BACKEND_URL}/todos`, {
+  await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' });
+  await fetch(`${MOCK_BACKEND_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),

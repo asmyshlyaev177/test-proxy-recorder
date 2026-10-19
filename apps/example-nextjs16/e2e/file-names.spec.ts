@@ -4,14 +4,13 @@ import path from 'node:path';
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL, PROXY_URL_PATTERN } from './ports';
+
 // Test titles with characters Windows forbids in file names. Recordings are
 // saved under a sanitized name; replay falls back to the name earlier versions
 // used, which kept those characters in `.har` names.
 
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
-// Browser calls to the proxy, recorded to the HAR.
-const CLIENT_SIDE_URL = /localhost:8100/;
 const RECORDINGS_DIR = path.resolve('e2e/recordings');
 
 const exists = (fileName: string) =>
@@ -23,9 +22,9 @@ const exists = (fileName: string) =>
 test.describe('new name', () => {
   test('adds a todo: "new" name?', async ({ page }, testInfo) => {
     if (mode === 'record') {
-      await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
+      await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' });
     }
-    await playwrightProxy.before(page, testInfo, mode, { url: CLIENT_SIDE_URL });
+    await playwrightProxy.before(page, testInfo, mode, { url: PROXY_URL_PATTERN });
 
     await page.goto('/');
     await page.getByTestId('new-todo-input').fill('Named safely');
@@ -48,9 +47,9 @@ test.describe('Корзина', () => {
   // A non-ASCII describe title travels in the session-id header as UTF-8.
   test('adds a todo', async ({ page }, testInfo) => {
     if (mode === 'record') {
-      await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
+      await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' });
     }
-    await playwrightProxy.before(page, testInfo, mode, { url: CLIENT_SIDE_URL });
+    await playwrightProxy.before(page, testInfo, mode, { url: PROXY_URL_PATTERN });
 
     await page.goto('/');
     await page.getByTestId('new-todo-input').fill('Named in Cyrillic');
@@ -88,7 +87,7 @@ test('adds a todo: "old" name?', async ({ page }, testInfo) => {
   );
 
   await playwrightProxy.before(page, testInfo, 'replay', {
-    url: CLIENT_SIDE_URL,
+    url: PROXY_URL_PATTERN,
   });
 
   await page.goto('/');

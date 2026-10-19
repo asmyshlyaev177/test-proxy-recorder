@@ -6,6 +6,8 @@ import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { envWithoutProxyPort } from './ports';
+
 // FULL end-to-end, as a black box. We stand up a completely isolated stack on
 // free ports — all started via the CLI, nothing imported from the package:
 //
@@ -23,7 +25,7 @@ import { expect, test } from '@playwright/test';
 //                                        saved recording
 //   - timeout                          → mode auto-resets after the configured ms
 //
-// Isolation keeps this off the shared :8100 proxy, so it runs serially without
+// Isolation keeps this off the shared proxy, so it runs serially without
 // disturbing the parallel browser suite.
 
 const APP_NODE = process.execPath;
@@ -135,7 +137,7 @@ test.describe('full app e2e — every config option applied', () => {
   /** (Re)write the config file and (re)start the proxy on the fixed port. */
   async function startProxy(configBody: string): Promise<void> {
     await fs.writeFile(configPath, configBody);
-    proxy = spawn(APP_NODE, [PROXY_BIN], { cwd: tmpDir, env: { ...process.env }, stdio: 'ignore' });
+    proxy = spawn(APP_NODE, [PROXY_BIN], { cwd: tmpDir, env: envWithoutProxyPort(), stdio: 'ignore' });
     await waitForHttp(proxyUrl('/__control'), 'proxy');
   }
 

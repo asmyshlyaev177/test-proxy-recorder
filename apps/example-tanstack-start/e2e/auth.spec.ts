@@ -1,6 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL, PROXY_URL_PATTERN } from './ports';
+
 // These specs start ALREADY authenticated: the `setup` project logged in to
 // Cognito and saved a storageState (the access token in localStorage) that
 // playwright.config.ts loads for the `auth` project. Each protected request
@@ -8,15 +10,14 @@ import { playwrightProxy } from 'test-proxy-recorder';
 // recordings. See e2e/setup-auth.ts and e2e/assert-redactions.mjs.
 
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
-// Browser fetches go to the proxy (port 8100); recorded via the HAR mechanism.
-const CLIENT_SIDE_URL = /localhost:8100/;
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
+// Browser fetches go to the proxy; recorded via the HAR mechanism.
+const CLIENT_SIDE_URL = PROXY_URL_PATTERN;
 
 async function resetData() {
   // Reset directly against the backend (not through the proxy). Only runs in
   // record mode, where the backend is up — so fail fast if it doesn't succeed,
   // rather than recording against stale data.
-  const res = await fetch(`${BACKEND_URL}/protected/todos`, {
+  const res = await fetch(`${MOCK_BACKEND_URL}/protected/todos`, {
     method: 'DELETE',
     headers: { authorization: 'Bearer reset' },
   });

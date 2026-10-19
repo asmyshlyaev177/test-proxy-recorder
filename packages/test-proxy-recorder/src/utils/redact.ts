@@ -438,6 +438,17 @@ export function deserializeRedactionConfig(
   };
 }
 
+export type BodyRedactor = (body: string) => string;
+
+/** Replaces the body patterns in a body, as a saved recording stores it. */
+export function createBodyRedactor(
+  config?: RedactionConfig | false,
+): BodyRedactor {
+  if (!config) return (body) => body;
+  const { regexes, placeholder } = resolveRedaction(config);
+  return (body) => redactBody(body, regexes, placeholder) ?? '';
+}
+
 /**
  * Return a redacted copy of a recording session. Sensitive headers are
  * stripped and any configured body patterns replaced. The input is not

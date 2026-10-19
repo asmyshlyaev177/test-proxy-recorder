@@ -1,16 +1,17 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL } from './ports';
+
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
 
 // Talk to the mock backend directly (not through the proxy) to seed each test's
 // own data in record mode. In replay mode the backend is untouched — the proxy
 // serves each session's recording from disk.
-const BACKEND_URL = 'http://localhost:3012';
 
 async function seed(text: string) {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' });
-  await fetch(`${BACKEND_URL}/todos`, {
+  await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' });
+  await fetch(`${MOCK_BACKEND_URL}/todos`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),

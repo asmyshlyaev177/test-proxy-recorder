@@ -162,3 +162,33 @@ export async function deleteProtectedTodo(
   });
   if (!res.ok) throw new Error(`DELETE /protected/todos/${id} failed: ${res.status}`);
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Parallel calls — the /parallel route posts these batches at once to one path
+// from the server, as an app filling an embeddings index does. They share a
+// recording key, so replay can tell them apart only by body.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export interface EmbeddingBatch {
+  name: string;
+  input: string[];
+}
+
+export const EMBEDDING_BATCHES: EmbeddingBatch[] = [1, 2, 3, 4].map((size) => ({
+  name: `batch-${size}`,
+  input: Array.from(
+    { length: size },
+    (_, index) => `batch-${size} text ${index + 1}`,
+  ),
+}));
+
+export async function countEmbeddings(input: string[]): Promise<number> {
+  const res = await fetch(`${apiBase()}/embeddings`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ input }),
+  });
+  if (!res.ok) throw new Error(`POST /embeddings failed: ${res.status}`);
+  const { data } = (await res.json()) as { data: unknown[] };
+  return data.length;
+}

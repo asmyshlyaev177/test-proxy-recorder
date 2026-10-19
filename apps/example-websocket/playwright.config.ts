@@ -1,7 +1,10 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const APP_PORT = process.env.APP_PORT || '4173';
+const PROXY_PORT = process.env.TEST_PROXY_RECORDER_PORT || '8100';
+
 // The built app (VITE_WS_URL baked to the proxy by `build:test`) is served by
-// `vite preview`; the proxy records/replays the Coinbase WebSocket feed.
+// `vite preview`; the proxy records/replays the Binance WebSocket feed.
 export default defineConfig({
   testDir: './e2e',
   fullyParallel: true,
@@ -10,7 +13,7 @@ export default defineConfig({
   reporter: 'list',
   globalTeardown: './e2e/global-teardown.ts',
   use: {
-    baseURL: 'http://localhost:4173',
+    baseURL: `http://localhost:${APP_PORT}`,
     trace: 'on-first-retry',
   },
   projects: [
@@ -18,14 +21,17 @@ export default defineConfig({
   ],
   webServer: [
     {
+      // No --port: the CLI reads TEST_PROXY_RECORDER_PORT itself, as the fixture does.
       command: 'pnpm proxy',
-      url: 'http://localhost:8100/__control',
-      reuseExistingServer: !process.env.CI,
+      url: `http://localhost:${PROXY_PORT}/__control`,
+      // Another project's proxy on this port would be driven silently, with the
+      // wrong target and recordings dir. Move the port with TEST_PROXY_RECORDER_PORT.
+      reuseExistingServer: false,
       stdout: 'pipe',
     },
     {
       command: 'pnpm preview',
-      url: 'http://localhost:4173',
+      url: `http://localhost:${APP_PORT}`,
       reuseExistingServer: !process.env.CI,
     },
   ],

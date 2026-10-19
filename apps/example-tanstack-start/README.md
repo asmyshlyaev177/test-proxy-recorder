@@ -27,11 +27,13 @@ This example records and replays **both** origins, using both of the library's m
 
 Three services are involved:
 
-| Service | Port | Role |
-| ------- | ---- | ---- |
-| Mock backend | 3002 | Stands in for the "real" API. Only used in record mode. |
-| Proxy (`test-proxy-recorder`) | 8100 | Records/replays traffic. Both SSR and browser point here. |
-| TanStack Start (Nitro) | 3000 | The app under test. |
+| Service | Port | Env var | Role |
+| ------- | ---- | ------- | ---- |
+| Mock backend | 3002 | `MOCK_BACKEND_PORT` | Stands in for the "real" API. Only used in record mode. |
+| Proxy (`test-proxy-recorder`) | 8100 | `TEST_PROXY_RECORDER_PORT` | Records/replays traffic. Both SSR and browser point here. |
+| TanStack Start (Nitro) | 3000 | `APP_PORT` | The app under test. |
+
+Set any of the three env vars to move that service. The package scripts, the proxy config and the specs all read them, and `build:test` bakes the proxy and mock URLs into the bundle, so set them before building.
 
 ## Prerequisites
 
@@ -78,7 +80,7 @@ Every test's requests are written to `e2e/recordings/` — a `.mock.json` for th
 
 The interesting part of this example is that two different request origins are captured by two different mechanisms, keyed to the same test:
 
-- **Browser → `.har`.** [`e2e/direct.spec.ts`](e2e/direct.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url: /localhost:3002/ })`. The [`/direct`](src/routes/direct.tsx) route fetches the API itself, as a browser does with a third-party service, so Playwright's HAR recorder captures those calls and replay serves them from the `.har` in recorded order. The home route's browser calls go to the proxy instead, so in replay the proxy answers them from `.mock.json`, even though [`e2e/todos.spec.ts`](e2e/todos.spec.ts) records them to a `.har` as well.
+- **Browser → `.har`.** [`e2e/direct.spec.ts`](e2e/direct.spec.ts) calls `playwrightProxy.before(page, testInfo, mode, { url })` with a pattern for the mock backend's host. The [`/direct`](src/routes/direct.tsx) route fetches the API itself, as a browser does with a third-party service, so Playwright's HAR recorder captures those calls and replay serves them from the `.har` in recorded order. The home route's browser calls go to the proxy instead, so in replay the proxy answers them from `.mock.json`, even though [`e2e/todos.spec.ts`](e2e/todos.spec.ts) records them to a `.har` as well.
 - **SSR → `.mock.json`.** The proxy records server-side requests itself. For the proxy to associate an SSR fetch with the right test, the per-test recording-id header (`x-test-rcrd-id`) must travel from the incoming page request to the outgoing SSR fetch — that is exactly what [`registerProxyFetch()`](../../packages/test-proxy-recorder/src/tanstack-start/registerProxyFetch.ts) in [`src/router.tsx`](src/router.tsx) does. It patches the server `fetch` to read the current request's id (via TanStack Start's `getRequestHeader`) and forward it — which transparently tags the `fetch` that TanStack Query's loader prefetch runs during SSR, so the data layer needs no recorder-specific code.
 - **`mode`** is `record` when `RECORD_MODE` is set, otherwise `replay`.
 - Each test calls `resetData()` first (a `DELETE /todos` to the mock backend) so recordings start from a known-empty state.
@@ -96,6 +98,8 @@ The interesting part of this example is that two different request origins are c
 | [`src/routes/secret.tsx`](src/routes/secret.tsx) | Client `useQuery` carrying an `Authorization` header + secret response — exercises redaction. |
 | [`src/routes/direct.tsx`](src/routes/direct.tsx) | Client `useQuery` straight to the API (`VITE_DIRECT_API_URL`), bypassing the proxy — the requests the `.har` replays; the add mutation invalidates the list so it is read again. |
 | [`e2e/direct.spec.ts`](e2e/direct.spec.ts) | Adds a todo and reads the list back; asserts the two identical `GET /todos` calls each get their own recorded response from the `.har`, in order. |
+| [`src/routes/parallel.tsx`](src/routes/parallel.tsx) | Loader posts four batches of different sizes to one path at once on the server, as an app filling an embeddings index does. |
+| [`e2e/parallel.spec.ts`](e2e/parallel.spec.ts) | Loads `/parallel`, then replays its four `POST /embeddings` calls in reverse order; asserts each batch gets the `.mock.json` recording made with its own body. |
 | [`src/routes/websocket.tsx`](src/routes/websocket.tsx) | WebSocket chat; traffic recorded server-side in `.mock.json`. |
 | [`src/routes/api/revalidate.ts`](src/routes/api/revalidate.ts) | Token-authenticated server route for on-demand ISR revalidation (CDN purge in prod). |
 | [`mock-backend/server.mjs`](mock-backend/server.mjs) | Standalone Node HTTP + WebSocket API (port 3002) — the "real" backend in record mode. |

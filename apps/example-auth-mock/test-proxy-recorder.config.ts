@@ -2,7 +2,7 @@ import { defineConfig } from 'test-proxy-recorder';
 
 // Auto-discovered by the `test-proxy-recorder` CLI from the working directory.
 export default defineConfig({
-  target: 'http://localhost:3102',
+  target: `http://localhost:${process.env.MOCK_BACKEND_PORT || 3102}`,
   port: 8100,
   recordingsDir: './e2e/recordings',
   // Redaction is on by default: Authorization / Cookie / Set-Cookie are always

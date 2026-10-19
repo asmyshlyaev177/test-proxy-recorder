@@ -1,12 +1,13 @@
 import { expect, type Page, type Request, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL } from './ports';
+
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
 
 // The /direct page calls the API itself, not through the proxy, so these are the
 // browser requests the .har serves in replay (the proxy answers its own).
-const CLIENT_SIDE_URL = /localhost:3002/;
+const CLIENT_SIDE_URL = new RegExp(new URL(MOCK_BACKEND_URL).host);
 
 interface ListRead {
   request: Request;
@@ -18,7 +19,7 @@ function watchListReads(page: Page): ListRead[] {
   const reads: ListRead[] = [];
   page.on('response', (response) => {
     const request = response.request();
-    if (request.method() === 'GET' && request.url() === `${BACKEND_URL}/todos`) {
+    if (request.method() === 'GET' && request.url() === `${MOCK_BACKEND_URL}/todos`) {
       reads.push({ request, body: response.json() });
     }
   });
@@ -26,7 +27,7 @@ function watchListReads(page: Page): ListRead[] {
 }
 
 async function resetData() {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' }).catch(() => false);
+  await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' }).catch(() => false);
 }
 
 test.beforeEach(async ({ page }, testInfo) => {

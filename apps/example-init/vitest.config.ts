@@ -6,7 +6,8 @@ export default defineConfig({
     // Spawns real CLI processes and a backend; give it room.
     testTimeout: 60_000,
     hookTimeout: 60_000,
-    // One stack (proxy + backend) at a time — tests share fixed ports.
+    // One file at a time: several build or pack the library into the same dist/
+    // when it is missing, and parallel builds would race on it.
     fileParallelism: false,
   },
 });

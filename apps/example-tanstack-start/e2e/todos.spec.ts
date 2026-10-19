@@ -1,18 +1,18 @@
 import { expect, test } from '@playwright/test';
 import { playwrightProxy } from 'test-proxy-recorder';
 
+import { MOCK_BACKEND_URL, PROXY_URL_PATTERN } from './ports';
+
 type Mode = 'replay' | 'record';
 
 const mode = process.env.RECORD_MODE ? 'record' : 'replay';
 // const mode = 'record' as Mode;
-const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3002';
-
-// Matches client-side fetch calls from the browser to the proxy (port 8100)
+// Matches client-side fetch calls from the browser to the proxy
 // These are recorded via Playwright's HAR mechanism alongside the server-side .mock.json
-const CLIENT_SIDE_URL = /localhost:8100/;
+const CLIENT_SIDE_URL = PROXY_URL_PATTERN;
 
 async function resetData() {
-  await fetch(`${BACKEND_URL}/todos`, { method: 'DELETE' }).catch((_err) => false);
+  await fetch(`${MOCK_BACKEND_URL}/todos`, { method: 'DELETE' }).catch((_err) => false);
 }
 
 test.beforeEach(async ({ page }, testInfo) => {

@@ -28,8 +28,8 @@ The proxy and the HAR file look up a recorded response in different ways.
 
 | In replay | Proxy (`.mock.json`) | HAR (`.har`) |
 | --- | --- | --- |
-| Matched on | Method, path and an MD5 hash of the query string. The body is not compared. | Method, URL and body, then the entries sharing the most request headers, since the same URL and body can be different operations told apart by a header. A body no entry has falls back to method and URL, and a multipart boundary is ignored. |
-| Same request again | The next recording, in recorded order. | The next recording, in recorded order, with one rule for writes (below). |
+| Matched on | Method, path, an MD5 hash of the query string, and the request body, with a multipart boundary ignored. `GET` and `HEAD` match without a body. Headers are not compared. | Method, URL and body, then the entries sharing the most request headers, since the same URL and body can be different operations told apart by a header. A body no entry has falls back to method and URL, and a multipart boundary is ignored. |
+| Same request again | The next recording with the same body, in recorded order. | The next recording, in recorded order, with one rule for writes (below). |
 | No recording | A 404 with a JSON body that names the request, and `playwrightProxy.before()` closes the page so the test fails at once (`failOnMissingRecording: false` turns that off). | The request is aborted and `[Client-Side Replay] No recorded response for <method> <url>` is logged. |
 | Real API reached | Only in `transparent` mode. | Only by requests that don't match `url`. |
 
@@ -37,7 +37,11 @@ The proxy and the HAR file look up a recorded response in different ways.
 
 The key is the method, the path and the first 16 hex characters of the query string's MD5 hash. `GET /todos?page=2` has the key `GET_todos_46589c7afd19c014.json`, so a query string that differs at all, even in parameter order, makes a different key.
 
-Calls with the same key are served in the order they were recorded. A call past the last recording gets the last response again, and the proxy logs `[REPLAY WARNING] All N recordings already served for <key> (session: <id>), reusing last one`.
+Calls with the same key are then matched by request body, so calls sent in parallel, which reach the proxy in a different order on each run, still get their own responses. Before comparing, the proxy applies its body redaction (`bodyPatterns`) to both bodies and removes the multipart boundary, so a redacted secret or a boundary that changes per request does not stop a match. `GET` and `HEAD` calls are matched by key alone.
+
+A call whose body no recording has is treated as a request with no recording, below, and the reason names the body: `No recording for POST /embeddings with this request body in session <id> (2 recorded with other bodies)`. The proxy never answers it with a recording made for another body, because that would hide a change in what the app sent. Keep bodies the same between runs: a current date or a random id in a body fails replay.
+
+Calls with the same key and body are served in the order they were recorded. A call past the last recording with its body gets that recording's response again, and the proxy logs `[REPLAY WARNING] All N recordings matching this request already served for <key> (session: <id>), reusing last one`, where N counts the recordings with that body.
 
 A request with no recording doesn't reach the real API. The proxy logs `[REPLAY ERROR]` lines and answers with a 404:
 

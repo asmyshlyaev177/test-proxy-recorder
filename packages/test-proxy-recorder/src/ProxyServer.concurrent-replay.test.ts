@@ -327,8 +327,16 @@ describe('ProxyServer Concurrent Replay', () => {
 
       // Make concurrent requests to SAME endpoint with different cookies
       const [response1, response2] = await Promise.all([
-        makeRequest('/api/test', { method: 'POST', cookie: cookie1 }),
-        makeRequest('/api/test', { method: 'POST', cookie: cookie2 }),
+        makeRequest('/api/test', {
+          method: 'POST',
+          body: JSON.stringify({ session: 'session-1' }),
+          cookie: cookie1,
+        }),
+        makeRequest('/api/test', {
+          method: 'POST',
+          body: JSON.stringify({ session: 'session-2' }),
+          cookie: cookie2,
+        }),
       ]);
 
       expect(response1.status).toBe(200);
@@ -382,24 +390,29 @@ describe('ProxyServer Concurrent Replay', () => {
       // Session 1 makes 3 requests
       const session1Req1 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ request: 1, session: 'A' }),
         cookie: cookie1,
       });
       const session1Req2 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ request: 2, session: 'A' }),
         cookie: cookie1,
       });
       const session1Req3 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ request: 3, session: 'A' }),
         cookie: cookie1,
       });
 
       // Session 2 makes 2 requests
       const session2Req1 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ request: 1, session: 'B' }),
         cookie: cookie2,
       });
       const session2Req2 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ request: 2, session: 'B' }),
         cookie: cookie2,
       });
 
@@ -477,18 +490,22 @@ describe('ProxyServer Concurrent Replay', () => {
       // Interleave requests: S1-R1, S2-R1, S1-R2, S2-R2
       const r1_1 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ order: 'first', session: 'X' }),
         cookie: cookie1,
       });
       const r2_1 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ order: 'first', session: 'Y' }),
         cookie: cookie2,
       });
       const r1_2 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ order: 'second', session: 'X' }),
         cookie: cookie1,
       });
       const r2_2 = await makeRequest('/api/test', {
         method: 'POST',
+        body: JSON.stringify({ order: 'second', session: 'Y' }),
         cookie: cookie2,
       });
 
@@ -571,10 +588,12 @@ describe('ProxyServer Concurrent Replay', () => {
       const [response1, response2] = await Promise.all([
         makeRequest('/api/test', {
           method: 'POST',
+          body: JSON.stringify({ data: 'session-1' }),
           cookie: cookie1,
         }),
         makeRequest('/api/test', {
           method: 'POST',
+          body: JSON.stringify({ data: 'session-2' }),
           cookie: cookie2,
         }),
       ]);

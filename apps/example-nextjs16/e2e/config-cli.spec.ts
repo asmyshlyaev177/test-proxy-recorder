@@ -6,8 +6,10 @@ import path from 'node:path';
 
 import { expect, test } from '@playwright/test';
 
+import { envWithoutProxyPort, MOCK_BACKEND_URL } from './ports';
+
 // Layer 2 (CLI integration) — see e2e/README.md. Each test spawns a real
-// `test-proxy-recorder` process pointed at the mock backend on :3002, records
+// `test-proxy-recorder` process pointed at the mock backend (MOCK_BACKEND_URL), records
 // one request, and asserts the resolved options by inspecting the saved
 // .mock.json. No browser, so this is where the EXHAUSTIVE matrix lives: every
 // config field is exercised from the config file, plus the CLI-overrides-config
@@ -23,7 +25,6 @@ const BIN = path.join(
   'proxy.js',
 );
 
-const MOCK_BACKEND = 'http://localhost:3002';
 const RECORDING_ID_HEADER = 'x-test-rcrd-id';
 const CONFIG_FILE = 'test-proxy-recorder.config.ts';
 
@@ -81,7 +82,7 @@ async function startProxy(cwd: string, opts: StartOptions): Promise<Proxy> {
 
   const child: ChildProcess = spawn(process.execPath, [BIN, ...args], {
     cwd,
-    env: { ...process.env },
+    env: envWithoutProxyPort(),
     stdio: ['ignore', 'pipe', 'pipe'],
   });
 
@@ -193,7 +194,7 @@ async function withProxy(
 test.describe('config file values are applied', () => {
   test('target — proxies to the configured backend', async () => {
     await withProxy(
-      { config: `export default { target: '${MOCK_BACKEND}', recordingsDir: './recordings' };` },
+      { config: `export default { target: '${MOCK_BACKEND_URL}', recordingsDir: './recordings' };` },
       async (proxy) => {
         const { json } = await proxy.record('cfg-target', {});
         const recording = json.recordings[0];
@@ -207,7 +208,7 @@ test.describe('config file values are applied', () => {
   test('port — proxy binds the port from the config', async () => {
     await withProxy(
       {
-        config: `export default { target: '${MOCK_BACKEND}', port: __PORT__, recordingsDir: './recordings' };`,
+        config: `export default { target: '${MOCK_BACKEND_URL}', port: __PORT__, recordingsDir: './recordings' };`,
         portFromConfig: true,
       },
       async (proxy) => {
@@ -222,7 +223,7 @@ test.describe('config file values are applied', () => {
   test('recordingsDir — writes recordings to the configured directory', async () => {
     await withProxy(
       {
-        config: `export default { target: '${MOCK_BACKEND}', recordingsDir: './custom-rec' };`,
+        config: `export default { target: '${MOCK_BACKEND_URL}', recordingsDir: './custom-rec' };`,
         recordingsDir: './custom-rec',
       },
       async (proxy) => {
@@ -234,7 +235,7 @@ test.describe('config file values are applied', () => {
 
   test('timeout — auto-resets to transparent after the configured timeout', async () => {
     await withProxy(
-      { config: `export default { target: '${MOCK_BACKEND}', timeout: 500, recordingsDir: './recordings' };` },
+      { config: `export default { target: '${MOCK_BACKEND_URL}', timeout: 500, recordingsDir: './recordings' };` },
       async (proxy) => {
         await proxy.setMode('record', 'cfg-timeout');
         expect((await proxy.getState()).mode).toBe('record');
@@ -257,7 +258,7 @@ test.describe('config file values are applied', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: false,
          };`,
@@ -275,7 +276,7 @@ test.describe('config file values are applied', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: { headers: ['x-custom-secret'] },
          };`,
@@ -293,7 +294,7 @@ test.describe('config file values are applied', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: { bodyPatterns: [/sk_live_\\w+/g] },
          };`,
@@ -314,7 +315,7 @@ test.describe('config file values are applied', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: { allowHeaders: ['cookie'] },
          };`,
@@ -335,7 +336,7 @@ test.describe('config file values are applied', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: { allowCookies: ['theme'] },
          };`,
@@ -356,7 +357,7 @@ test.describe('config file values are applied', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: { placeholder: '###HIDDEN###' },
          };`,
@@ -378,7 +379,7 @@ test.describe('CLI flags override config file', () => {
       {
         // Config points at a dead port; the CLI argument must win.
         config: `export default { target: 'http://localhost:1', recordingsDir: './recordings' };`,
-        args: [MOCK_BACKEND],
+        args: [MOCK_BACKEND_URL],
       },
       async (proxy) => {
         const { json } = await proxy.record('cli-target', {});
@@ -390,7 +391,7 @@ test.describe('CLI flags override config file', () => {
   test('--dir overrides config.recordingsDir', async () => {
     await withProxy(
       {
-        config: `export default { target: '${MOCK_BACKEND}', recordingsDir: './rec-cfg' };`,
+        config: `export default { target: '${MOCK_BACKEND_URL}', recordingsDir: './rec-cfg' };`,
         args: ['--dir', './rec-cli'],
         recordingsDir: './rec-cli',
       },
@@ -405,7 +406,7 @@ test.describe('CLI flags override config file', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: false,
          };`,
@@ -429,7 +430,7 @@ test.describe('CLI flags override config file', () => {
     await withProxy(
       {
         config: `export default {
-           target: '${MOCK_BACKEND}',
+           target: '${MOCK_BACKEND_URL}',
            recordingsDir: './recordings',
            redaction: { headers: ['x-config-only'] },
          };`,

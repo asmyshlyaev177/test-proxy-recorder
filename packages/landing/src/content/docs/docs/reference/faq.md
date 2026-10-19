@@ -18,6 +18,10 @@ test.afterAll(async () => {
 
 The session timeout is the other way a replay run reaches the real backend. Every `playwrightProxy.before()` call restarts it, and proxied requests don't. If it runs out (120000 ms by default) before the next `before()` call, the proxy switches to `transparent`. A test that is still running then sends its remaining requests to the real backend. If one test can run that long, raise the timeout with `--timeout` on the [CLI](/docs/guides/cli/) or `timeout` in the [config](/docs/guides/config/).
 
+## A replayed request fails with "with this request body" — why? {#request-body-changed}
+
+The proxy matches a server-side request by its body as well as its method, path and query, and the request sent a body that no recording has. Usually the body holds a value that changes every run, such as the current date or a random id. Fix the value during tests (a fixed clock, a seeded id generator) and re-record. If the app's request changed on purpose, re-record the test. `GET` and `HEAD` requests are not compared by body.
+
 ## Can I record with parallel workers? {#parallel-recording}
 
 No. The proxy holds one recording session at a time. When a second test starts recording, the proxy saves the first test's file and switches to the second test. The first test's remaining requests through the proxy then go into the second test's `.mock.json`. Record with one worker, as the `test:e2e:record` script that `init` adds already does:

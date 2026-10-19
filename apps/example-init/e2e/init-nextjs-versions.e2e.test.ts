@@ -12,6 +12,8 @@ import { fileURLToPath } from 'node:url';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
+import { getFreePorts } from './free-port';
+
 /**
  * Black-box e2e coverage for `init`'s Next.js SSR wiring.
  *
@@ -34,8 +36,8 @@ const CLI_BIN = path.join(
   'proxy.js',
 );
 
-const BACKEND_URL = 'http://localhost:8235';
-const PROXY_PORT = 8236;
+let BACKEND_URL: string;
+let PROXY_PORT: number;
 
 const LAYOUT_SRC = `import './globals.css';
 
@@ -50,7 +52,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
 
 let workDir: string;
 
-beforeAll(() => {
+beforeAll(async () => {
+  const [backendPort, proxyPort] = await getFreePorts(2);
+  BACKEND_URL = `http://localhost:${backendPort}`;
+  PROXY_PORT = proxyPort;
   if (!existsSync(CLI_BIN)) {
     const build = spawnSync(
       'pnpm',

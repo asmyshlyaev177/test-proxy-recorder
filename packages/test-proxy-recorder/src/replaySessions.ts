@@ -3,6 +3,8 @@ import type {
   RecordingSession,
   WebSocketReplayConfig,
 } from './types.js';
+import { stripMultipartBoundary } from './utils/httpHelpers.js';
+import type { BodyRedactor } from './utils/redact.js';
 
 /**
  * State for a single replay session
@@ -15,6 +17,8 @@ export interface ReplaySessionState {
   lastAccessTime: number;
   // Cache of sorted recordings per key to avoid re-filtering and re-sorting
   sortedRecordingsByKey: Map<string, Recording[]>;
+  // What each recording's request body compares as, computed once per load.
+  bodyIdentityByRecordingId: Map<number, string>;
   // Per-session WebSocket replay pacing, set from the control request.
   wsReplay?: WebSocketReplayConfig;
 }
@@ -54,6 +58,7 @@ export class ReplaySessionManager {
         loadedSession: null,
         lastAccessTime: Date.now(),
         sortedRecordingsByKey: new Map(),
+        bodyIdentityByRecordingId: new Map(),
       };
       this.sessions.set(recordingId, session);
       this.startEvictionTimer();
@@ -150,6 +155,50 @@ export function getSortedRecordings(
   return sortedRecords;
 }
 
+// Both sides are redacted: a recording saved with redaction off still matches a proxy that has it on.
+function getBodyIdentity(
+  body: string | null,
+  contentType: string | undefined,
+  redactBody: BodyRedactor,
+): string {
+  return stripMultipartBoundary(redactBody(body ?? ''), contentType);
+}
+
+function getRecordedBodyIdentity(
+  sessionState: ReplaySessionState,
+  { recordingId, request }: Recording,
+  redactBody: BodyRedactor,
+): string {
+  const cached = sessionState.bodyIdentityByRecordingId.get(recordingId);
+  if (cached !== undefined) return cached;
+  // Hand-written recordings may leave out the headers.
+  const identity = getBodyIdentity(
+    request.body,
+    request.headers?.['content-type'],
+    redactBody,
+  );
+  sessionState.bodyIdentityByRecordingId.set(recordingId, identity);
+  return identity;
+}
+
+/**
+ * The recordings made with the request's body. None means the request changed
+ * since it was recorded; another request's recording would hide that.
+ */
+export function getRecordsForBody(
+  sessionState: ReplaySessionState,
+  recordsWithKey: Recording[],
+  body: string,
+  contentType: string | undefined,
+  redactBody: BodyRedactor,
+): Recording[] {
+  const identity = getBodyIdentity(body, contentType, redactBody);
+  return recordsWithKey.filter(
+    (record) =>
+      getRecordedBodyIdentity(sessionState, record, redactBody) === identity,
+  );
+}
+
 /**
  * Pick the recording to serve for a request.
  * Deterministic order: always serve the first unserved recording in the
@@ -170,7 +219,7 @@ export function selectReplayRecord(
 
   if (recordsWithKey.length > 0) {
     console.log(
-      `[REPLAY WARNING] All ${recordsWithKey.length} recordings already served for ${key} (session: ${recordingId}), reusing last one`,
+      `[REPLAY WARNING] All ${recordsWithKey.length} recordings matching this request already served for ${key} (session: ${recordingId}), reusing last one`,
     );
     return recordsWithKey[recordsWithKey.length - 1];
   }

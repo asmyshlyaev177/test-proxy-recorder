@@ -4,7 +4,7 @@ import { defineConfig } from 'test-proxy-recorder';
 // Equivalent to the old flags (`http://localhost:3002 -p 8100 -d ./e2e/recordings`),
 // plus an extra redacted header to demonstrate the redaction config end-to-end.
 export default defineConfig({
-  target: 'http://localhost:3002',
+  target: `http://localhost:${process.env.MOCK_BACKEND_PORT || 3002}`,
   port: 8100,
   recordingsDir: './e2e/recordings',
   // Redaction is on by default; this object customizes it. Pass `false` to disable.
