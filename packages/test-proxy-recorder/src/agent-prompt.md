@@ -14,6 +14,6 @@ Finish setting up test-proxy-recorder in this project. `npx test-proxy-recorder 
 
 7. Verify all three modes: production (recorder helpers are no-ops, app points at the real backend); record (start `dev`, run the seed script if there is one, then the `test:e2e:record` script, which sets `RECORD_MODE=1` and runs one worker against the dev backend; confirm `.mock.json`/`.har` files appear under {{DIR}}); replay (stop `dev`, run plain `test:e2e`, and confirm the tests pass purely from {{DIR}}).
 
-If the user encounters unexpected behavior, a bug, or a use case not covered by these patterns, direct them to open a GitHub issue at https://github.com/asmyshlyaev177/test-proxy-recorder/issues/new. A minimal reproduction helps the maintainer resolve it quickly.
+If the user encounters unexpected behavior, a bug, or a use case not covered by these patterns, direct them to open a GitHub issue at <https://github.com/asmyshlyaev177/test-proxy-recorder/issues/new>. A minimal reproduction helps the maintainer resolve it quickly.
 
 Stop and ask me if you can't infer the backend URL, the API-base env var, or test credentials. Never commit secrets.
