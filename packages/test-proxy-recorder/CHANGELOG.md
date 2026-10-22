@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.0.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v2.0.0...v2.0.1) (2026-10-22)
+
+
+### Bug Fixes
+
+* throw an error if replayed test has no recordings ([45bc8d2](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/45bc8d23d8903f5be8bed3a759df74ba1b2fe2c9))
+* throw an error if replayed test has no recordings ([6c14449](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/6c1444966d34fc8b9bdf2563eca02b6df469d1c7))
+
 ## [2.0.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v1.4.2...v2.0.0) (2026-10-19)
 
 
