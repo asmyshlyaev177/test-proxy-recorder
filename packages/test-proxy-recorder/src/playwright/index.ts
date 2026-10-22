@@ -529,7 +529,8 @@ interface BeforeOptions extends ClientSideRecordingOptions {
   /**
    * Replay only: throw when this test has no recording, and close the page,
    * failing the test, as soon as the proxy gets a request this test never
-   * recorded. Defaults to true; false only warns about a missing recording.
+   * recorded. Defaults to true. With false, a missing recording only warns and an
+   * unrecorded request gets the proxy's 404 while the page stays open.
    */
   failOnMissingRecording?: boolean | undefined;
 }
