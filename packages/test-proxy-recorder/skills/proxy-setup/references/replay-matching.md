@@ -39,4 +39,4 @@ Browser-side calls matched by `url` (`.har`):
 
 The proxy answers it with a 404 and reports it to the test, which fails at once: `playwrightProxy.before()` closes the page with a reason such as `[test-proxy-recorder] No recording for GET /api/todos in session home__loads`, also printed to stderr. A `locator.waitFor()` or `page.goto()` error carries the reason itself. An `expect(locator)` failure reports what it last saw (`element(s) not found`, or the last value it read), and the reason is the last line of its call log; it is also printed to stderr above the error.
 
-The usual causes are a test whose requests changed since it was recorded (re-record it) or a request the app makes on a timer. To let such requests through as 404s, pass `failOnMissingRecording: false` to `playwrightProxy.before()`.
+The usual causes are a test whose requests changed since it was recorded or a request the app makes on a timer. Re-record the test.

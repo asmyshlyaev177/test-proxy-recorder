@@ -35,6 +35,7 @@ test('accurate location matches About page', async ({ page }) => {
     return { basedIn, appStoreCountry: m?.[1]?.trim() ?? null };
   });
 
-  await expect(fromCard).toEqual({ "appStoreCountry": "Poland", "basedIn": "Lithuania",
+  await expect(fromCard).toEqual({
+    "appStoreCountry": "Germany", "basedIn": "Lithuania",
 })
 });

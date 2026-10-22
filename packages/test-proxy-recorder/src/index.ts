@@ -17,9 +17,10 @@ export {
 } from './utils/redact';
 
 // Playwright integration
-export type { PlaywrightTestInfo } from './playwright';
+export type { HasRecordingOptions, PlaywrightTestInfo } from './playwright';
 export {
   generateSessionId,
+  hasRecording,
   playwrightProxy,
   setProxyMode,
   startRecording,

@@ -277,6 +277,61 @@ describe('Playwright Integration', () => {
     };
     const isMissingRecordingPoll = (url: unknown) =>
       String(url).includes('/__control/missing-recording?id=home__loads');
+    const isModeSwitch = ([, init]: unknown[]) =>
+      (init as RequestInit | undefined)?.method === 'POST';
+
+    beforeEach(() => {
+      // The test has a recording; a request in it may not.
+      mockAccess.mockResolvedValue(undefined);
+    });
+
+    it('throws before switching the proxy when the test has no recording', async () => {
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ recordingsDir: '/rec' }),
+      });
+      const page = createMockPage();
+
+      await expect(
+        playwrightProxy.before(page as unknown as Page, testInfo, 'replay'),
+      ).rejects.toThrow(
+        '[test-proxy-recorder] This test has no recording: /rec/home__loads.mock.json does not exist.',
+      );
+      expect(mockFetch.mock.calls.some((call) => isModeSwitch(call))).toBe(
+        false,
+      );
+      expect(page.setExtraHTTPHeaders).not.toHaveBeenCalled();
+    });
+
+    it('only warns about a missing recording when failOnMissingRecording is false', async () => {
+      mockAccess.mockRejectedValue(new Error('ENOENT'));
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ recordingsDir: '/rec' }),
+      });
+      const page = createMockPage();
+
+      await playwrightProxy.before(
+        page as unknown as Page,
+        testInfo,
+        'replay',
+        {
+          failOnMissingRecording: false,
+        },
+      );
+
+      expect(warn).toHaveBeenCalledWith(
+        expect.stringContaining('This test has no recording'),
+      );
+      expect(page.setExtraHTTPHeaders).toHaveBeenCalledWith({
+        'x-test-rcrd-id': 'home__loads',
+      });
+      warn.mockRestore();
+    });
 
     it('closes the page with the reason the proxy reports', async () => {
       const message = 'No recording for GET /api/todos (session: home__loads)';
@@ -376,6 +431,7 @@ describe('Playwright Integration', () => {
 
     it('should call setProxyMode with replay mode', async () => {
       const mockPage = createMockPage();
+      mockAccess.mockResolvedValue(undefined);
       mockFetch.mockResolvedValue({
         ok: true,
         json: async () => ({ success: true }),
@@ -392,8 +448,8 @@ describe('Playwright Integration', () => {
         'replay',
       );
 
-      // The mode switch, then the missing-recording long-poll.
-      expect(mockFetch).toHaveBeenCalledTimes(2);
+      // The recordings-dir lookup, the mode switch, then the missing-recording long-poll.
+      expect(mockFetch).toHaveBeenCalledTimes(3);
       expect(mockFetch).toHaveBeenCalledWith(
         'http://localhost:8100/__control',
         {
