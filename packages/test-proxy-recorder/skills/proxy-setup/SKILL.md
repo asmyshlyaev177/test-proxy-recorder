@@ -377,7 +377,7 @@ await playwrightProxy.before(
   {
     url,      // RegExp | string — browser-side requests to intercept via HAR
     timeout,  // ms — auto-reset timeout (default: 120000)
-    failOnMissingRecording, // replay: fail on an unrecorded request (default: true)
+    failOnMissingRecording, // replay: fail on a test or request with no recording (default: true)
   }
 );
 ```
@@ -386,7 +386,7 @@ await playwrightProxy.before(
 
 ### Recording names and replay matching
 
-Each test's recordings are named from its file, `describe` titles and title. Replay matches by method, path, query and request body (not for `GET`/`HEAD`), and fails the test at once on a request with no recording or with a body no recording has (opt out with `failOnMissingRecording: false`). Details: [references/replay-matching.md](references/replay-matching.md).
+Each test's recordings are named from its file, `describe` titles and title; a name over 120 bytes is cut and hashed. In replay, `before()` throws for a test with no recording: record it, don't skip it. Replay matches by method, path, query and request body (not for `GET`/`HEAD`), and fails the test at once on a request with no recording or with a body no recording has. Details: [references/replay-matching.md](references/replay-matching.md).
 
 ### Control endpoint
 

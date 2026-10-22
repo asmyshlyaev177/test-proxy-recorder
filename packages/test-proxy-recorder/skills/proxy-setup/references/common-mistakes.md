@@ -134,6 +134,27 @@ Source: README.md — Switch to replay and commit
 
 ---
 
+### HIGH Skipping a test that has no recording
+
+Wrong:
+```typescript
+// A skipped test reports as skipped, not failed, so the missing recording goes
+// unnoticed; a hand-built path also misses names cut to 120 bytes
+test.skip(!existsSync(`e2e/recordings/${generateSessionId(testInfo)}.mock.json`));
+```
+
+Correct:
+```typescript
+// No skip: in replay, before() throws for a test with no recording and names the file
+await playwrightProxy.before(page, testInfo, MODE);
+```
+
+Record the test once (`RECORD_MODE=1`, one worker) and commit its recording.
+
+Source: packages/test-proxy-recorder/src/playwright/index.ts — resolveReplaySessionId
+
+---
+
 ### MEDIUM Recording with Next.js dev server produces flaky recordings
 
 Wrong:

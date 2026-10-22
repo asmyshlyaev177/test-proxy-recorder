@@ -17,6 +17,7 @@ import {
   findHarPath,
   findRecordingPath,
   getHarPath,
+  getRecordingPath,
 } from '../utils/fileUtils.js';
 import {
   deserializeRedactionConfig,
@@ -212,8 +213,10 @@ function generateLegacySessionId(testInfo: PlaywrightTestInfo): string {
   return buildSessionPath(folder, fileName, slugifyTitle(titlePath.at(-1)!));
 }
 
-async function hasRecording(sessionId: string): Promise<boolean> {
-  const recordingsDir = await getRecordingsDir();
+async function hasSessionRecording(
+  recordingsDir: string,
+  sessionId: string,
+): Promise<boolean> {
   const files = await Promise.all([
     findRecordingPath(recordingsDir, sessionId),
     findHarPath(recordingsDir, sessionId),
@@ -233,23 +236,62 @@ async function hasRecording(sessionId: string): Promise<boolean> {
  * Replay keeps working for recordings made before describe titles were part of
  * the id: the old name is used only while no recording exists under the new one.
  */
+async function findRecordedSessionId(
+  testInfo: PlaywrightTestInfo,
+  recordingsDir: string,
+): Promise<string | undefined> {
+  const sessionId = generateSessionId(testInfo);
+  if (await hasSessionRecording(recordingsDir, sessionId)) return sessionId;
+  const legacyId = generateLegacySessionId(testInfo);
+  if (legacyId === sessionId) return undefined;
+  return (await hasSessionRecording(recordingsDir, legacyId))
+    ? legacyId
+    : undefined;
+}
+
+/**
+ * Throws unless failOnMissingRecording is false: replayed with no recording, a
+ * test fails later on a bare 404, or passes having checked nothing.
+ */
 async function resolveReplaySessionId(
   testInfo: PlaywrightTestInfo,
+  failOnMissingRecording = true,
 ): Promise<string> {
+  const recordingsDir = await getRecordingsDir();
+  const recordedId = await findRecordedSessionId(testInfo, recordingsDir);
+  if (recordedId !== undefined) return recordedId;
+
   const sessionId = generateSessionId(testInfo);
-  const legacyId = generateLegacySessionId(testInfo);
-  if (legacyId === sessionId || (await hasRecording(sessionId))) {
-    return sessionId;
-  }
-  return (await hasRecording(legacyId)) ? legacyId : sessionId;
+  const reason = `[test-proxy-recorder] This test has no recording: ${getRecordingPath(recordingsDir, sessionId)} does not exist. Record this test first.`;
+  if (failOnMissingRecording) throw new Error(reason);
+  console.warn(reason);
+  return sessionId;
+}
+
+export interface HasRecordingOptions {
+  /** Defaults to the directory the running proxy reports. */
+  recordingsDir?: string | undefined;
+}
+
+/**
+ * Whether replay has a recording for this test, under any name the proxy or an
+ * earlier version saved it.
+ */
+export async function hasRecording(
+  testInfo: PlaywrightTestInfo,
+  options?: HasRecordingOptions,
+): Promise<boolean> {
+  const recordingsDir = options?.recordingsDir ?? (await getRecordingsDir());
+  return (await findRecordedSessionId(testInfo, recordingsDir)) !== undefined;
 }
 
 async function resolveSessionId(
   testInfo: PlaywrightTestInfo,
   mode: Mode,
+  failOnMissingRecording: boolean,
 ): Promise<string> {
   return mode === Modes.replay
-    ? resolveReplaySessionId(testInfo)
+    ? resolveReplaySessionId(testInfo, failOnMissingRecording)
     : generateSessionId(testInfo);
 }
 
@@ -264,10 +306,7 @@ export async function startRecording(
   await setProxyMode(Modes.record, sessionId);
 }
 
-/**
- * Start replay for a test
- * @param testInfo - Playwright test info object
- */
+/** Start replay for a test; throws when the test has no recording. */
 export async function startReplay(testInfo: PlaywrightTestInfo): Promise<void> {
   const sessionId = await resolveReplaySessionId(testInfo);
   await setProxyMode(Modes.replay, sessionId);
@@ -488,8 +527,10 @@ export interface ClientSideRecordingOptions {
 interface BeforeOptions extends ClientSideRecordingOptions {
   timeout?: number | undefined;
   /**
-   * Replay only: close the page, failing the test, as soon as the proxy gets a
-   * request this test never recorded. Defaults to true.
+   * Replay only: throw when this test has no recording, and close the page,
+   * failing the test, as soon as the proxy gets a request this test never
+   * recorded. Defaults to true. With false, a missing recording only warns and an
+   * unrecorded request gets the proxy's 404 while the page stays open.
    */
   failOnMissingRecording?: boolean | undefined;
 }
@@ -525,7 +566,7 @@ function watchMissingRecordings(page: Page, sessionId: string): void {
     .then(async (response) => {
       if (response.status !== 200) return;
       const { message } = (await response.json()) as { message: string };
-      const reason = `[test-proxy-recorder] ${message}. Re-record this test, or pass failOnMissingRecording: false to playwrightProxy.before() to allow it.`;
+      const reason = `[test-proxy-recorder] ${message}. Re-record this test.`;
       console.error(reason);
       // Closing mid-navigation fails page.goto() with a bare net::ERR_ABORTED
       // that drops the reason, so let a pending navigation finish first.
@@ -558,7 +599,13 @@ export const playwrightProxy = {
     const timeout = typeof options === 'number' ? options : options?.timeout;
     const clientSideOptions =
       typeof options === 'object' && options !== null ? options : undefined;
-    const sessionId = await resolveSessionId(testInfo, mode);
+    const failOnMissingRecording =
+      clientSideOptions?.failOnMissingRecording !== false;
+    const sessionId = await resolveSessionId(
+      testInfo,
+      mode,
+      failOnMissingRecording,
+    );
 
     // Set the custom header on the page for Next.js and other frameworks
     await page.setExtraHTTPHeaders({
@@ -583,10 +630,7 @@ export const playwrightProxy = {
     // Set the proxy mode FIRST before setting up any route handlers
     await setProxyMode(mode, sessionId, timeout, clientSideOptions?.websocket);
 
-    if (
-      mode === Modes.replay &&
-      clientSideOptions?.failOnMissingRecording !== false
-    ) {
+    if (mode === Modes.replay && failOnMissingRecording) {
       watchMissingRecordings(page, sessionId);
     }
 

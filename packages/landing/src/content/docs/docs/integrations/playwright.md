@@ -26,7 +26,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Exception — full-stack apps:** when the browser also calls `localhost:8100` (because the frontend is configured with the proxy URL as its API base), use `/localhost:8100/` as the pattern. Those browser requests then pass through to the proxy, which records them in the test's `.mock.json` and replays them from it, so a missing one gets the proxy's 404 rather than a HAR abort (see [how replay matches requests](/docs/getting-started/how-it-works/#replay-matching)).
 
-Recording filenames are derived from test names (`"create a user"` → `create-a-user.mock.json` / `.har`).
+Recording file names come from the test file, `describe` titles and title (`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`). A name over 120 bytes is cut and ends in a hash.
+
+## A test with no recording
+
+In replay, `before()` throws when the test has no recording, before it switches the proxy:
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+Record the test rather than skipping it: a skipped test reports as skipped, not failed, so a missing recording goes unnoticed. `hasRecording(testInfo)` answers the same question without throwing, using the same file names as replay.
 
 ## Global teardown (recommended) {#global-teardown-recommended}
 
