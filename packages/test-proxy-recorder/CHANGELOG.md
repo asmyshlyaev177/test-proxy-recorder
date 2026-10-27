@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v2.0.1...v2.1.0) (2026-10-27)
+
+
+### Features
+
+* parallel recording ([c1973e6](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/c1973e68efe5b10dbabb9787e2f81a5f03a7dd26))
+* parallel recording ([7e50172](https://github.com/asmyshlyaev177/test-proxy-recorder/commit/7e501724a978e4ec7008a53d4d8b960155a0d751))
+
 ## [2.0.1](https://github.com/asmyshlyaev177/test-proxy-recorder/compare/v2.0.0...v2.0.1) (2026-10-22)
 
 

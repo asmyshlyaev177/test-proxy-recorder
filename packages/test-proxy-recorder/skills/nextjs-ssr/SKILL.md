@@ -15,7 +15,7 @@ sources:
 metadata:
   type: framework
   library: test-proxy-recorder
-  library_version: "2.0.1" # x-release-please-version
+  library_version: "2.1.0" # x-release-please-version
   framework: nextjs
 ---
 
