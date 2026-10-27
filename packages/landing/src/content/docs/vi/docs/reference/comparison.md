@@ -4,7 +4,7 @@ description: 'So sánh test-proxy-recorder với MSW, routeFromHAR, Polly.js, ch
 sidebar:
   label: So sánh
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 Mỗi công cụ ở đây kiểm soát các response API mà một test end-to-end nhận được. Chúng khác nhau ở chỗ chặn request ở đâu (trong trình duyệt, bên trong máy chủ của bạn, hay trong một proxy riêng) và ở việc bạn tự viết response hay ghi lại chúng. Bảng giữ sáu công cụ từ [phần tổng quan của tài liệu](/vi/docs/#comparison) và bổ sung chế độ test của Next.js (Next.js test mode), mockttp, scenarist, talkback và proxay. Mỗi ô đều lấy từ tài liệu, README hoặc mã nguồn của chính công cụ đó, được liên kết bên dưới bảng, tính đến ngày 2026-10-03. "Không có trong tài liệu" nghĩa là các nguồn đó không đề cập.
@@ -56,7 +56,7 @@ Nếu bạn đang chuyển từ Polly.js sang, các khái niệm của nó tươ
 | Các chế độ `record`, `replay` và `passthrough` ([cấu hình](https://netflix.github.io/pollyjs/#/configuration)) | Các chế độ `record`, `replay` và `transparent`, được đặt cho từng test bởi `playwrightProxy.before()` |
 | Một bản ghi có tên cho mỗi instance Polly, được lưu bởi một persister | Một `.mock.json` (máy chủ) và một `.har` (trình duyệt) cho mỗi test Playwright, trong thư mục bản ghi |
 | Các adapter bên trong tiến trình thực hiện request | Một tiến trình proxy cho lời gọi phía máy chủ, HAR cho lời gọi trình duyệt, và `registerProxyFetch()` trên máy chủ |
-| Request được khớp theo method, header, body, thứ tự và URL theo mặc định | Request phía máy chủ được khớp theo method, path và một hash của query, theo thứ tự đã ghi, không so sánh body. Request trình duyệt theo quy tắc HAR của Playwright, vốn so sánh cả body của POST |
+| Request được khớp theo method, header, body, thứ tự và URL theo mặc định | Request phía máy chủ được khớp theo method, path, một hash của query và body, các lần lặp lại được trả về theo thứ tự đã ghi và không so sánh header. Request trình duyệt được khớp theo method, URL và body, sau đó theo các header trùng nhau |
 
 ## MSW với Next.js và Playwright {#msw}
 

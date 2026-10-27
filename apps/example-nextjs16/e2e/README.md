@@ -5,7 +5,7 @@ Tests for the config-file / CLI behaviour are split into three layers, fastest a
 | Layer | Location | Browser? | Backend? | Answers |
 |---|---|---|---|---|
 | 1. Unit | `packages/test-proxy-recorder/src/cli.test.ts`, `config-loader.test.ts` | no | no | Does option **resolution** work — discovery, parsing, and CLI > config > default precedence? |
-| 2. CLI integration | `e2e/config-cli.spec.ts` | no | yes (`:3002`) | Does a **real spawned proxy** honour the resolved options? Exhaustive matrix of every config field + CLI override, each asserted against the saved `.mock.json`. Black box: spawns the CLI binary, drives it over HTTP. |
+| 2. CLI integration | `e2e/config-cli.spec.ts`, `e2e/parallel-record.spec.ts` (spawn helper in `e2e/cli-proxy.ts`) | no | yes (`:3002`) | Does a **real spawned proxy** honour the resolved options? Exhaustive matrix of every config field + CLI override, each asserted against the saved `.mock.json`. Black box: spawns the CLI binary, drives it over HTTP. `parallel-record` drives the control requests several workers send through one proxy (switches, calls left in flight, un-awaited cleanups overlapping the next switch) and fails if a call hangs or lands in another session's file. |
 | 3. Full e2e | `e2e/config-e2e.spec.ts` (config-specific) + `todos.spec.ts`, `websocket.spec.ts`, `redaction.spec.ts` | yes | yes | Does it all work **through the running Next.js app**? |
 
 ## Why the layers are shaped this way

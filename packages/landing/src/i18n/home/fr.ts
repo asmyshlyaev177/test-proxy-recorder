@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=fr source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=fr source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -110,13 +110,13 @@ export const home: HomeCopy = {
     perTest: {
       term: 'Un fichier par test',
       start: "Chaque test écrit son propre fichier, nommé d'après le test, donc",
-      end: 'ne réenregistre que celui-là. Le proxy enregistre un test à la fois : enregistrez donc avec un seul worker ; le rejeu, lui, tourne en parallèle.',
+      end: "ne réenregistre que celui-là. Les tests s'enregistrent sur des workers en parallèle, comme pour le rejeu, sauf s'ils partagent une même base de données ou un même compte.",
     },
     testId: {
       term: "L'id du test",
       start: 'Playwright envoie',
       mid: "avec chaque requête d'un test, et",
-      end: 'le recopie sur les fetches que fait votre serveur. Le proxy le lit pour répondre à chaque test depuis le fichier propre à ce test, même quand les tests sont rejoués en parallèle.',
+      end: 'le recopie sur les fetches que fait votre serveur. Le proxy le lit pour enregistrer chaque test dans son propre fichier et le rejouer depuis ce fichier, même quand les tests tournent en parallèle.',
     },
     secrets: {
       term: 'Secrets',
@@ -131,7 +131,7 @@ export const home: HomeCopy = {
     heading: 'Questions sur le rejeu',
     matching: {
       term: 'Comment les requêtes sont-elles mises en correspondance ?',
-      body: "Le proxy met en correspondance un appel côté serveur selon sa méthode, son chemin et sa query string exacte, pas selon son corps, et sert les appels répétés dans l'ordre où ils ont été enregistrés. Les appels du navigateur suivent les règles HAR de Playwright, qui comparent aussi les corps des POST. Une query string qui change à chaque exécution, comme un horodatage, ne correspond jamais, et aucune option ne permet d'ignorer un paramètre : gardez donc ces valeurs fixes pendant les tests.",
+      body: "Le proxy met en correspondance un appel côté serveur selon sa méthode, son chemin, sa query string exacte et son corps, si bien que des appels envoyés en parallèle reçoivent chacun leur propre réponse, et sert les appels répétés dans l'ordre où ils ont été enregistrés. Les appels du navigateur sont eux aussi mis en correspondance selon la méthode, l'URL et le corps. Une query string ou un corps qui change à chaque exécution, comme un horodatage, ne correspond jamais, et aucune option ne permet d'ignorer une valeur : gardez donc ces valeurs fixes pendant les tests.",
       link: 'Correspondance des requêtes en rejeu →',
     },
     misses: {

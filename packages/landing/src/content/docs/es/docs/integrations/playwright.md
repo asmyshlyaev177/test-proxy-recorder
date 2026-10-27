@@ -4,7 +4,7 @@ description: Graba y reproduce llamadas a la API en pruebas de Playwright con te
 sidebar:
   label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
+i18nSourceBlob: 41506a06c67c43287c172907f5ef6c6ef07e36e3
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -28,7 +28,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Excepción — apps full-stack:** cuando el navegador también llama a `localhost:8100` (porque el frontend está configurado con la URL del proxy como su base de API), usa `/localhost:8100/` como patrón. Esas peticiones del navegador pasan entonces al proxy, que las graba en el `.mock.json` de la prueba y las reproduce desde él, así que una que falte recibe el 404 del proxy en lugar de que HAR la aborte (mira [cómo se emparejan las peticiones al reproducir](/es/docs/getting-started/how-it-works/#replay-matching)).
 
-Los nombres de archivo de grabación se derivan de los nombres de las pruebas (`"create a user"` → `create-a-user.mock.json` / `.har`).
+Los nombres de archivo de grabación salen del archivo de prueba, de los títulos de `describe` y del título de la prueba (`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`). Un nombre de más de 120 bytes se recorta y termina en un hash.
+
+## Una prueba sin grabación
+
+En replay, `before()` lanza un error cuando la prueba no tiene grabación, antes de cambiar el modo del proxy:
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+Graba la prueba en lugar de omitirla: una prueba omitida se reporta como omitida, no como fallida, así que una grabación que falta pasa desapercibida. `hasRecording(testInfo)` responde a la misma pregunta sin lanzar un error, con los mismos nombres de archivo que la reproducción.
 
 ## Teardown global (recomendado) {#global-teardown-recommended}
 
@@ -48,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` reinicia el proxy a `transparent` y ejecuta la pasada de [enmascaramiento](/es/docs/guides/secret-redaction/) de HAR. No lo llames en un hook `afterAll` por prueba bajo `fullyParallel` — mira en las [preguntas frecuentes](/es/docs/reference/faq/#parallel-replay) por qué eso rompe la reproducción en paralelo.
+`teardown()` reinicia el proxy a `transparent` y ejecuta la pasada de [enmascaramiento](/es/docs/guides/secret-redaction/) de HAR. El cambio a `transparent` guarda y termina todas las sesiones de grabación. No lo llames en un hook `afterAll` por prueba bajo `fullyParallel` — mira en las [preguntas frecuentes](/es/docs/reference/faq/#parallel-replay) por qué eso rompe la reproducción y la grabación en paralelo.
 
 ## Archivos de grabación
 

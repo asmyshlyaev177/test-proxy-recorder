@@ -4,7 +4,7 @@ description: Grave e reproduza as chamadas fetch que um servidor Next.js faz (Se
 sidebar:
   label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
+i18nSourceBlob: 80d920c0b5282f10e3c851bb058eb881830cc12e
 ---
 
 Em um teste do Playwright, o `page.route()` só vê as requisições do navegador; as chamadas `fetch` que o seu servidor Next.js faz durante a renderização nunca chegam até ele. O test-proxy-recorder grava e reproduz essas buscas do lado do servidor passando-as pelo proxy, com uma gravação por teste.
@@ -31,7 +31,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // no-op em produção a menos que TEST_PROXY_RECORDER_ENABLED=true
 ```
 
-Ele faz patch do `fetch` global para copiar o `x-test-rcrd-id` da requisição atual para as requisições de saída, para que o proxy consiga distinguir sessões de reprodução concorrentes. Chame-o a partir do root layout — **não** do `instrumentation.ts`, cujo contexto difere daquele que renderiza suas rotas no runtime Edge, então um patch ali silenciosamente nunca dispara.
+Ele faz patch do `fetch` global para copiar o `x-test-rcrd-id` da requisição atual para as requisições de saída, para que o proxy consiga distinguir sessões concorrentes, no modo record assim como no replay. Chame-o a partir do root layout — **não** do `instrumentation.ts`, cujo contexto difere daquele que renderiza suas rotas no runtime Edge, então um patch ali silenciosamente nunca dispara.
 
 ## axios — registerProxyAxios
 

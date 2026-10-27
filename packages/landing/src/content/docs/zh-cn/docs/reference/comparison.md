@@ -4,7 +4,7 @@ description: 'test-proxy-recorder 与 MSW、routeFromHAR、Polly.js、Next.js te
 sidebar:
   label: 对比
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 这里的每个工具都能控制端到端测试看到的 API 响应。它们的区别在于在哪里拦截请求（在浏览器中、在你的服务器内部，还是在一个独立的代理中），以及响应是由你编写还是录制而来。下表保留了[文档概览](/zh-cn/docs/#comparison)中的六个工具，并加入了 Next.js test mode、mockttp、scenarist、talkback 和 proxay。每个单元格都来自该工具自己的文档、README 或源代码（链接列在表格下方），信息截至 2026-10-03。“文档未提及”表示这些来源中没有相关说明。
@@ -56,7 +56,7 @@ Netflix 出品的 Polly.js 可以录制、回放和打桩 HTTP，它也是 test-
 | `record`、`replay` 和 `passthrough` 模式（[配置](https://netflix.github.io/pollyjs/#/configuration)） | `record`、`replay` 和 `transparent` 模式，由 `playwrightProxy.before()` 按测试设置 |
 | 每个 Polly 实例一份命名录制，由 persister 保存 | 每个 Playwright 测试一个 `.mock.json`（服务端）和一个 `.har`（浏览器），位于录制目录中 |
 | 适配器位于发出请求的进程内部 | 服务端调用用代理进程，浏览器调用用 HAR，服务器上再加 `registerProxyFetch()` |
-| 默认按方法、header、请求体、顺序和 URL 匹配请求 | 服务端请求按方法、路径和查询字符串的哈希匹配，按录制顺序应答，不比较请求体。浏览器请求遵循 Playwright 的 HAR 规则，该规则还会比较 POST 请求体 |
+| 默认按方法、header、请求体、顺序和 URL 匹配请求 | 服务端请求按方法、路径、查询字符串的哈希和请求体匹配，重复的请求按录制顺序应答，不比较 header。浏览器请求按方法、URL 和请求体匹配，然后按共有的 header 匹配 |
 
 ## 在 Next.js 和 Playwright 中使用 MSW {#msw}
 

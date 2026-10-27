@@ -270,7 +270,7 @@ describe('ProxyServer', () => {
         fileExists = false;
       }
 
-      // File should exist after cleanup (cleanup calls saveCurrentSession)
+      // Cleanup saves the session, so the file exists even with nothing recorded
       expect(fileExists).toBe(true);
     });
   });

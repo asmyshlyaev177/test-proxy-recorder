@@ -175,21 +175,21 @@ Source: README.md — Full-stack Quick Start note; apps/example-nextjs16/package
 
 ---
 
-### MEDIUM Recording with multiple workers corrupts session files
+### MEDIUM Recording with several workers on 2.0.1 or older mixes sessions
 
 Wrong:
 ```bash
-# Parallel workers write to the same session files
+# test-proxy-recorder 2.0.1 or older: the proxy holds one record session for every request
 RECORD_MODE=1 npx playwright test
 ```
 
 Correct:
 ```bash
-# One worker while recording
+# On 2.0.1 or older, one worker while recording
 RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-Recording is a single-worker operation. Replay is what uses multiple workers (`fullyParallel: true`), and it needs no flag: without `RECORD_MODE` the fixture replays.
+After 2.0.1 the proxy files each request under the session in its `x-test-rcrd-id` header, in record mode as in replay, so a record run uses the normal worker count. What then needs `--workers 1` is an app whose tests share state (one database they reset, one account they sign in with), or else one app server per worker ([parallel-recording.md](parallel-recording.md)). Replay needs no flag: without `RECORD_MODE` the fixture replays.
 
 Source: apps/example-nextjs16/package.json; maintainer guidance
 

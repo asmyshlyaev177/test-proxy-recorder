@@ -4,7 +4,7 @@ description: Ghi lại và phát lại các lời gọi fetch mà máy chủ Nex
 sidebar:
   label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
+i18nSourceBlob: 80d920c0b5282f10e3c851bb058eb881830cc12e
 ---
 
 Trong một test Playwright, `page.route()` chỉ thấy các request của trình duyệt; các lời gọi `fetch` mà máy chủ Next.js của bạn thực hiện trong lúc render không bao giờ tới được nó. test-proxy-recorder ghi lại và phát lại các fetch phía máy chủ đó qua proxy của mình, mỗi test một bản ghi.
@@ -31,7 +31,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // no-op trong production trừ khi TEST_PROXY_RECORDER_ENABLED=true
 ```
 
-Nó patch `fetch` toàn cục để sao chép `x-test-rcrd-id` của request hiện tại lên các request đi ra, giúp proxy phân biệt các phiên phát lại đồng thời. Gọi nó từ root layout — **không phải** `instrumentation.ts`, vì context của nó khác với context render các route của bạn trên runtime Edge, nên một patch ở đó âm thầm không bao giờ chạy.
+Nó patch `fetch` toàn cục để sao chép `x-test-rcrd-id` của request hiện tại lên các request đi ra, giúp proxy phân biệt các session đồng thời, ở chế độ ghi lại cũng như ở chế độ phát lại. Gọi nó từ root layout — **không phải** `instrumentation.ts`, vì context của nó khác với context render các route của bạn trên runtime Edge, nên một patch ở đó âm thầm không bao giờ chạy.
 
 ## axios — registerProxyAxios
 

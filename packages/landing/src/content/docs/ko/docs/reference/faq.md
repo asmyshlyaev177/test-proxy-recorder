@@ -2,12 +2,12 @@
 title: FAQ
 description: test-proxy-recorder에 대한 자주 묻는 질문 — 병렬 재생, 기록의 git 커밋, HAR 기록용 프록시 대상, Next.js 개발 서버, 기록 갱신.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
+i18nSourceBlob: 330688cb20230d36f1c5e0ee0a9e121b46abf737
 ---
 
 ## 병렬 재생 테스트가 가끔 실제 백엔드를 호출합니다. 왜 그런가요? {#parallel-replay}
 
-아마도 테스트별 훅에서 `playwrightProxy.teardown()`을 호출하고 있을 것입니다. 이것은 **전역** 프록시 모드를 `transparent`로 설정하며, `fullyParallel: true`에서는 각 Playwright 워커가 자체 `test.afterAll`을 실행합니다. 빠른 테스트가 끝나서 `teardown()`을 호출하는 동안 느린 테스트가 계속 실행 중이라면, 프록시가 테스트 도중에 transparent로 전환되어 나머지 요청이 재생되는 대신 실제 백엔드로 전달됩니다.
+아마도 테스트별 훅에서 `playwrightProxy.teardown()`을 호출하고 있을 것입니다. 이것은 **전역** 프록시 모드를 `transparent`로 설정하며, `fullyParallel: true`에서는 각 Playwright 워커가 자체 `test.afterAll`을 실행합니다. 빠른 테스트가 끝나서 `teardown()`을 호출하는 동안 느린 테스트가 계속 실행 중이라면, 프록시가 테스트 도중에 transparent로 전환되어 나머지 요청이 재생되는 대신 실제 백엔드로 전달됩니다. 기록 실행에서는 `teardown()`이 모든 기록 세션을 저장하고 끝내므로, 느린 테스트의 나머지 요청은 기록되지 않습니다.
 
 ```typescript
 // ❌ 병렬 재생을 깨뜨림 — teardown()은 모든 세션에 전역으로 영향을 줌
@@ -20,15 +20,23 @@ test.afterAll(async () => {
 
 재생 실행이 실제 백엔드에 닿는 또 다른 경로는 세션 시간 초과입니다. 시간 초과는 `playwrightProxy.before()`를 호출할 때마다 다시 시작되며, 프록시를 거치는 요청으로는 다시 시작되지 않습니다. 다음 `before()` 호출 전에 시간 초과(기본값 120000 ms)가 다 되면 프록시는 `transparent`로 전환됩니다. 그러면 아직 실행 중인 테스트는 남은 요청을 실제 백엔드로 보냅니다. 테스트 하나가 그만큼 오래 걸릴 수 있다면 [CLI](/ko/docs/guides/cli/)의 `--timeout`이나 [설정](/ko/docs/guides/config/)의 `timeout`으로 시간 초과를 늘리세요.
 
+## 재생된 요청이 "with this request body"와 함께 실패합니다. 왜 그런가요? {#request-body-changed}
+
+프록시는 서버 측 요청을 메서드, 경로, 쿼리뿐 아니라 본문으로도 매칭하는데, 요청이 어떤 기록에도 없는 본문을 보낸 것입니다. 보통은 본문에 현재 날짜나 무작위 id처럼 실행할 때마다 바뀌는 값이 들어 있습니다. 테스트 중에는 그 값을 고정하고(고정된 시계, 시드를 지정한 id 생성기) 다시 기록하세요. 앱의 요청이 의도적으로 바뀌었다면 그 테스트를 다시 기록하세요. `GET`과 `HEAD` 요청은 본문으로 비교하지 않습니다.
+
 ## 병렬 워커로 기록할 수 있나요? {#parallel-recording}
 
-아니요. 프록시는 한 번에 하나의 기록 세션만 유지합니다. 두 번째 테스트가 기록을 시작하면 프록시는 첫 번째 테스트의 파일을 저장하고 두 번째 테스트로 전환합니다. 그러면 프록시를 거치는 첫 번째 테스트의 나머지 요청은 두 번째 테스트의 `.mock.json`에 들어갑니다. `init`이 추가하는 `test:e2e:record` 스크립트처럼 워커 하나로 기록하세요.
+네, 2.0.1보다 새로운 버전에서는 가능합니다. 프록시는 재생 모드와 마찬가지로 기록 모드에서도 각 요청을 `x-test-rcrd-id` 헤더에 지정된 세션에 넣습니다. `playwrightProxy.before()`가 페이지의 요청에 이 헤더를 설정하고, `registerProxyFetch()`가 서버 측 요청에 복사합니다. 테스트가 끝나면 프록시는 그 테스트의 `.mock.json`을 저장하고, 다른 테스트는 계속 기록하도록 둡니다.
+
+병렬 기록 실행을 여전히 막을 수 있는 것은 테스트 대상 앱입니다. 데이터베이스 하나를 초기화하거나 계정 하나로 로그인하는 테스트는 프록시와 관계없이 서로를 덮어씁니다. 그런 테스트는 워커 하나로 기록하거나, 워커마다 자체 포트와 데이터 디렉터리를 쓰는 앱 서버를 하나씩 실행하세요. 테스트마다 업스트림 호출에 2~8분이 걸리고 워커마다 앱 서버를 하나씩 둔 11개 테스트 스위트는 워커 다섯 개로 11.5분 만에 기록되었고, 워커 하나로는 49분이 걸렸습니다.
 
 ```bash
-npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-재생은 병렬 워커로 실행할 수 있습니다. 각 테스트는 자신의 세션을 재생하며, `x-test-rcrd-id` 헤더로 서로 구분됩니다. `playwrightProxy.before()`가 페이지의 요청에 이 헤더를 설정하고, `registerProxyFetch()`가 서버 측 요청에 복사합니다. [예제 앱](/ko/docs/reference/examples/)이 `--workers 1`로 기록하는 것도 이 때문입니다.
+`init`이 추가하는 `test:e2e:record` 스크립트와 [예제 앱](/ko/docs/reference/examples/)은 `--workers 1`을 전달합니다. 테스트가 앱 상태를 공유하지 않는다면 이 옵션을 빼세요.
+
+2.0.1 이하 버전은 모든 요청에 하나의 기록 세션을 유지합니다. 이 버전에서는 두 번째 테스트가 기록을 시작하면 프록시가 첫 번째 테스트의 파일을 저장하고 두 번째 테스트로 전환하므로, 첫 번째 테스트의 나머지 요청은 두 번째 테스트의 `.mock.json`에 들어갑니다. 이 버전에서는 `--workers 1`로 기록하세요. 재생은 모든 버전에서 병렬 워커로 실행됩니다.
 
 ## 기록을 git에 커밋해야 하나요?
 

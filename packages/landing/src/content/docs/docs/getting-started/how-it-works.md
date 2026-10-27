@@ -20,7 +20,7 @@ test-proxy-recorder supports two recording mechanisms depending on where your re
                     └──> .mock.json                        └──> .har
 ```
 
-Each test sets the mode when it starts, and the proxy keeps one mode for every request it gets, so tests that run at the same time share it. In **record** mode the proxy forwards to the real backend and saves responses; in **replay** mode it serves the saved responses from disk, and each test's id picks that test's recording; in **transparent** mode it forwards without recording. The proxy starts in transparent mode, so an app run through it outside tests talks to its backend as usual. See the [control endpoint](/docs/guides/control-endpoint/) for how modes are switched.
+Each test sets the mode of its own session when it starts, and every request carries its test's id in the `x-test-rcrd-id` header, so tests that run at the same time each keep their own mode and file. In **record** mode the proxy forwards to the real backend and saves the responses in that test's file; in **replay** mode it serves the saved responses from disk, from that test's recording; in **transparent** mode it forwards without recording. Versions up to 2.0.1 kept one record session for every request, so a record run on them needs one worker. The proxy starts in transparent mode, so an app run through it outside tests talks to its backend as usual. See the [control endpoint](/docs/guides/control-endpoint/) for how modes are switched.
 
 ## How replay matches requests {#replay-matching}
 

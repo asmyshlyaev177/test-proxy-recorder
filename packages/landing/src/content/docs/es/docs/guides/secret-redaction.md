@@ -2,7 +2,7 @@
 title: Enmascaramiento de secretos
 description: El enmascaramiento está activado por defecto — Authorization, Cookie y Set-Cookie se eliminan de las grabaciones antes de llegar al disco. Añade patrones de cabecera y cuerpo, permite cookies o enmascara programáticamente.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 Las grabaciones se hacen commit a git, así que los secretos se eliminan antes de escribir nada en disco. El enmascaramiento está **activado por defecto** siempre que el proxy se ejecuta desde la CLI o desde el archivo de configuración, que es como lo configura `init`; el proxy reemplaza los valores de estas cabeceras de petición/respuesta con `[REDACTED]`:
@@ -36,7 +36,7 @@ Las cabeceras por defecto siempre se aplican (mientras el enmascaramiento está 
 - `--no-redact` — desactiva el enmascaramiento de secretos (activado por defecto).
 - `--redact` — activa el enmascaramiento de secretos; solo se necesita para reactivarlo cuando la configuración pone `redaction: false`.
 - `--redact-headers <names>` — nombres de cabeceras extra a enmascarar, separados por comas (fusionados con los valores por defecto).
-- `--redact-body <patterns>` — patrones regex separados por comas a enmascarar de los cuerpos de petición/respuesta.
+- `--redact-body <patterns>` — patrones regex separados por comas a enmascarar de los cuerpos de petición/respuesta. La reproducción los aplica al cuerpo de la petición real antes de compararlo con el grabado, así que una petición cuyo secreto cambió desde la grabación sigue emparejándose.
 - `--allow-headers <names>` — nombres de cabeceras separados por comas a eximir del enmascaramiento (por ejemplo `set-cookie`).
 - `--allow-cookies <names>` — nombres de cookies separados por comas a mantener sin enmascarar dentro de `Cookie`/`Set-Cookie`.
 

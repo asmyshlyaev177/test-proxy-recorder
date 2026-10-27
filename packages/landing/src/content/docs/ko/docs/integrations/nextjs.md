@@ -4,7 +4,7 @@ description: Playwright 테스트에서 Next.js 서버가 보내는 fetch 호출
 sidebar:
   label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
+i18nSourceBlob: 80d920c0b5282f10e3c851bb058eb881830cc12e
 ---
 
 Playwright 테스트에서 `page.route()`는 브라우저의 요청만 봅니다. Next.js 서버가 렌더링 중에 보내는 `fetch` 호출은 `page.route()`에 닿지 않습니다. test-proxy-recorder는 이런 서버 측 fetch를 프록시를 통해 기록하고 재생하며, 기록은 테스트마다 하나씩 만들어집니다.
@@ -31,7 +31,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // 프로덕션에서는 TEST_PROXY_RECORDER_ENABLED=true가 아니면 아무 동작도 하지 않음
 ```
 
-전역 `fetch`를 패치하여 현재 요청의 `x-test-rcrd-id`를 나가는 요청에 복사하므로, 프록시가 동시 재생 세션을 구분할 수 있습니다. 루트 레이아웃에서 호출하세요. `instrumentation.ts`가 **아닙니다**. Edge 런타임에서 라우트를 렌더링하는 컨텍스트와 다르므로, 그곳에 패치하면 조용히 전혀 실행되지 않습니다.
+전역 `fetch`를 패치하여 현재 요청의 `x-test-rcrd-id`를 나가는 요청에 복사하므로, 재생 모드와 마찬가지로 기록 모드에서도 프록시가 동시 세션을 구분할 수 있습니다. 루트 레이아웃에서 호출하세요. `instrumentation.ts`가 **아닙니다**. Edge 런타임에서 라우트를 렌더링하는 컨텍스트와 다르므로, 그곳에 패치하면 조용히 전혀 실행되지 않습니다.
 
 ## axios — registerProxyAxios
 

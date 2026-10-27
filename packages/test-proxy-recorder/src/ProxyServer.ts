@@ -96,27 +96,103 @@ function withReplayedContentLength(
   return { ...headers, [lengthKey]: String(Buffer.byteLength(body ?? '')) };
 }
 
+const noop = (): void => {};
+
+interface RecordSessionState {
+  session: RecordingSession;
+  pending: Promise<Recording | null>[];
+  recordingIdCounter: number;
+  sequenceCounterByKey: Map<string, number>;
+  // A cleanup runs beside the control chain, so two saves of one session can overlap and interleave their writes of one file.
+  lastSave: Promise<void>;
+  // Set when a retry's switch reuses the id: this attempt's state is never saved, the file belongs to the retry.
+  replaced: boolean;
+}
+
+function createRecordSessionState(id: string): RecordSessionState {
+  return {
+    session: { id, recordings: [], websocketRecordings: [] },
+    pending: [],
+    recordingIdCounter: 0,
+    sequenceCounterByKey: new Map(),
+    lastSave: Promise.resolve(),
+    replaced: false,
+  };
+}
+
+async function flushSession(state: RecordSessionState): Promise<void> {
+  // Calls that arrive while a batch settles join the next batch instead of being dropped.
+  while (state.pending.length > 0) {
+    const results = await Promise.allSettled(state.pending.splice(0));
+    for (const result of results) {
+      if (result.status === 'fulfilled' && result.value) {
+        state.session.recordings.push(result.value);
+      }
+    }
+  }
+}
+
+type ModeChange =
+  | { mode: typeof Modes.transparent }
+  | { mode: typeof Modes.record; id: string }
+  | { mode: typeof Modes.replay; id: string };
+
+const isMode = (value: string): value is Mode =>
+  Object.values<string>(Modes).includes(value);
+
+// Checked before anything changes, so a refused request leaves the running sessions and their timer alone.
+function parseModeChange(
+  mode: string | undefined,
+  id: string | undefined,
+): ModeChange {
+  if (!mode) {
+    throw new Error('Mode parameter is required when cleanup is not specified');
+  }
+  if (!isMode(mode)) {
+    throw new Error('Invalid mode. Use: transparent, record, or replay');
+  }
+  if (mode === Modes.transparent) return { mode };
+  if (!id) {
+    throw new Error(
+      mode === Modes.record ? 'Record ID is required' : 'Replay ID is required',
+    );
+  }
+  return { mode, id };
+}
+
+type CallRoute =
+  | { mode: typeof Modes.transparent }
+  | { mode: typeof Modes.record; id: string }
+  | { mode: typeof Modes.replay; id: string }
+  | { mode: 'refused'; error: string; activeSessions: string[] };
+
+type SessionRoute = Extract<CallRoute, { id: string }>;
+
 export class ProxyServer {
   private target: string;
+  // The last switch's mode and ids: what a call that names no session follows while no session is live.
   private mode: Mode;
   private recordingId: string | null;
   private replayId: string | null;
   private modeTimeout: NodeJS.Timeout | null;
   private proxy: httpProxy;
-  private currentSession: RecordingSession | null;
   private recordingsDir: string;
   private timeoutMs: number;
-  // Unique ID for each recording entry
-  private recordingIdCounter: number;
-  // Sequence counter per key (endpoint)
-  private sequenceCounterByKey: Map<string, number>;
   private replaySessions: ReplaySessionManager; // Track multiple concurrent replay sessions by recording ID
-  private recordingPromises: Promise<Recording | null>[]; // Stack of promises that resolve to completed recordings
-  private flushPromise: Promise<void> | null; // Promise for in-progress flush operation
+  // Keyed by the session id each call carries, so several workers record through one proxy at once.
+  private recordSessions = new Map<string, RecordSessionState>();
+  // The mode each session was switched to, which the calls naming it follow.
+  private sessionModes = new Map<string, Mode>();
+  // Record switches minus cleanups, counted because a retry's switch can land before the earlier attempt's cleanup.
+  // Above 0 the session is live; 0 is ended, kept across transparent so a stray call naming it passes through.
+  private recordSwitchCounts = new Map<string, number>();
   private redaction?: RedactionConfig | false; // Secret-redaction config applied before saving (false/undefined = off)
   private redactBody: BodyRedactor;
   private wsReplay?: WebSocketReplayConfig; // WebSocket replay pacing
   private missingRecordings = new MissingRecordingNotifier();
+  // Mode switches and the mode timer run one at a time: each saves files midway through changing the shared
+  // mode and session maps, and a timer that fired mid-switch would end the sessions that switch started.
+  private controlChain: Promise<void> = Promise.resolve();
 
   constructor(
     target: string,
@@ -132,15 +208,10 @@ export class ProxyServer {
     this.wsReplay = wsReplay;
     this.mode = Modes.transparent;
     this.recordingId = null;
-    this.recordingIdCounter = 0;
-    this.sequenceCounterByKey = new Map();
     this.replayId = null;
     this.modeTimeout = null;
-    this.currentSession = null;
     this.recordingsDir = recordingsDir;
     this.replaySessions = new ReplaySessionManager(this.timeoutMs);
-    this.recordingPromises = [];
-    this.flushPromise = null;
     this.proxy = httpProxy.createProxyServer({
       ...UPSTREAM_PROXY_OPTIONS,
       ws: true,
@@ -199,24 +270,23 @@ export class ProxyServer {
     res.end(JSON.stringify({ error: 'Proxy error', message: err.message }));
   }
 
-  /**
-   * Clean up a session - removes it from memory and resets counters
-   * @param sessionId The session ID to clean up
-   */
   private async cleanupSession(sessionId: string): Promise<void> {
     this.replaySessions.delete(sessionId);
     this.missingRecordings.reset(sessionId);
 
-    // If this was the active recording session, save it before clearing
-    if (this.recordingId === sessionId) {
-      await this.saveCurrentSession();
-      this.currentSession = null;
-      this.recordingId = null;
-    }
-
     // If this was the active replay session (legacy single-session mode), clear it
     if (this.replayId === sessionId) {
       this.replayId = null;
+    }
+
+    const switches = this.recordSwitchCounts.get(sessionId);
+    if (switches !== undefined) {
+      this.recordSwitchCounts.set(sessionId, Math.max(0, switches - 1));
+    }
+    // Kept and still recording the calls that name it: a stale cleanup from a retried attempt must not stop the retry.
+    const recording = this.recordSessions.get(sessionId);
+    if (recording) {
+      await this.saveSession(recording);
     }
 
     console.log(`[CLEANUP] Session ${sessionId} cleaned up successfully`);
@@ -245,6 +315,7 @@ export class ProxyServer {
         mode: this.mode,
         id: this.recordingId || this.replayId,
         redaction: serializeRedactionConfig(this.redaction),
+        sessions: [...this.recordSessions.keys()],
       });
       return;
     }
@@ -257,9 +328,11 @@ export class ProxyServer {
   ): Promise<void> {
     try {
       const data = await this.parseControlBody(req);
-      const { mode, id, timeout: requestTimeout, cleanup, websocket } = data;
+      const { id } = data;
 
-      if (cleanup && id) {
+      if (data.cleanup && id) {
+        // Outside the control chain: it touches only its own session, and one whose upstream never answers
+        // must not hold up the other sessions' switches.
         await this.cleanupSession(id);
         sendJsonResponse(res, HTTP_STATUS_OK, {
           success: true,
@@ -269,7 +342,7 @@ export class ProxyServer {
         return;
       }
 
-      await this.applyModeChange(res, mode, id, requestTimeout, websocket);
+      await this.runSerialized(() => this.applyModeChange(res, data));
     } catch (error) {
       console.error('Control request error:', error);
       sendJsonResponse(res, HTTP_STATUS_BAD_REQUEST, {
@@ -280,28 +353,24 @@ export class ProxyServer {
 
   private async applyModeChange(
     res: http.ServerResponse,
-    mode: Mode | undefined,
-    id: string | undefined,
-    requestTimeout: number | undefined,
-    websocket: WebSocketReplayConfig | undefined,
+    { mode, id, timeout: requestTimeout, websocket }: ControlRequest,
   ): Promise<void> {
-    if (!mode) {
-      throw new Error(
-        'Mode parameter is required when cleanup is not specified',
-      );
-    }
-
+    const change = parseModeChange(mode, id);
     const timeout = requestTimeout ?? this.timeoutMs;
     this.clearModeTimeout();
-    await this.switchMode(mode, id, websocket);
-    this.setupModeTimeout(timeout);
+    try {
+      await this.switchMode(change, websocket);
+    } finally {
+      // Validation ran above, so only a failed save lands here on error, and the sessions still recording keep a timer.
+      if (this.mode !== Modes.transparent) this.setupModeTimeout(timeout);
+    }
 
-    if (mode === Modes.replay && id) {
+    if (change.mode === Modes.replay) {
       res.setHeader(
         'Set-Cookie',
-        `proxy-recording-id=${encodeURIComponent(id)}; HttpOnly; Path=/; SameSite=Lax`,
+        `proxy-recording-id=${encodeURIComponent(change.id)}; HttpOnly; Path=/; SameSite=Lax`,
       );
-      console.log(`[CONCURRENT REPLAY] Set cookie for recording: ${id}`);
+      console.log(`[CONCURRENT REPLAY] Set cookie for recording: ${change.id}`);
     }
 
     sendJsonResponse(res, HTTP_STATUS_OK, {
@@ -313,68 +382,74 @@ export class ProxyServer {
     });
   }
 
+  private runSerialized<T>(operation: () => Promise<T>): Promise<T> {
+    const result = this.controlChain.then(operation);
+    // The chain only orders the operations; each caller handles its own failure.
+    this.controlChain = result.then(noop, noop);
+    return result;
+  }
+
   private clearModeTimeout(): void {
     clearTimeout(this.modeTimeout || 0);
     this.modeTimeout = null;
   }
 
   private async switchMode(
-    mode: Mode,
-    id?: string,
+    change: ModeChange,
     websocket?: WebSocketReplayConfig,
   ): Promise<void> {
-    console.log(`Switching to ${mode.toUpperCase()} mode`);
-
-    // Save current session before switching
-    if (this.currentSession && this.mode === Modes.record) {
-      await this.saveCurrentSession();
-      console.log('Session saved, continuing with mode switch');
-    }
-
-    switch (mode) {
+    console.log(`Switching to ${change.mode.toUpperCase()} mode`);
+    switch (change.mode) {
       case Modes.transparent: {
-        this.switchToTransparentMode();
-
-        break;
+        return this.switchToTransparentMode();
       }
       case Modes.record: {
-        if (!id) {
-          throw new Error('Record ID is required');
-        }
-        this.switchToRecordMode(id);
-
-        break;
+        return this.switchToRecordMode(change.id);
       }
       case Modes.replay: {
-        if (!id) {
-          throw new Error('Replay ID is required');
-        }
-        await this.switchToReplayMode(id, websocket);
-
-        break;
-      }
-      default: {
-        throw new Error('Invalid mode. Use: transparent, record, or replay');
+        return this.switchToReplayMode(change.id, websocket);
       }
     }
   }
 
-  private switchToTransparentMode(): void {
+  private async switchToTransparentMode(): Promise<void> {
+    // Ended before the saves: a call landing during a write passes through rather than joining a session whose
+    // flush has finished, where it was answered and never saved; and the saves stop waiting on new calls.
+    const sessions = [...this.recordSessions.values()];
+    for (const id of this.recordSessions.keys()) {
+      this.recordSwitchCounts.set(id, 0);
+    }
+    this.recordSessions.clear();
+    this.sessionModes.clear();
     this.mode = Modes.transparent;
     this.recordingId = null;
     this.replayId = null;
-    this.currentSession = null;
     this.clearModeTimeout();
     console.log('Switched to transparent mode');
+
+    const saves = await Promise.allSettled(
+      sessions.map((state) => this.saveSession(state)),
+    );
+    const unsaved = sessions.filter(
+      (_, index) => saves[index].status === 'rejected',
+    );
+    if (unsaved.length > 0) {
+      throw new Error(
+        `Could not save record sessions: ${unsaved.map((state) => state.session.id).join(', ')}`,
+      );
+    }
   }
 
   private switchToRecordMode(id: string): void {
+    // A retry reuses the id and starts over; calls still pending on the old state resolve into it and are never saved.
+    const replaced = this.recordSessions.get(id);
+    if (replaced) replaced.replaced = true;
+    this.recordSessions.set(id, createRecordSessionState(id));
+    this.recordSwitchCounts.set(id, (this.recordSwitchCounts.get(id) ?? 0) + 1);
+    this.sessionModes.set(id, Modes.record);
     this.mode = Modes.record;
     this.recordingId = id;
     this.replayId = null;
-    this.currentSession = { id, recordings: [], websocketRecordings: [] };
-    this.recordingIdCounter = 0; // Reset for new session
-    this.sequenceCounterByKey.clear(); // Reset sequence counters for new session
     console.log(`Switched to record mode with ID: ${id}`);
   }
 
@@ -382,10 +457,18 @@ export class ProxyServer {
     id: string,
     websocket?: WebSocketReplayConfig,
   ): Promise<void> {
+    // The session stops recording here, so what it recorded is the file it is about to replay.
+    const recording = this.recordSessions.get(id);
+    if (recording) {
+      await this.saveSession(recording);
+      this.recordSessions.delete(id);
+    }
+
+    this.recordSwitchCounts.set(id, 0);
+    this.sessionModes.set(id, Modes.replay);
     this.mode = Modes.replay;
     this.replayId = id;
     this.recordingId = null;
-    this.currentSession = null;
     this.missingRecordings.reset(id);
 
     // Get or create the replay session
@@ -417,136 +500,121 @@ export class ProxyServer {
 
   private setupModeTimeout(timeout: number): void {
     this.clearModeTimeout();
-    this.modeTimeout = setTimeout(async () => {
-      console.log('Timeout reached, switching back to transparent mode');
-      await this.saveCurrentSession();
-      this.switchToTransparentMode();
-      this.modeTimeout = null;
+    const timer = setTimeout(() => {
+      this.runSerialized(async () => {
+        // A switch that ran while this waited its turn armed a new timer; the session this one was set for is gone.
+        if (this.modeTimeout !== timer) return;
+        console.log('Timeout reached, switching back to transparent mode');
+        await this.switchToTransparentMode();
+      }).catch((error: unknown) => console.error('Mode timeout error:', error));
     }, timeout);
+    this.modeTimeout = timer;
   }
 
-  private async flushPendingRecordings(): Promise<void> {
-    // If a flush is already in progress, wait for it to complete
-    // This prevents concurrent flushes from processing the same promises twice
-    if (this.flushPromise) {
-      await this.flushPromise;
-      return;
-    }
-
-    if (this.recordingPromises.length === 0) {
-      return;
-    }
-
-    // Set the flush promise to prevent concurrent flushes
-    this.flushPromise = (async () => {
-      try {
-        const results = await Promise.allSettled(this.recordingPromises);
-
-        // Add completed recordings to current session in the order they were received
-        if (this.currentSession) {
-          for (const result of results) {
-            if (result.status === 'fulfilled' && result.value) {
-              this.currentSession.recordings.push(result.value);
-            }
-          }
-          console.log(
-            `Flushed ${results.length} recordings to session (total: ${this.currentSession.recordings.length})`,
-          );
-        }
-
-        // Clear the promises array
-        this.recordingPromises = [];
-      } finally {
-        // Clear the flush promise to allow future flushes
-        this.flushPromise = null;
-      }
-    })();
-
-    await this.flushPromise;
+  private saveSession(state: RecordSessionState): Promise<void> {
+    const save = state.lastSave.then(async () => {
+      await flushSession(state);
+      if (state.replaced) return;
+      await saveRecordingSession(
+        this.recordingsDir,
+        state.session,
+        this.redaction,
+      );
+    });
+    state.lastSave = save.then(noop, noop);
+    return save;
   }
 
-  private async saveCurrentSession(): Promise<void> {
-    if (!this.currentSession) {
-      return;
+  // One place decides where a call goes: the session it names, else the one live session, else the last switch.
+  private routeCall(req: http.IncomingMessage): CallRoute {
+    const named = getRecordingIdFromRequest(req);
+    if (named !== null) {
+      const mode = this.sessionModes.get(named) ?? this.mode;
+      return mode === Modes.transparent ? { mode } : { mode, id: named };
     }
 
-    await this.flushPendingRecordings();
-
-    console.log(
-      `Saving session with ${this.currentSession.recordings.length} HTTP and ${this.currentSession.websocketRecordings.length} WebSocket recordings`,
-    );
-    await saveRecordingSession(
-      this.recordingsDir,
-      this.currentSession,
-      this.redaction,
-    );
+    const live = this.getLiveSessions();
+    if (live.length === 1) return live[0];
+    if (live.length > 1) {
+      const activeSessions = live.map(({ id }) => id);
+      console.warn(
+        `[CONCURRENT WARNING] ${req.method} ${req.url} is missing ${RECORDING_ID_HEADER} header/cookie. ` +
+          `Active sessions: ${activeSessions.join(', ')}.`,
+      );
+      return {
+        mode: 'refused',
+        error: `Missing recording ID while several sessions are active. Ensure ${RECORDING_ID_HEADER} header is set (page.setExtraHTTPHeaders() may not apply to this request type).`,
+        activeSessions,
+      };
+    }
+    return this.routeToLastSwitch();
   }
 
-  private getRecordingIdOrError(
+  // A record session is live while its switches outnumber its cleanups, a replay session while cleanup or eviction has not dropped its state.
+  private getLiveSessions(): SessionRoute[] {
+    const recording = [...this.recordSessions.keys()]
+      .filter((id) => (this.recordSwitchCounts.get(id) ?? 0) > 0)
+      .map((id): SessionRoute => ({ mode: Modes.record, id }));
+    const replaying = [...this.replaySessions.keys()]
+      .filter((id) => this.sessionModes.get(id) === Modes.replay)
+      .map((id): SessionRoute => ({ mode: Modes.replay, id }));
+    return [...recording, ...replaying];
+  }
+
+  private routeToLastSwitch(): CallRoute {
+    const { mode } = this;
+    if (mode === Modes.transparent) return { mode };
+    const id = mode === Modes.record ? this.recordingId : this.replayId;
+    if (id === null) {
+      return {
+        mode: 'refused',
+        error: `No ${mode} session active`,
+        activeSessions: [],
+      };
+    }
+    return { mode, id };
+  }
+
+  private sendRefusal(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-  ): string | null {
-    const recordingIdFromRequest = getRecordingIdFromRequest(req);
+    { error, activeSessions }: Extract<CallRoute, { mode: 'refused' }>,
+  ): void {
+    res.writeHead(HTTP_STATUS_BAD_REQUEST, {
+      'Content-Type': 'application/json',
+      ...getCorsHeaders(req),
+    });
+    res.end(JSON.stringify({ error, activeSessions }));
+  }
 
-    // If we have a recording ID from the request (header or cookie), use it
-    if (recordingIdFromRequest) {
-      return recordingIdFromRequest;
-    }
+  /** The record session a call is filed under, or null when this run already ended it and the call passes through. */
+  private getRecordSession(
+    req: http.IncomingMessage,
+    id: string,
+  ): RecordSessionState | null {
+    const existing = this.recordSessions.get(id);
+    if (existing) return existing;
 
-    // Fallback to this.replayId only if there's exactly one active session (backward compatibility)
-    // For concurrent sessions with multiple active sessions, we MUST NOT use this.replayId
-    // as it can point to the wrong session (race condition)
-    if (this.replaySessions.size > 1) {
-      // In concurrent mode, if no recording ID is provided, we cannot determine
-      // which session this request belongs to. Log the error and fail.
+    if (this.recordSwitchCounts.get(id) === 0) {
       console.warn(
-        `[CONCURRENT REPLAY WARNING] Request to ${req.method} ${req.url} is missing ${RECORDING_ID_HEADER} header/cookie. ` +
-          `Active sessions: ${[...this.replaySessions.keys()].join(', ')}. ` +
-          `this.replayId fallback would be: ${this.replayId} (NOT USING - could be wrong session)`,
-      );
-
-      // Return error - we cannot safely determine which session to use
-      const corsHeaders = getCorsHeaders(req);
-      res.writeHead(HTTP_STATUS_BAD_REQUEST, {
-        'Content-Type': 'application/json',
-        ...corsHeaders,
-      });
-      res.end(
-        JSON.stringify({
-          error:
-            'Missing recording ID in concurrent replay mode. Ensure x-test-rcrd-id header is set.',
-          activeSessions: [...this.replaySessions.keys()],
-          hint: 'This usually means page.setExtraHTTPHeaders() did not apply to this request type',
-        }),
+        `[RECORD] ${req.method} ${req.url} names session ${id}, which this run already ended; passing it through unrecorded`,
       );
       return null;
     }
 
-    // Single session or no active sessions - use fallback for backward compatibility
-    const recordingId = this.replayId;
-    if (!recordingId) {
-      const corsHeaders = getCorsHeaders(req);
-      res.writeHead(HTTP_STATUS_BAD_REQUEST, {
-        'Content-Type': 'application/json',
-        ...corsHeaders,
-      });
-      res.end(JSON.stringify({ error: 'No replay session active' }));
-      return null;
-    }
-
-    console.log(
-      `[FALLBACK] Using replayId fallback for ${req.method} ${req.url} -> session: ${recordingId} (single session mode)`,
+    console.warn(
+      `[RECORD] ${req.method} ${req.url} names session ${id}, which no switch started; recording it under that id`,
     );
-    return recordingId;
+    const created = createRecordSessionState(id);
+    this.recordSessions.set(id, created);
+    return created;
   }
 
   private async handleReplayRequest(
     req: http.IncomingMessage,
     res: http.ServerResponse,
+    recordingId: string,
   ): Promise<void> {
-    const recordingId = this.getRecordingIdOrError(req, res);
-    if (!recordingId) return;
-
     // Read before any session state: nothing may await between picking a recording and marking it served.
     const requestBody = await readBodyForMatching(req);
     if (requestBody === null) return;
@@ -737,11 +805,26 @@ export class ProxyServer {
       return this.handleMissingRecordingPoll(req, res);
     }
 
-    if (this.mode === Modes.replay) {
-      return this.handleReplayRequest(req, res);
+    const route = this.routeCall(req);
+    switch (route.mode) {
+      case 'refused': {
+        return this.sendRefusal(req, res, route);
+      }
+      case Modes.replay: {
+        return this.handleReplayRequest(req, res, route.id);
+      }
+      case Modes.record: {
+        return this.recordAndProxy(req, res, route.id);
+      }
+      case Modes.transparent: {
+        return this.passThrough(req, res);
+      }
     }
+  }
 
-    await this.handleProxyRequest(req, res);
+  private passThrough(req: http.IncomingMessage, res: http.ServerResponse) {
+    console.log(`[transparent] ${req.method} ${req.url} -> ${this.target}`);
+    this.proxy.web(req, res, { target: this.target });
   }
 
   private handleMissingRecordingPoll(
@@ -772,40 +855,29 @@ export class ProxyServer {
     res.end();
   }
 
-  private async handleProxyRequest(
-    req: http.IncomingMessage,
-    res: http.ServerResponse,
-  ): Promise<void> {
-    const target = this.target;
-    console.log(`[${this.mode}] ${req.method} ${req.url} -> ${target}`);
-
-    if (this.mode === Modes.record) {
-      this.recordAndProxy(req, res, target);
-    } else {
-      this.proxy.web(req, res, { target });
-    }
-  }
-
   private recordAndProxy(
     req: http.IncomingMessage,
     res: http.ServerResponse,
-    target: string,
+    sessionId: string,
   ): void {
-    if (!this.currentSession) {
+    const state = this.getRecordSession(req, sessionId);
+    if (!state) {
+      this.passThrough(req, res);
       return;
     }
 
+    console.log(`[record] ${req.method} ${req.url} -> ${this.target}`);
     const key = getReqID(req);
-    const recordingId = this.recordingIdCounter++;
-    const sequence = this.sequenceCounterByKey.get(key) || 0;
-    this.sequenceCounterByKey.set(key, sequence + 1);
+    const recordingId = state.recordingIdCounter++;
+    const sequence = state.sequenceCounterByKey.get(key) ?? 0;
+    state.sequenceCounterByKey.set(key, sequence + 1);
 
-    // Add promise to stack immediately - this preserves request order!
-    this.recordingPromises.push(
+    // Pushed before the call settles, so the session keeps its calls in arrival order.
+    state.pending.push(
       recordAndProxyRequest({
         req,
         res,
-        target,
+        target: this.target,
         key,
         recordingId,
         sequence,
@@ -819,63 +891,37 @@ export class ProxyServer {
     socket: Duplex,
     head: Buffer,
   ): void {
-    if (this.mode === Modes.replay) {
-      this.handleReplayWebSocket(req, socket);
+    // A browser handshake carries no recording-id header (setExtraHTTPHeaders skips the upgrade), only the
+    // proxy-recording-id cookie the Playwright helper sets on the proxy origin.
+    const route = this.routeCall(req);
+    if (route.mode === 'refused') {
+      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
+      socket.destroy();
+      return;
+    }
+    if (route.mode === Modes.replay) {
+      this.handleReplayWebSocket(req, socket, route.id);
       return;
     }
 
     const target = this.target;
-    console.log(`[${this.mode}] WebSocket upgrade ${req.url} -> ${target}`);
-
-    if (this.mode === Modes.record) {
-      recordWebSocket(req, socket, head, target, this.currentSession);
-    } else {
-      // Transparent mode - just proxy through
-      this.proxy.ws(req, socket, head, { target });
+    const state =
+      route.mode === Modes.record ? this.getRecordSession(req, route.id) : null;
+    if (state) {
+      console.log(`[record] WebSocket upgrade ${req.url} -> ${target}`);
+      recordWebSocket(req, socket, head, target, state.session);
+      return;
     }
-  }
-
-  /**
-   * Resolve the recording ID for a WebSocket upgrade request.
-   * Mirrors getRecordingIdOrError(): prefer the header/cookie from the request,
-   * fall back to this.replayId only when there is at most one active session.
-   * On a browser WebSocket handshake the recording-id *header* does not arrive:
-   * page.route() can't intercept the upgrade, and setExtraHTTPHeaders does not
-   * propagate to it. The `proxy-recording-id` cookie (set on the proxy origin by
-   * playwrightProxy.before) does ride along, so for concurrent WS replay the
-   * cookie is the only channel that carries the session id.
-   */
-  private getWsRecordingId(req: http.IncomingMessage): string | null {
-    const fromRequest = getRecordingIdFromRequest(req);
-    if (fromRequest) {
-      return fromRequest;
-    }
-
-    if (this.replaySessions.size > 1) {
-      console.warn(
-        `[CONCURRENT REPLAY WARNING] WebSocket upgrade ${req.url} is missing ${RECORDING_ID_HEADER} header/cookie. ` +
-          `Active sessions: ${[...this.replaySessions.keys()].join(', ')}. ` +
-          `this.replayId fallback would be: ${this.replayId} (NOT USING - could be wrong session)`,
-      );
-      return null;
-    }
-
-    return this.replayId;
+    console.log(`[transparent] WebSocket upgrade ${req.url} -> ${target}`);
+    this.proxy.ws(req, socket, head, { target });
   }
 
   private async handleReplayWebSocket(
     req: http.IncomingMessage,
     socket: Duplex,
+    recordingId: string,
   ): Promise<void> {
     const key = getWsRecordingKey(req.url || '/');
-
-    const recordingId = this.getWsRecordingId(req);
-    if (!recordingId) {
-      socket.write('HTTP/1.1 400 Bad Request\r\n\r\n');
-      socket.destroy();
-      return;
-    }
-
     try {
       // Reuse the cached session state instead of re-reading the file on
       // every upgrade

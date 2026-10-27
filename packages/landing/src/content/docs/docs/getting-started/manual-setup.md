@@ -92,8 +92,10 @@ Before recording, put the backend's database in the state the tests expect with 
 npm run serve:proxy
 
 # Terminal 2 — .mock.json and .har files are written automatically
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 ```
+
+Recording runs on as many workers as replay, because each test records into its own session. Add `--workers 1` when the tests share state in the backend, such as one database they reset or one account they sign in with. Versions up to 2.0.1 hold one recording session for every request, so on those versions every record run needs `--workers 1`.
 
 ### 5. Switch to replay and commit
 
@@ -167,9 +169,11 @@ test('homepage loads', async ({ page }) => {
 ### 5. Record — run once against the real API
 
 ```bash
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 # .har files are written to e2e/recordings/ automatically
 ```
+
+Add `--workers 1` when the tests share state in the real API, such as one account they all sign in with, or when you run a version up to 2.0.1.
 
 ### 6. Commit the recordings
 

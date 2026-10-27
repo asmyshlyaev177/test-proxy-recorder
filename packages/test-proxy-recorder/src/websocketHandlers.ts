@@ -95,14 +95,14 @@ function getClientSubprotocols(req: http.IncomingMessage): string[] {
 /**
  * Record-mode WebSocket handler: proxies the connection to the backend
  * (forwarding handshake headers and subprotocols) while capturing all
- * messages into the current recording session.
+ * messages into the session the handshake belongs to.
  */
 export function recordWebSocket(
   req: http.IncomingMessage,
   clientSocket: Duplex,
   head: Buffer,
   target: string,
-  session: RecordingSession | null,
+  session: RecordingSession,
 ): void {
   const url = req.url || '/';
 
@@ -114,9 +114,7 @@ export function recordWebSocket(
     headers: getRecordableWsHeaders(req),
   };
 
-  if (session) {
-    session.websocketRecordings.push(wsRecording);
-  }
+  session.websocketRecordings.push(wsRecording);
 
   // Create WebSocket connection to backend, forwarding the client's
   // subprotocols and handshake headers (auth tokens, cookies, custom

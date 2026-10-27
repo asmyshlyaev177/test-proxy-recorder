@@ -2,12 +2,12 @@
 title: 常见问题
 description: 关于 test-proxy-recorder 的常见问题 —— 并行回放、把录制提交到 git、HAR 录制的代理目标、Next.js 开发服务器，以及如何更新录制。
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
+i18nSourceBlob: 330688cb20230d36f1c5e0ee0a9e121b46abf737
 ---
 
 ## 我的并行回放测试有时会访问真实后端 —— 为什么？{#parallel-replay}
 
-你很可能在每个测试的钩子里调用了 `playwrightProxy.teardown()`。它会把代理的**全局**模式设为 `transparent`，而在 `fullyParallel: true` 下，每个 Playwright worker 都会运行自己的 `test.afterAll`。如果一个快的测试结束并调用 `teardown()`，而一个较慢的测试仍在运行，代理就会在测试中途切到 transparent，剩余请求便会被转发到真实后端，而不是被回放。
+你很可能在每个测试的钩子里调用了 `playwrightProxy.teardown()`。它会把代理的**全局**模式设为 `transparent`，而在 `fullyParallel: true` 下，每个 Playwright worker 都会运行自己的 `test.afterAll`。如果一个快的测试结束并调用 `teardown()`，而一个较慢的测试仍在运行，代理就会在测试中途切到 transparent，剩余请求便会被转发到真实后端，而不是被回放。在录制运行中，`teardown()` 会保存并结束所有录制会话，因此较慢测试的剩余请求不会被录制。
 
 ```typescript
 // ❌ breaks parallel replay — teardown() affects all sessions globally
@@ -20,15 +20,23 @@ test.afterAll(async () => {
 
 回放运行访问真实后端的另一种途径是会话超时。每次调用 `playwrightProxy.before()` 都会重新开始计时，经过代理的请求则不会。如果在下一次 `before()` 调用之前超时（默认 120000 ms），代理就会切换到 `transparent`。这时仍在运行的测试会把剩余请求发往真实后端。如果单个测试可能运行这么久，请用 [CLI](/zh-cn/docs/guides/cli/) 的 `--timeout` 或[配置](/zh-cn/docs/guides/config/)中的 `timeout` 调高超时时间。
 
+## 回放的请求因“with this request body”失败 —— 为什么？{#request-body-changed}
+
+代理匹配服务端请求时，除了方法、路径和查询字符串，还会比较请求体，而该请求发送的请求体在任何录制中都不存在。通常是请求体中含有每次运行都会变化的值，例如当前日期或随机 id。请在测试期间固定这个值（固定的时钟、带种子的 id 生成器），然后重新录制。如果应用的请求是有意改变的，请重新录制该测试。`GET` 和 `HEAD` 请求不按请求体比较。
+
 ## 可以用并行 worker 录制吗？{#parallel-recording}
 
-不可以。代理同一时间只持有一个录制会话。当第二个测试开始录制时，代理会保存第一个测试的文件并切换到第二个测试。之后，第一个测试经过代理的剩余请求就会进入第二个测试的 `.mock.json`。请用单个 worker 录制，`init` 添加的 `test:e2e:record` 脚本已经这样做了：
+可以，2.0.1 之后的版本支持。代理把每个请求归入其 `x-test-rcrd-id` header 所指定的会话，record 模式与 replay 模式都是如此。`playwrightProxy.before()` 把这个 header 设置在页面的请求上，`registerProxyFetch()` 则把它复制到服务端请求上。一个测试结束时，代理会保存该测试的 `.mock.json`，其他测试继续录制。
+
+仍可能妨碍并行录制运行的是被测应用。重置同一个数据库或登录同一个账号的测试，无论代理怎样处理，都会互相覆盖。这类测试请用单个 worker 录制，或者为每个 worker 运行一台应用服务器，各自使用自己的端口和数据目录。一个由 11 个测试组成的套件（每个测试有 2 到 8 分钟的上游调用，并为每个 worker 运行一台应用服务器）在五个 worker 上录制用了 11.5 分钟，在单个 worker 上则用了 49 分钟。
 
 ```bash
-npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-回放可以使用并行 worker。每个测试回放自己的会话，靠 `x-test-rcrd-id` header 区分彼此：`playwrightProxy.before()` 把它设置在页面的请求上，`registerProxyFetch()` 则把它复制到服务端请求上。[示例应用](/zh-cn/docs/reference/examples/)正是出于这个原因用 `--workers 1` 录制。
+`init` 添加的 `test:e2e:record` 脚本和[示例应用](/zh-cn/docs/reference/examples/)都会传入 `--workers 1`。当你的测试不共享应用状态时，可以去掉它。
+
+2.0.1 及更早的版本对所有请求只保留一个录制会话。在这些版本上，当第二个测试开始录制时，代理会保存第一个测试的文件并切换到第二个测试，因此第一个测试的剩余请求会进入第二个测试的 `.mock.json`。在这些版本上，请用 `--workers 1` 录制。所有版本的回放都可以使用并行 worker。
 
 ## 我应该把录制提交到 git 吗？
 

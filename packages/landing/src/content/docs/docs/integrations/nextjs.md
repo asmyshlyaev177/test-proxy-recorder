@@ -29,7 +29,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
 ```
 
-It patches the global `fetch` to copy the current request's `x-test-rcrd-id` onto outgoing requests, so the proxy can tell concurrent replay sessions apart. Call it from the root layout — **not** `instrumentation.ts`, whose context differs from the one rendering your routes on the Edge runtime, so a patch there silently never fires.
+It patches the global `fetch` to copy the current request's `x-test-rcrd-id` onto outgoing requests, so the proxy can tell concurrent sessions apart, in record mode as in replay. Call it from the root layout — **not** `instrumentation.ts`, whose context differs from the one rendering your routes on the Edge runtime, so a patch there silently never fires.
 
 ## axios — registerProxyAxios
 

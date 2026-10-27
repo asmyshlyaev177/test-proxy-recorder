@@ -2,7 +2,7 @@
 title: Remoção de segredos
 description: A remoção fica ativa por padrão — Authorization, Cookie e Set-Cookie são removidos das gravações antes de chegarem ao disco. Adicione padrões de header e de corpo, cookies na allow-list ou remova programaticamente.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 As gravações são commitadas no git, então os segredos são removidos antes de qualquer coisa ser gravada no disco. A remoção fica **ativa por padrão** sempre que o proxy roda a partir da CLI ou do arquivo de config, que é como o `init` o configura; o proxy substitui os valores destes headers de requisição/resposta por `[REDACTED]`:
@@ -36,7 +36,7 @@ Os headers padrão sempre se aplicam (enquanto a remoção estiver ativa); você
 - `--no-redact` — desativa a remoção de segredos (ativa por padrão).
 - `--redact` — ativa a remoção de segredos; só é necessário para reativar quando a config define `redaction: false`.
 - `--redact-headers <names>` — nomes de header extras, separados por vírgula, a remover (mesclados com os padrões).
-- `--redact-body <patterns>` — padrões regex separados por vírgula a remover dos corpos de requisição/resposta.
+- `--redact-body <patterns>` — padrões regex separados por vírgula a remover dos corpos de requisição/resposta. A reprodução os aplica ao corpo da requisição recebida antes de compará-lo com o gravado, então uma requisição cujo segredo mudou desde a gravação ainda corresponde.
 - `--allow-headers <names>` — nomes de header, separados por vírgula, isentos de remoção (por exemplo `set-cookie`).
 - `--allow-cookies <names>` — nomes de cookie, separados por vírgula, a manter sem remoção dentro de `Cookie`/`Set-Cookie`.
 

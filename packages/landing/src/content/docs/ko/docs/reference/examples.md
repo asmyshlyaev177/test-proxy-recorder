@@ -2,7 +2,7 @@
 title: 예제 앱
 description: test-proxy-recorder의 완전한 동작 예제 — Next.js 및 TanStack Start SSR, Chrome 확장 프로그램, 서드파티 WebSocket 시세 표시, 백엔드 없이 재생되는 인증 앱.
 i18nSource: docs/reference/examples.md
-i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
+i18nSourceBlob: 2faae16cb9fa5b4bf1ac9a88b694d10d2440f527
 ---
 
 완전한 동작 예제는 [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps)에 있습니다. 기록 메커니즘별로 하나씩이며, 각각 전체 설정과 기록/재생 워크플로가 담긴 자체 README가 있습니다.
@@ -13,7 +13,7 @@ i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
 
 ## Next.js Edge 런타임 {#nextjs-edge}
 
-[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — 페이지가 **Edge 런타임**(`export const runtime = 'edge'`)에서 렌더링되는 Next.js 16 앱입니다. SSR `fetch`는 `registerProxyFetch()`(루트 레이아웃에서 호출)를 통해 기록 세션 id로 태깅되므로, `instrumentation.ts`가 도달할 수 없는 곳에서도 동시 재생 세션이 구분됩니다. [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md)를 참조하세요.
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — 페이지가 **Edge 런타임**(`export const runtime = 'edge'`)에서 렌더링되는 Next.js 16 앱입니다. SSR `fetch`는 `registerProxyFetch()`(루트 레이아웃에서 호출)를 통해 기록 세션 id로 태깅되므로, `instrumentation.ts`가 도달할 수 없는 곳에서도 동시 세션이 구분됩니다. [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md)를 참조하세요.
 
 ## TanStack Start {#tanstack-start}
 

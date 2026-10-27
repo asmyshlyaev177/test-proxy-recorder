@@ -4,7 +4,7 @@ description: Ghi lại và phát lại lời gọi API trong test Playwright v�
 sidebar:
   label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
+i18nSourceBlob: 41506a06c67c43287c172907f5ef6c6ef07e36e3
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -28,7 +28,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Ngoại lệ — các ứng dụng full-stack:** khi trình duyệt cũng gọi `localhost:8100` (vì frontend được cấu hình với URL proxy làm base API), hãy dùng `/localhost:8100/` làm pattern. Khi đó các request trình duyệt này đi thẳng tới proxy, nơi ghi chúng vào `.mock.json` của test và phát lại chúng từ file đó, nên một request bị thiếu sẽ nhận 404 của proxy thay vì bị HAR hủy (xem [cách phát lại khớp request](/vi/docs/getting-started/how-it-works/#replay-matching)).
 
-Tên file bản ghi được sinh từ tên test (`"create a user"` → `create-a-user.mock.json` / `.har`).
+Tên file bản ghi được lấy từ file test, các tiêu đề `describe` và tiêu đề test (`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`). Một tên dài hơn 120 byte sẽ bị cắt ngắn và kết thúc bằng một hash.
+
+## Test không có bản ghi
+
+Ở chế độ phát lại, `before()` ném lỗi khi test không có bản ghi, trước khi nó chuyển chế độ của proxy:
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+Hãy ghi lại test thay vì bỏ qua nó: một test bị bỏ qua được báo cáo là skipped, không phải failed, nên một bản ghi bị thiếu sẽ không ai để ý. `hasRecording(testInfo)` trả lời cùng câu hỏi đó mà không ném lỗi, dùng cùng các tên file như khi phát lại.
 
 ## Global teardown (khuyến nghị) {#global-teardown-recommended}
 
@@ -48,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` reset proxy về `transparent` và chạy lượt [loại bỏ bí mật](/vi/docs/guides/secret-redaction/) cho HAR. Đừng gọi nó trong hook `afterAll` theo từng test dưới `fullyParallel` — xem [FAQ](/vi/docs/reference/faq/#parallel-replay) để biết tại sao điều đó làm hỏng việc phát lại song song.
+`teardown()` reset proxy về `transparent` và chạy lượt [loại bỏ bí mật](/vi/docs/guides/secret-redaction/) cho HAR. Việc chuyển sang `transparent` lưu và kết thúc mọi session ghi lại. Đừng gọi nó trong hook `afterAll` theo từng test dưới `fullyParallel` — xem [FAQ](/vi/docs/reference/faq/#parallel-replay) để biết tại sao điều đó làm hỏng việc phát lại và ghi lại song song.
 
 ## Các file bản ghi
 

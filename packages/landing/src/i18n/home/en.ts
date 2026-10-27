@@ -114,13 +114,13 @@ export const home: HomeCopy = {
     perTest: {
       term: 'One file per test',
       start: 'Each test writes its own file, named after the test, so',
-      end: 're-records just that one. The proxy records one test at a time, so record with one worker; replay runs in parallel.',
+      end: 're-records just that one. Tests record on parallel workers as they replay, unless they share one database or account.',
     },
     testId: {
       term: "The test's id",
       start: 'Playwright sends',
       mid: 'with every request a test makes, and',
-      end: "copies it onto your server's own fetches. The proxy reads it to answer each test from that test's own file, even when tests replay in parallel.",
+      end: "copies it onto your server's own fetches. The proxy reads it to record each test into its own file and replay it from there, even when tests run in parallel.",
     },
     secrets: {
       term: 'Secrets',

@@ -2,7 +2,7 @@
 title: Loại bỏ bí mật
 description: Việc loại bỏ bí mật bật theo mặc định — Authorization, Cookie, và Set-Cookie bị loại bỏ khỏi các bản ghi trước khi được ghi ra đĩa. Thêm các pattern cho header và body, allow-list cookie, hoặc loại bỏ theo lập trình.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 Các bản ghi được commit vào git, nên bí mật bị loại bỏ trước khi bất cứ thứ gì được ghi ra đĩa. Việc loại bỏ bí mật **bật theo mặc định** mỗi khi proxy chạy từ CLI hoặc từ file cấu hình, và đó là cách `init` thiết lập nó; proxy thay giá trị của các header request/response sau bằng `[REDACTED]`:
@@ -36,7 +36,7 @@ Các header mặc định luôn áp dụng (khi việc loại bỏ đang bật);
 - `--no-redact` — tắt việc loại bỏ bí mật (bật theo mặc định).
 - `--redact` — bật việc loại bỏ bí mật; chỉ cần khi bật lại vì cấu hình đặt `redaction: false`.
 - `--redact-headers <names>` — các tên header bổ sung để loại bỏ, phân tách bằng dấu phẩy (gộp với các mặc định).
-- `--redact-body <patterns>` — các pattern regex để loại bỏ khỏi body request/response, phân tách bằng dấu phẩy.
+- `--redact-body <patterns>` — các pattern regex để loại bỏ khỏi body request/response, phân tách bằng dấu phẩy. Khi phát lại, chúng được áp dụng cho body của request thực tế trước khi so sánh với body đã ghi, nên một request có secret đã đổi kể từ lúc ghi lại vẫn khớp.
 - `--allow-headers <names>` — các tên header được miễn loại bỏ, phân tách bằng dấu phẩy (ví dụ `set-cookie`).
 - `--allow-cookies <names>` — các tên cookie được giữ nguyên không bị loại bỏ bên trong `Cookie`/`Set-Cookie`, phân tách bằng dấu phẩy.
 

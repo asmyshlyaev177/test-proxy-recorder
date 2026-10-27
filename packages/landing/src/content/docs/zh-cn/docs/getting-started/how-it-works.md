@@ -4,7 +4,7 @@ description: test-proxy-recorder 通过两种机制录制流量：用代理处�
 sidebar:
   label: 工作原理
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: 26b907ff9c82df698a55827441e0b4b432a42262
+i18nSourceBlob: e353fcc1cd381fbe245c50f6a5938f7d57ed21e3
 ---
 
 test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以一起使用，也可以独立使用。
@@ -22,7 +22,7 @@ test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以
                     └──> .mock.json                        └──> .har
 ```
 
-每个测试在启动时设置模式，而代理对它收到的所有请求都使用同一种模式，所以同时运行的测试共用这一模式。在 **record** 模式下，代理转发到真实后端并保存响应；在 **replay** 模式下，它从磁盘提供已保存的响应，并由每个测试的 id 选出该测试的录制；在 **transparent** 模式下，它转发但不录制。代理启动时处于 transparent 模式，因此在测试之外通过它运行的应用会照常与后端通信。模式如何切换请参见[控制端点](/zh-cn/docs/guides/control-endpoint/)。
+每个测试在启动时设置它自己会话的模式，而每个请求都在 `x-test-rcrd-id` header 中携带所属测试的 id，所以同时运行的测试各自保持自己的模式和文件。在 **record** 模式下，代理转发到真实后端，并把响应保存到该测试的文件中；在 **replay** 模式下，它从磁盘上该测试的录制中提供已保存的响应；在 **transparent** 模式下，它转发但不录制。2.0.1 及更早的版本对所有请求只保留一个录制会话，所以在这些版本上录制运行需要单个 worker。代理启动时处于 transparent 模式，因此在测试之外通过它运行的应用会照常与后端通信。模式如何切换请参见[控制端点](/zh-cn/docs/guides/control-endpoint/)。
 
 ## 回放如何匹配请求 {#replay-matching}
 
@@ -30,8 +30,8 @@ test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以
 
 | 回放时 | 代理（`.mock.json`） | HAR（`.har`） |
 | --- | --- | --- |
-| 匹配依据 | 方法、路径，以及查询字符串的 MD5 哈希。不比较请求体。 | 方法、URL 和请求体，然后选取共有请求 header 最多的条目，因为相同的 URL 和请求体可能是靠某个 header 区分的不同操作。没有任何条目具有该请求体时，退回到只按方法和 URL 匹配；multipart 边界（boundary）会被忽略。 |
-| 同一请求再次出现 | 按录制顺序返回下一条录制。 | 按录制顺序返回下一条录制，对写请求有一条规则（见下文）。 |
+| 匹配依据 | 方法、路径、查询字符串的 MD5 哈希，以及请求体，multipart 边界会被忽略。`GET` 和 `HEAD` 不需要请求体即可匹配。不比较请求 header。 | 方法、URL 和请求体，然后选取共有请求 header 最多的条目，因为相同的 URL 和请求体可能是靠某个 header 区分的不同操作。没有任何条目具有该请求体时，退回到只按方法和 URL 匹配；multipart 边界（boundary）会被忽略。 |
+| 同一请求再次出现 | 按录制顺序返回请求体相同的下一条录制。 | 按录制顺序返回下一条录制，对写请求有一条规则（见下文）。 |
 | 没有录制 | 返回 404，JSON 响应体中指明该请求；`playwrightProxy.before()` 会关闭页面，使测试立即失败（`failOnMissingRecording: false` 可关闭这一行为）。 | 请求被中止，并输出日志 `[Client-Side Replay] No recorded response for <method> <url>`。 |
 | 访问真实 API | 仅在 `transparent` 模式下。 | 仅限不匹配 `url` 的请求。 |
 
@@ -39,7 +39,11 @@ test-proxy-recorder 根据请求的来源支持两种录制机制。两者可以
 
 键由方法、路径和查询字符串 MD5 哈希的前 16 个十六进制字符组成。`GET /todos?page=2` 的键是 `GET_todos_46589c7afd19c014.json`，所以只要查询字符串有任何不同（哪怕只是参数顺序不同），生成的键就不同。
 
-键相同的调用按录制顺序依次应答。超出最后一条录制的调用会再次得到最后一个响应，同时代理会记录 `[REPLAY WARNING] All N recordings already served for <key> (session: <id>), reusing last one`。
+键相同的调用随后按请求体匹配，因此并行发送的调用（每次运行到达代理的顺序都不同）仍能各自得到自己的响应。比较之前，代理会对两个请求体都应用它的请求体涂抹（`bodyPatterns`），并去掉 multipart 边界，因此被涂抹的机密或每个请求都会变化的边界不会妨碍匹配。`GET` 和 `HEAD` 调用只按键匹配。
+
+如果某个调用的请求体在任何录制中都不存在，它会被当作下文所述的没有录制的请求处理，原因中会指明请求体：`No recording for POST /embeddings with this request body in session <id> (2 recorded with other bodies)`。代理绝不会用为另一个请求体录制的响应来应答它，因为那会掩盖应用所发送内容的变化。请让请求体在各次运行之间保持一致：请求体中的当前日期或随机 id 会导致回放失败。
+
+键和请求体都相同的调用按录制顺序依次应答。超出该请求体最后一条录制的调用会再次得到那条录制的响应，同时代理会记录 `[REPLAY WARNING] All N recordings matching this request already served for <key> (session: <id>), reusing last one`，其中 N 是具有该请求体的录制条数。
 
 没有录制的请求不会访问真实 API。代理会输出 `[REPLAY ERROR]` 日志行，并以 404 应答：
 

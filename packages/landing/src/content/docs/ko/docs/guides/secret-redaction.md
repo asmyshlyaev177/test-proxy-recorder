@@ -2,7 +2,7 @@
 title: 비밀 정보 마스킹
 description: 마스킹은 기본적으로 활성화되어 있습니다. Authorization, Cookie, Set-Cookie가 디스크에 기록되기 전에 제거됩니다. 헤더 및 본문 패턴을 추가하거나, 쿠키를 허용 목록에 넣거나, 프로그래밍 방식으로 마스킹할 수 있습니다.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 기록은 git에 커밋되므로, 디스크에 쓰기 전에 비밀 정보가 제거됩니다. 프록시를 CLI나 설정 파일로 실행하면(`init`이 설정하는 방식입니다) 마스킹은 **기본적으로 활성화**되어 있으며, 프록시는 다음 요청/응답 헤더의 값을 `[REDACTED]`로 바꿉니다.
@@ -36,7 +36,7 @@ i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 - `--no-redact` — 비밀 정보 마스킹 비활성화(기본적으로 활성화).
 - `--redact` — 비밀 정보 마스킹 활성화. 설정에서 `redaction: false`로 되어 있을 때 다시 켤 때만 필요.
 - `--redact-headers <names>` — 마스킹할 추가 헤더 이름(쉼표로 구분, 기본값과 병합).
-- `--redact-body <patterns>` — 요청/응답 본문에서 마스킹할 정규식 패턴(쉼표로 구분).
+- `--redact-body <patterns>` — 요청/응답 본문에서 마스킹할 정규식 패턴(쉼표로 구분). 재생은 실제 요청 본문을 기록된 본문과 비교하기 전에 이 패턴을 적용하므로, 기록 이후 비밀 정보가 바뀐 요청도 여전히 매칭됩니다.
 - `--allow-headers <names>` — 마스킹에서 제외할 헤더 이름(쉼표로 구분, 예: `set-cookie`).
 - `--allow-cookies <names>` — `Cookie`/`Set-Cookie` 안에서 마스킹하지 않을 쿠키 이름(쉼표로 구분).
 

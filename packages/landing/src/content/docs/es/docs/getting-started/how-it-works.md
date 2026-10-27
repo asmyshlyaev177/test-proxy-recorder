@@ -4,7 +4,7 @@ description: test-proxy-recorder graba tráfico mediante dos mecanismos, un prox
 sidebar:
   label: Cómo funciona
 i18nSource: docs/getting-started/how-it-works.md
-i18nSourceBlob: 26b907ff9c82df698a55827441e0b4b432a42262
+i18nSourceBlob: e353fcc1cd381fbe245c50f6a5938f7d57ed21e3
 ---
 
 test-proxy-recorder admite dos mecanismos de grabación según dónde se originan tus peticiones. Ambos pueden usarse juntos o de forma independiente.
@@ -22,7 +22,7 @@ test-proxy-recorder admite dos mecanismos de grabación según dónde se origina
                     └──> .mock.json                        └──> .har
 ```
 
-Cada prueba establece el modo al empezar, y el proxy mantiene un único modo para todas las peticiones que recibe, así que las pruebas que se ejecutan a la vez lo comparten. En modo **record** el proxy reenvía al backend real y guarda las respuestas; en modo **replay** sirve las respuestas guardadas desde disco, y el id de cada prueba elige la grabación de esa prueba; en modo **transparent** reenvía sin grabar. El proxy arranca en modo transparent, así que una app que pasa por él fuera de las pruebas habla con su backend como siempre. Mira el [endpoint de control](/es/docs/guides/control-endpoint/) para saber cómo se cambian los modos.
+Cada prueba establece el modo de su propia sesión al empezar, y cada petición lleva el id de su prueba en la cabecera `x-test-rcrd-id`, así que las pruebas que se ejecutan a la vez mantienen cada una su propio modo y su propio archivo. En modo **record** el proxy reenvía al backend real y guarda las respuestas en el archivo de esa prueba; en modo **replay** sirve las respuestas guardadas desde disco, de la grabación de esa prueba; en modo **transparent** reenvía sin grabar. Las versiones hasta la 2.0.1 mantenían una única sesión de grabación para todas las peticiones, así que con ellas una ejecución de grabación necesita un solo worker. El proxy arranca en modo transparent, así que una app que pasa por él fuera de las pruebas habla con su backend como siempre. Mira el [endpoint de control](/es/docs/guides/control-endpoint/) para saber cómo se cambian los modos.
 
 ## Cómo se emparejan las peticiones al reproducir {#replay-matching}
 
@@ -30,8 +30,8 @@ El proxy y el archivo HAR buscan una respuesta grabada de formas distintas.
 
 | Al reproducir | Proxy (`.mock.json`) | HAR (`.har`) |
 | --- | --- | --- |
-| Se empareja por | Método, ruta y un hash MD5 de la cadena de consulta (query string). El cuerpo no se compara. | Método, URL y cuerpo, y luego las entradas que comparten más cabeceras de la petición, ya que la misma URL y el mismo cuerpo pueden ser operaciones distintas que se diferencian por una cabecera. Si ninguna entrada tiene ese cuerpo, se empareja solo por método y URL, y el delimitador (boundary) de multipart se ignora. |
-| La misma petición otra vez | La siguiente grabación, en el orden grabado. | La siguiente grabación, en el orden grabado, con una regla para las escrituras (ver más abajo). |
+| Se empareja por | Método, ruta, un hash MD5 de la cadena de consulta (query string) y el cuerpo de la petición, ignorando el delimitador (boundary) de multipart. `GET` y `HEAD` se emparejan sin cuerpo. Las cabeceras no se comparan. | Método, URL y cuerpo, y luego las entradas que comparten más cabeceras de la petición, ya que la misma URL y el mismo cuerpo pueden ser operaciones distintas que se diferencian por una cabecera. Si ninguna entrada tiene ese cuerpo, se empareja solo por método y URL, y el delimitador (boundary) de multipart se ignora. |
+| La misma petición otra vez | La siguiente grabación con el mismo cuerpo, en el orden grabado. | La siguiente grabación, en el orden grabado, con una regla para las escrituras (ver más abajo). |
 | Sin grabación | Un 404 con un cuerpo JSON que indica la petición, y `playwrightProxy.before()` cierra la página para que la prueba falle de inmediato (`failOnMissingRecording: false` lo desactiva). | La petición se aborta y se registra `[Client-Side Replay] No recorded response for <method> <url>` en el log. |
 | Llega a la API real | Solo en modo `transparent`. | Solo las peticiones que no coinciden con `url`. |
 
@@ -39,7 +39,11 @@ El proxy y el archivo HAR buscan una respuesta grabada de formas distintas.
 
 La clave es el método, la ruta y los primeros 16 caracteres hexadecimales del hash MD5 de la cadena de consulta. `GET /todos?page=2` tiene la clave `GET_todos_46589c7afd19c014.json`, así que una cadena de consulta que difiera en lo más mínimo, incluso en el orden de los parámetros, produce una clave distinta.
 
-Las llamadas con la misma clave se sirven en el orden en que se grabaron. Una llamada posterior a la última grabación recibe de nuevo la última respuesta, y el proxy registra `[REPLAY WARNING] All N recordings already served for <key> (session: <id>), reusing last one`.
+Las llamadas con la misma clave se emparejan después por el cuerpo de la petición, así que las llamadas enviadas en paralelo, que llegan al proxy en un orden distinto en cada ejecución, siguen recibiendo sus propias respuestas. Antes de comparar, el proxy aplica su enmascaramiento del cuerpo (`bodyPatterns`) a ambos cuerpos y quita el delimitador de multipart, así que un secreto enmascarado o un delimitador que cambia en cada petición no impiden el emparejamiento. Las llamadas `GET` y `HEAD` se emparejan solo por la clave.
+
+Una llamada cuyo cuerpo no tiene ninguna grabación se trata como una petición sin grabación (ver más abajo), y el motivo menciona el cuerpo: `No recording for POST /embeddings with this request body in session <id> (2 recorded with other bodies)`. El proxy nunca la responde con una grabación hecha para otro cuerpo, porque eso ocultaría un cambio en lo que envió la app. Mantén los cuerpos iguales entre ejecuciones: una fecha actual o un id aleatorio en un cuerpo hacen fallar la reproducción.
+
+Las llamadas con la misma clave y el mismo cuerpo se sirven en el orden en que se grabaron. Una llamada posterior a la última grabación con su cuerpo recibe de nuevo la respuesta de esa grabación, y el proxy registra `[REPLAY WARNING] All N recordings matching this request already served for <key> (session: <id>), reusing last one`, donde N cuenta las grabaciones con ese cuerpo.
 
 Una petición sin grabación no llega a la API real. El proxy registra líneas `[REPLAY ERROR]` y responde con un 404:
 

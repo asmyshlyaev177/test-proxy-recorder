@@ -4,7 +4,7 @@ description: 在 Playwright 测试中录制并回放 Next.js 服务器发出的 
 sidebar:
   label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
+i18nSourceBlob: 80d920c0b5282f10e3c851bb058eb881830cc12e
 ---
 
 在 Playwright 测试中，`page.route()` 只能看到浏览器的请求；你的 Next.js 服务器在渲染时发出的 `fetch` 调用永远不会经过它。test-proxy-recorder 通过它的代理录制并回放这些服务端 fetch，每个测试一份录制。
@@ -31,7 +31,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // production 下是 no-op，除非 TEST_PROXY_RECORDER_ENABLED=true
 ```
 
-它会 patch global `fetch`，把当前请求的 `x-test-rcrd-id` 复制到外发请求上，这样代理就能区分并发的回放会话。请从 root layout 调用 —— **不要**放在 `instrumentation.ts`，它的上下文与 Edge runtime 上渲染你路由的上下文不同，放在那里的 patch 会悄悄地不触发。
+它会 patch global `fetch`，把当前请求的 `x-test-rcrd-id` 复制到外发请求上，这样代理就能区分并发的会话，record 模式与 replay 模式都是如此。请从 root layout 调用 —— **不要**放在 `instrumentation.ts`，它的上下文与 Edge runtime 上渲染你路由的上下文不同，放在那里的 patch 会悄悄地不触发。
 
 ## axios —— registerProxyAxios
 

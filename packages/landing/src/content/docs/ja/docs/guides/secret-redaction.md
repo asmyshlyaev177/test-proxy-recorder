@@ -2,7 +2,7 @@
 title: シークレットのマスキング
 description: マスキング（redaction）はデフォルトで有効 — Authorization、Cookie、Set-Cookie はディスクに書き込まれる前に記録から取り除かれます。ヘッダーやボディのパターン追加、Cookie の許可、プログラムからのマスキングが可能です。
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 記録は git にコミットされるため、シークレットはディスクへ何かを書き込む前に取り除かれます。プロキシを CLI または設定ファイルから起動する場合（`init` もこの方法でセットアップします）、マスキングは**デフォルトで有効**です。プロキシは次のリクエスト/レスポンスヘッダーの値を `[REDACTED]` に置き換えます:
@@ -36,7 +36,7 @@ i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 - `--no-redact` — シークレットのマスキングを無効化（デフォルトで有効）。
 - `--redact` — シークレットのマスキングを有効化。設定が `redaction: false` の場合に再有効化するためにのみ必要です。
 - `--redact-headers <names>` — 追加でマスキングするヘッダー名（カンマ区切り、デフォルトとマージ）。
-- `--redact-body <patterns>` — リクエスト/レスポンスのボディからマスキングする正規表現パターン（カンマ区切り）。
+- `--redact-body <patterns>` — リクエスト/レスポンスのボディからマスキングする正規表現パターン（カンマ区切り）。再生時には、記録済みのボディと比較する前に実際のリクエストボディにも適用されるため、記録後にシークレットが変わったリクエストも一致します。
 - `--allow-headers <names>` — マスキングから除外するヘッダー名（カンマ区切り、例: `set-cookie`）。
 - `--allow-cookies <names>` — `Cookie`/`Set-Cookie` 内でマスキングせず保持する Cookie 名（カンマ区切り）。
 

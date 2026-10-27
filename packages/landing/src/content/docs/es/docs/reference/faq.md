@@ -2,12 +2,12 @@
 title: Preguntas frecuentes
 description: Preguntas comunes sobre test-proxy-recorder — reproducción en paralelo, commit de grabaciones a git, el destino del proxy para grabación HAR, el servidor de desarrollo de Next.js y actualización de grabaciones.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
+i18nSourceBlob: 330688cb20230d36f1c5e0ee0a9e121b46abf737
 ---
 
 ## Mis pruebas de reproducción en paralelo a veces llaman al backend real — ¿por qué? {#parallel-replay}
 
-Probablemente estás llamando a `playwrightProxy.teardown()` en un hook por prueba. Establece el modo **global** del proxy a `transparent`, y con `fullyParallel: true` cada worker de Playwright ejecuta su propio `test.afterAll`. Si una prueba rápida termina y llama a `teardown()` mientras otra más lenta sigue en marcha, el proxy cambia a transparent en mitad de la prueba y las peticiones restantes se reenvían al backend real en vez de reproducirse.
+Probablemente estás llamando a `playwrightProxy.teardown()` en un hook por prueba. Establece el modo **global** del proxy a `transparent`, y con `fullyParallel: true` cada worker de Playwright ejecuta su propio `test.afterAll`. Si una prueba rápida termina y llama a `teardown()` mientras otra más lenta sigue en marcha, el proxy cambia a transparent en mitad de la prueba y las peticiones restantes se reenvían al backend real en vez de reproducirse. En una ejecución de grabación, `teardown()` guarda y termina todas las sesiones de grabación, así que las peticiones restantes de la prueba más lenta no se graban.
 
 ```typescript
 // ❌ breaks parallel replay — teardown() affects all sessions globally
@@ -20,15 +20,23 @@ test.afterAll(async () => {
 
 El timeout de sesión es la otra forma en que una ejecución de reproducción llega al backend real. Cada llamada a `playwrightProxy.before()` lo reinicia, y las peticiones que pasan por el proxy no. Si se agota (120000 ms por defecto) antes de la siguiente llamada a `before()`, el proxy cambia a `transparent`. Una prueba que siga en marcha envía entonces sus peticiones restantes al backend real. Si una prueba puede durar tanto, aumenta el timeout con `--timeout` en la [CLI](/es/docs/guides/cli/) o con `timeout` en la [configuración](/es/docs/guides/config/).
 
+## Una petición reproducida falla con "with this request body" — ¿por qué? {#request-body-changed}
+
+El proxy empareja una petición del lado del servidor por su cuerpo, además de por su método, ruta y cadena de consulta, y la petición envió un cuerpo que no tiene ninguna grabación. Normalmente el cuerpo contiene un valor que cambia en cada ejecución, como la fecha actual o un id aleatorio. Fija ese valor durante las pruebas (un reloj fijo, un generador de ids con semilla) y vuelve a grabar. Si la petición de la app cambió a propósito, vuelve a grabar la prueba. Las peticiones `GET` y `HEAD` no se comparan por cuerpo.
+
 ## ¿Puedo grabar con workers en paralelo? {#parallel-recording}
 
-No. El proxy mantiene una sola sesión de grabación a la vez. Cuando una segunda prueba empieza a grabar, el proxy guarda el archivo de la primera prueba y cambia a la segunda. Las peticiones restantes de la primera prueba que pasan por el proxy acaban entonces en el `.mock.json` de la segunda. Graba con un solo worker, como ya hace el script `test:e2e:record` que añade `init`:
+Sí, en las versiones posteriores a la 2.0.1. El proxy archiva cada petición en la sesión indicada en su cabecera `x-test-rcrd-id`, tanto en modo record como en replay. `playwrightProxy.before()` establece la cabecera en las peticiones de la página, y `registerProxyFetch()` la copia en las del lado del servidor. Cuando una prueba termina, el proxy guarda el `.mock.json` de esa prueba y deja que las demás sigan grabando.
+
+Lo que todavía puede impedir una ejecución de grabación en paralelo es la app bajo prueba. Las pruebas que reinician una misma base de datos o inician sesión en una misma cuenta se sobrescriben entre sí, haga lo que haga el proxy. Graba esas pruebas con un solo worker, o ejecuta un servidor de la app por worker, cada uno con su propio puerto y su propio directorio de datos. Una suite de 11 pruebas, cada una con entre 2 y 8 minutos de llamadas al upstream y un servidor de la app por worker, se grabó en 11,5 minutos con cinco workers frente a 49 con uno.
 
 ```bash
-npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-La reproducción sí puede ejecutarse con workers en paralelo. Cada prueba reproduce su propia sesión, y la cabecera `x-test-rcrd-id` las distingue: `playwrightProxy.before()` la establece en las peticiones de la página, y `registerProxyFetch()` la copia en las del lado del servidor. Por eso las [apps de ejemplo](/es/docs/reference/examples/) graban con `--workers 1`.
+El script `test:e2e:record` que añade `init` y las [apps de ejemplo](/es/docs/reference/examples/) pasan `--workers 1`. Quítalo cuando tus pruebas no comparten estado de la app.
+
+Las versiones hasta la 2.0.1 mantienen una única sesión de grabación para todas las peticiones. Cuando ahí una segunda prueba empieza a grabar, el proxy guarda el archivo de la primera prueba y cambia a la segunda, así que las peticiones restantes de la primera prueba acaban en el `.mock.json` de la segunda. En esas versiones, graba con `--workers 1`. La reproducción se ejecuta con workers en paralelo en todas las versiones.
 
 ## ¿Debo hacer commit de las grabaciones a git?
 

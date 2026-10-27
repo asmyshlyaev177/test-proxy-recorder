@@ -4,7 +4,7 @@ description: 'test-proxy-recorder를 MSW, routeFromHAR, Polly.js, Next.js 테스
 sidebar:
   label: 비교
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 여기 나오는 도구는 모두 엔드투엔드 테스트가 받는 API 응답을 제어합니다. 차이는 요청을 어디서 가로채는지(브라우저 안, 서버 안, 또는 별도의 프록시)와, 응답을 직접 작성하는지 기록하는지에 있습니다. 표는 [문서 개요](/ko/docs/#comparison)의 여섯 가지 도구를 그대로 두고 Next.js 테스트 모드, mockttp, scenarist, talkback, proxay를 더했습니다. 모든 칸은 2026-10-03 기준으로 각 도구의 문서, README, 소스에서 가져왔으며, 출처는 표 아래에 링크했습니다. "문서화되지 않음"은 그 출처에 언급이 없다는 뜻입니다.
@@ -56,7 +56,7 @@ Polly.js에서 옮겨 온다면, Polly.js의 개념은 test-proxy-recorder에 �
 | `record`, `replay`, `passthrough` 모드([설정](https://netflix.github.io/pollyjs/#/configuration)) | `playwrightProxy.before()`가 테스트별로 설정하는 `record`, `replay`, `transparent` 모드 |
 | Polly 인스턴스마다 이름이 붙은 기록 하나, persister가 저장 | 기록 디렉터리에 Playwright 테스트마다 `.mock.json`(서버) 하나와 `.har`(브라우저) 하나 |
 | 요청을 보내는 프로세스 안의 어댑터 | 서버 호출에는 프록시 프로세스, 브라우저 호출에는 HAR, 서버에는 `registerProxyFetch()` |
-| 기본적으로 메서드, 헤더, 본문, 순서, URL로 요청을 매칭 | 서버 측 요청은 메서드, 경로, 쿼리 해시로 기록된 순서대로 매칭하며 본문은 비교하지 않음. 브라우저 요청은 POST 본문도 비교하는 Playwright의 HAR 규칙을 따름 |
+| 기본적으로 메서드, 헤더, 본문, 순서, URL로 요청을 매칭 | 서버 측 요청은 메서드, 경로, 쿼리 해시, 본문으로 매칭하며, 반복되는 요청은 기록된 순서대로 제공하고 헤더는 비교하지 않음. 브라우저 요청은 메서드, URL, 본문으로 매칭한 다음 공유하는 헤더로 매칭 |
 
 ## Next.js와 Playwright에서의 MSW {#msw}
 

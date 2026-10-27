@@ -1,7 +1,7 @@
 ---
 name: proxy-setup
 description: >
-  Set up test-proxy-recorder for any Playwright project. Covers the proxy CLI (test-proxy-recorder <target> --port --dir), package.json scripts for the three-service architecture (UI app → proxy → backend API), playwright.config.ts webServer block pointing to /__control, per-test fixtures using playwrightProxy.before(page, testInfo, mode, { url }), HAR browser-side recording via url pattern, .mock.json server-side recording, record/replay/ transparent modes, the record-once→commit→CI-replay lifecycle, automatic secret redaction of Authorization/Cookie/Set-Cookie headers (--no-redact, --redact-headers, --redact-body), an optional config file (test-proxy-recorder.config.ts via defineConfig, --config) with CLI-overrides- config precedence, and parallel test execution with fullyParallel. Load this skill when installing test-proxy-recorder, writing Playwright fixtures, or configuring record/replay.
+  Set up test-proxy-recorder for any Playwright project. Covers the proxy CLI (test-proxy-recorder <target> --port --dir), package.json scripts for the three-service architecture (UI app → proxy → backend API), playwright.config.ts webServer block pointing to /__control, per-test fixtures using playwrightProxy.before(page, testInfo, mode, { url }), HAR browser-side recording via url pattern, .mock.json server-side recording, record/replay/ transparent modes, the record-once→commit→CI-replay lifecycle, automatic secret redaction of Authorization/Cookie/Set-Cookie headers (--no-redact, --redact-headers, --redact-body), an optional config file (test-proxy-recorder.config.ts via defineConfig, --config) with CLI-overrides- config precedence, parallel test execution with fullyParallel, and recording on several workers through one proxy (sessions keyed per request). Load this skill when installing test-proxy-recorder, writing Playwright fixtures, or configuring record/replay.
 sources:
   - "asmyshlyaev177/test-proxy-recorder:README.md"
   - "asmyshlyaev177/test-proxy-recorder:packages/test-proxy-recorder/src/playwr\
@@ -180,14 +180,14 @@ test('creates a todo', async ({ page }) => {
 
 ### Record/replay lifecycle
 
-Recording is manual, done once per test with a single worker. Replay runs on CI with multiple workers, headlessly.
+Recording is manual, done once per test. Both record and replay run with the normal worker count through one proxy: every request names its test's session in the `x-test-rcrd-id` header, and the proxy files it there. Pin `--workers 1` for a record run only when the app under test shares state between tests (one database the tests reset, one account they sign in with).
 
 The scripts below set env vars as `NAME=1 command`, which Windows cmd and PowerShell reject; WSL and Git Bash run them as they are. On cmd or PowerShell, prefix them with [`cross-env`](https://www.npmjs.com/package/cross-env): `cross-env RECORD_MODE=1 playwright test --workers 1`.
 
 ```bash
 # 1. Seed the dev database if the tests need it, then record once against the
-#    dev backend, one worker (add --ui to watch it)
-RECORD_MODE=1 npx playwright test --workers 1
+#    dev backend (add --ui to watch it; --workers 1 when tests share app state)
+RECORD_MODE=1 npx playwright test
 
 # 2. Commit the recordings
 git add e2e/recordings/
@@ -205,6 +205,10 @@ Recording files must be committed — do not add `e2e/recordings/` to `.gitignor
 ```
 
 A recording is only as repeatable as the backend state it was made against. Before recording, put the dev database in the state the tests expect with the project's own seed script or queries, run by hand; whether that is a full reset or a few rows depends on the app, so nothing runs it automatically and tests don't seed data themselves. Replay never touches the database. A record run saves the recording even when the test fails, so re-record after a failure.
+
+### Recording on several workers
+
+One proxy serves every worker in record mode as in replay: a session starts at the test's `before()`, each request is filed under the session in its header, and a test's end (the un-awaited cleanup Playwright sends when the context closes) touches no other session. Versions up to 2.0.1 held one record session for all requests, so a record run there is `--workers 1`. What still limits a parallel record run is the app under test: tests that share one backend's state need either one worker or one app server per worker. The per-worker app server setup (ports, data dirs, a worker-scoped `baseURL` fixture) is in [references/parallel-recording.md](references/parallel-recording.md).
 
 ### Config file
 
@@ -416,7 +420,7 @@ Do **not** wire this into a per-test `afterEach` under `fullyParallel` — like 
 
 ## Common Mistakes
 
-Common failure modes — each with the wrong vs. correct pattern — are in [references/common-mistakes.md](references/common-mistakes.md): app env var not pointed at the proxy, wrong `CLIENT_SIDE_URL` (matching the proxy instead of external domains), `teardown()` per-test breaking parallel replay, `webServer.url` not on `/__control`, gitignored recordings, recording against the Next.js dev server or with multiple workers, and a separate backend or database for tests.
+Common failure modes — each with the wrong vs. correct pattern — are in [references/common-mistakes.md](references/common-mistakes.md): app env var not pointed at the proxy, wrong `CLIENT_SIDE_URL` (matching the proxy instead of external domains), `teardown()` per-test breaking parallel replay, `webServer.url` not on `/__control`, gitignored recordings, recording against the Next.js dev server or with several workers on 2.0.1 or older, and a separate backend or database for tests.
 
 ## Getting help
 

@@ -194,10 +194,18 @@ export async function saveRecordingSession(
     redaction,
   );
 
-  await fs.writeFile(
-    filePath,
-    JSON.stringify(processedSession, null, JSON_INDENT_SPACES),
-  );
+  // Written aside and renamed into place, so two writers of one session never leave a half-written file.
+  const tempPath = `${filePath}.${crypto.randomUUID()}.tmp`;
+  try {
+    await fs.writeFile(
+      tempPath,
+      JSON.stringify(processedSession, null, JSON_INDENT_SPACES),
+    );
+    await fs.rename(tempPath, filePath);
+  } catch (error) {
+    await fs.rm(tempPath, { force: true });
+    throw error;
+  }
   console.log(
     `Saved ${processedRecordings.length} HTTP recordings and ${session.websocketRecordings?.length || 0} WebSocket recordings to ${filePath}`,
   );

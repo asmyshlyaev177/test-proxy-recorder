@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=zh-CN source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=zh-CN source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -109,13 +109,13 @@ export const home: HomeCopy = {
     perTest: {
       term: '每个测试一个文件',
       start: '每个测试都写入自己的文件，并以测试名命名，因此',
-      end: '只会重新录制这一个测试。代理一次只录制一个测试，所以录制时请只用一个 worker；回放则可以并行运行。',
+      end: '只会重新录制这一个测试。测试在并行 worker 上录制，就像回放时一样，除非它们共用同一个数据库或账号。',
     },
     testId: {
       term: '测试的 id',
       start: 'Playwright 会在测试发出的每个请求上附带',
       mid: 'header，而',
-      end: '会把它复制到你的服务器自己发出的 fetch 上。代理读取这个 id，从每个测试自己的文件中为它返回响应，即使测试并行回放也是如此。',
+      end: '会把它复制到你的服务器自己发出的 fetch 上。代理读取这个 id，把每个测试录制到它自己的文件中，并从该文件回放，即使测试并行运行也是如此。',
     },
     secrets: {
       term: '机密',
@@ -130,7 +130,7 @@ export const home: HomeCopy = {
     heading: '关于回放的问题',
     matching: {
       term: '请求如何匹配？',
-      body: '代理按方法、路径和完全一致的查询字符串匹配服务端调用，不比较请求体；重复的调用按录制顺序依次应答。浏览器调用遵循 Playwright 的 HAR 规则，该规则还会比较 POST 请求体。每次运行都会变化的查询字符串（例如时间戳）永远无法匹配，而且没有任何选项可以忽略某个参数，所以测试期间请让这类值保持固定。',
+      body: '代理按方法、路径、完全一致的查询字符串和请求体匹配服务端调用，因此并行发送的调用各自得到自己的响应；重复的调用按录制顺序依次应答。浏览器调用同样按方法、URL 和请求体匹配。每次运行都会变化的查询字符串或请求体（例如时间戳）永远无法匹配，而且没有任何选项可以忽略某个值，所以测试期间请让这类值保持固定。',
       link: '回放如何匹配请求 →',
     },
     misses: {

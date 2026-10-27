@@ -4,7 +4,7 @@ description: 'test-proxy-recorder を MSW、routeFromHAR、Polly.js、Next.js �
 sidebar:
   label: 比較
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 ここで取り上げるツールはいずれも、エンドツーエンドテストが受け取る API レスポンスを制御します。違いは、リクエストをどこでインターセプトするか（ブラウザ内、サーバー内、または別のプロキシ）と、レスポンスを自分で書くか記録するかです。表は[ドキュメントの概要](/ja/docs/#comparison)にある 6 つのツールをそのまま残し、Next.js テストモード、mockttp、scenarist、talkback、proxay を加えています。各セルの内容は、表の下にリンクしたそれぞれのツールのドキュメント、README、ソースに基づく 2026-10-03 時点のものです。「記載なし」は、それらの情報源に記述がないことを意味します。
@@ -56,7 +56,7 @@ Polly.js から移行する場合、その概念は test-proxy-recorder では�
 | `record`、`replay`、`passthrough` の各モード（[設定](https://netflix.github.io/pollyjs/#/configuration)） | `record`、`replay`、`transparent` の各モード。`playwrightProxy.before()` でテストごとに設定 |
 | Polly インスタンスごとの名前付きの記録。パーシスター（persister）が保存 | Playwright のテストごとに `.mock.json`（サーバー）と `.har`（ブラウザ）を 1 つずつ。記録ディレクトリに保存 |
 | リクエストを行うプロセス内のアダプター | サーバーの呼び出しにはプロキシのプロセス、ブラウザの呼び出しには HAR、そしてサーバー上の `registerProxyFetch()` |
-| デフォルトではメソッド、ヘッダー、ボディ、順序、URL でリクエストを照合 | サーバーサイドのリクエストはメソッド、パス、クエリのハッシュで照合し、記録された順に返し、ボディは比較しない。ブラウザのリクエストは Playwright の HAR のルールに従い、こちらは POST のボディも比較する |
+| デフォルトではメソッド、ヘッダー、ボディ、順序、URL でリクエストを照合 | サーバーサイドのリクエストはメソッド、パス、クエリのハッシュ、ボディで照合し、繰り返しは記録された順に返し、ヘッダーは比較しない。ブラウザのリクエストはメソッド、URL、ボディで照合し、続いて共通するヘッダーで照合する |
 
 ## Next.js と Playwright での MSW {#msw}
 

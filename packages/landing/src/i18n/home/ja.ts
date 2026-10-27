@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=ja source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=ja source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -111,13 +111,13 @@ export const home: HomeCopy = {
     perTest: {
       term: 'テストごとに 1 ファイル',
       start: '各テストはテスト名に基づいた名前の専用ファイルに書き込むため、',
-      end: 'でそのテストだけを記録し直せます。プロキシは一度に 1 つのテストしか記録しないため、記録はワーカー 1 つで行ってください。再生は並列で実行できます。',
+      end: 'でそのテストだけを記録し直せます。テストが 1 つのデータベースやアカウントを共有しない限り、記録も再生と同じく並列のワーカーで実行できます。',
     },
     testId: {
       term: 'テストの id',
       start: 'Playwright はテストが行うすべてのリクエストに',
       mid: 'を付けて送り、',
-      end: 'がそれをサーバー自身のフェッチにコピーします。プロキシはこれを読み取り、テストを並列に再生しているときでも、各テストにそのテスト専用のファイルから応答します。',
+      end: 'がそれをサーバー自身のフェッチにコピーします。プロキシはこれを読み取り、テストを並列に実行しているときでも、各テストをそのテスト専用のファイルに記録し、そこから再生します。',
     },
     secrets: {
       term: 'シークレット',
@@ -132,7 +132,7 @@ export const home: HomeCopy = {
     heading: '再生についての質問',
     matching: {
       term: 'リクエストはどう照合されますか?',
-      body: 'プロキシはサーバーサイドの呼び出しを、メソッド、パス、クエリ文字列の完全一致で照合し、ボディは比較しません。繰り返された呼び出しには、記録された順にレスポンスを返します。ブラウザからの呼び出しは Playwright の HAR のルールに従い、こちらは POST のボディも比較します。タイムスタンプのように実行のたびに変わるクエリ文字列は一致することがなく、パラメーターを無視するオプションもないため、そうした値はテスト中は固定してください。',
+      body: 'プロキシはサーバーサイドの呼び出しを、メソッド、パス、クエリ文字列の完全一致、ボディで照合するため、並列に送られた呼び出しもそれぞれ自分のレスポンスを受け取ります。繰り返された呼び出しには、記録された順にレスポンスを返します。ブラウザからの呼び出しも、メソッド、URL、ボディで照合されます。タイムスタンプのように実行のたびに変わるクエリ文字列やボディは一致することがなく、値を無視するオプションもないため、そうした値はテスト中は固定してください。',
       link: '再生時のリクエストの照合 →',
     },
     misses: {

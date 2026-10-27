@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=vi source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=vi source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -109,13 +109,13 @@ export const home: HomeCopy = {
     perTest: {
       term: 'Mỗi test một file',
       start: 'Mỗi test ghi ra file riêng, đặt tên theo test, nên',
-      end: 'chỉ ghi lại lần nữa đúng test đó. Proxy ghi lại từng test một, nên hãy ghi lại với một worker; còn phát lại thì chạy song song.',
+      end: 'chỉ ghi lại lần nữa đúng test đó. Các test ghi lại trên nhiều worker song song giống như khi phát lại, trừ khi chúng dùng chung một cơ sở dữ liệu hoặc một tài khoản.',
     },
     testId: {
       term: 'Id của test',
       start: 'Playwright gửi',
       mid: 'kèm mọi request mà một test thực hiện, và',
-      end: 'sao chép nó sang các fetch của chính máy chủ bạn. Proxy đọc nó để trả lời mỗi test từ file riêng của test đó, ngay cả khi các test phát lại song song.',
+      end: 'sao chép nó sang các fetch của chính máy chủ bạn. Proxy đọc nó để ghi lại mỗi test vào file riêng của test đó và phát lại test từ file đó, ngay cả khi các test chạy song song.',
     },
     secrets: {
       term: 'Bí mật',
@@ -130,7 +130,7 @@ export const home: HomeCopy = {
     heading: 'Câu hỏi về phát lại',
     matching: {
       term: 'Request được khớp như thế nào?',
-      body: 'Proxy khớp một lời gọi phía máy chủ theo method, path và query string chính xác của nó, không theo body, và trả về các lời gọi lặp lại theo đúng thứ tự chúng được ghi lại. Lời gọi trình duyệt theo quy tắc HAR của Playwright, vốn so sánh cả body của POST. Một query string thay đổi mỗi lần chạy, chẳng hạn một dấu thời gian, sẽ không bao giờ khớp, và không có tùy chọn nào để bỏ qua một tham số, nên hãy giữ cố định các giá trị như vậy trong lúc test.',
+      body: 'Proxy khớp một lời gọi phía máy chủ theo method, path, query string chính xác và body của nó, nên các lời gọi gửi song song nhận đúng response của riêng mình, và trả về các lời gọi lặp lại theo đúng thứ tự chúng được ghi lại. Lời gọi trình duyệt cũng được khớp theo method, URL và body. Một query string hoặc body thay đổi mỗi lần chạy, chẳng hạn một dấu thời gian, sẽ không bao giờ khớp, và không có tùy chọn nào để bỏ qua một giá trị, nên hãy giữ cố định các giá trị như vậy trong lúc test.',
       link: 'Cách phát lại khớp request\u00a0→',
     },
     misses: {

@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=ko source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=ko source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -110,13 +110,13 @@ export const home: HomeCopy = {
     perTest: {
       term: '테스트당 파일 하나',
       start: '각 테스트는 테스트 이름을 딴 파일을 각자 작성하므로,',
-      end: '명령으로 그 테스트만 다시 기록할 수 있습니다. 프록시는 한 번에 한 테스트만 기록하므로 워커 하나로 기록하세요. 재생은 병렬로 실행됩니다.',
+      end: '명령으로 그 테스트만 다시 기록할 수 있습니다. 테스트는 재생할 때처럼 병렬 워커에서 기록됩니다. 단, 데이터베이스나 계정 하나를 공유하는 테스트는 예외입니다.',
     },
     testId: {
       term: '테스트 id',
       start: 'Playwright는 테스트가 보내는 모든 요청에',
       mid: '헤더를 붙여 보내고,',
-      end: '함수가 이 헤더를 서버가 직접 보내는 fetch에도 복사합니다. 프록시는 이 헤더를 읽어, 테스트가 병렬로 재생될 때에도 각 테스트에 그 테스트의 파일로 응답합니다.',
+      end: '함수가 이 헤더를 서버가 직접 보내는 fetch에도 복사합니다. 프록시는 이 헤더를 읽어, 테스트가 병렬로 실행될 때에도 각 테스트를 그 테스트의 파일에 기록하고 그 파일에서 재생합니다.',
     },
     secrets: {
       term: '비밀 정보',
@@ -131,7 +131,7 @@ export const home: HomeCopy = {
     heading: '재생에 관한 질문',
     matching: {
       term: '요청은 어떻게 매칭되나요?',
-      body: '프록시는 서버 측 호출을 본문이 아니라 메서드, 경로, 정확한 쿼리 문자열로 매칭하고, 반복되는 호출에는 기록된 순서대로 응답합니다. 브라우저 호출은 POST 본문도 비교하는 Playwright의 HAR 규칙을 따릅니다. 타임스탬프처럼 실행할 때마다 바뀌는 쿼리 문자열은 결코 일치하지 않으며, 파라미터를 무시하는 옵션도 없으므로 그런 값은 테스트 중에 고정해 두세요.',
+      body: '프록시는 서버 측 호출을 메서드, 경로, 정확한 쿼리 문자열, 본문으로 매칭하므로 병렬로 보낸 호출도 각자 자기 응답을 받으며, 반복되는 호출에는 기록된 순서대로 응답합니다. 브라우저 호출도 메서드, URL, 본문으로 매칭됩니다. 타임스탬프처럼 실행할 때마다 바뀌는 쿼리 문자열이나 본문은 결코 일치하지 않으며, 값을 무시하는 옵션도 없으므로 그런 값은 테스트 중에 고정해 두세요.',
       link: '재생이 요청을 매칭하는 방식 →',
     },
     misses: {
