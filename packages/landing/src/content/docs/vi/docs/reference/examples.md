@@ -2,7 +2,7 @@
 title: Ứng dụng ví dụ
 description: Các ví dụ hoàn chỉnh và chạy được của test-proxy-recorder — SSR của Next.js và TanStack Start, một extension Chrome, một ticker WebSocket bên thứ ba, và một ứng dụng xác thực được phát lại không cần backend.
 i18nSource: docs/reference/examples.md
-i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
+i18nSourceBlob: 2faae16cb9fa5b4bf1ac9a88b694d10d2440f527
 ---
 
 Các ví dụ hoàn chỉnh và chạy được nằm trong [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — một ví dụ cho mỗi cơ chế ghi lại. Mỗi ví dụ có README riêng với thiết lập đầy đủ và quy trình ghi lại/phát lại.
@@ -13,7 +13,7 @@ Các ví dụ hoàn chỉnh và chạy được nằm trong [`apps/`](https://gi
 
 ## Next.js Edge runtime {#nextjs-edge}
 
-[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — một ứng dụng Next.js 16 có trang render trên **Edge runtime** (`export const runtime = 'edge'`). `fetch` SSR của nó được gắn thẻ bằng id của phiên ghi qua `registerProxyFetch()` (gọi từ root layout), nên các phiên phát lại đồng thời vẫn phân biệt được ở nơi `instrumentation.ts` không thể chạm tới. Xem [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md) của nó.
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — một ứng dụng Next.js 16 có trang render trên **Edge runtime** (`export const runtime = 'edge'`). `fetch` SSR của nó được gắn thẻ bằng id của phiên ghi qua `registerProxyFetch()` (gọi từ root layout), nên các session đồng thời vẫn phân biệt được ở nơi `instrumentation.ts` không thể chạm tới. Xem [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md) của nó.
 
 ## TanStack Start {#tanstack-start}
 

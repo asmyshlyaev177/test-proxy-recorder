@@ -11,7 +11,7 @@ Full working examples live in [`apps/`](https://github.com/asmyshlyaev177/test-p
 
 ## Next.js Edge runtime {#nextjs-edge}
 
-[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — a Next.js 16 app whose page renders on the **Edge runtime** (`export const runtime = 'edge'`). Its SSR `fetch` is tagged with the recording-session id via `registerProxyFetch()` (called from the root layout), so concurrent replay sessions stay distinct where `instrumentation.ts` can't reach. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — a Next.js 16 app whose page renders on the **Edge runtime** (`export const runtime = 'edge'`). Its SSR `fetch` is tagged with the recording-session id via `registerProxyFetch()` (called from the root layout), so concurrent sessions stay distinct where `instrumentation.ts` can't reach. See its [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
 
 ## TanStack Start {#tanstack-start}
 

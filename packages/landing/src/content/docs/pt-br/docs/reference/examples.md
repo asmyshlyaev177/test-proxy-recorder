@@ -2,7 +2,7 @@
 title: Aplicações de exemplo
 description: Exemplos completos e funcionais do test-proxy-recorder — SSR de Next.js e TanStack Start, uma extensão do Chrome, um ticker de WebSocket de terceiros e uma aplicação autenticada reproduzida sem backend.
 i18nSource: docs/reference/examples.md
-i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
+i18nSourceBlob: 2faae16cb9fa5b4bf1ac9a88b694d10d2440f527
 ---
 
 Os exemplos completos e funcionais ficam em [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) — um por mecanismo de gravação. Cada um tem seu próprio README com a configuração completa e o fluxo de gravar/reproduzir.
@@ -13,7 +13,7 @@ Os exemplos completos e funcionais ficam em [`apps/`](https://github.com/asmyshl
 
 ## Next.js Edge runtime {#nextjs-edge}
 
-[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — um aplicativo Next.js 16 cuja página renderiza no **Edge runtime** (`export const runtime = 'edge'`). O `fetch` SSR dele é marcado com o id de sessão de gravação via `registerProxyFetch()` (chamado do root layout), para que sessões de reprodução concorrentes permaneçam distintas onde o `instrumentation.ts` não consegue alcançar. Veja o seu [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — um aplicativo Next.js 16 cuja página renderiza no **Edge runtime** (`export const runtime = 'edge'`). O `fetch` SSR dele é marcado com o id de sessão de gravação via `registerProxyFetch()` (chamado do root layout), para que sessões concorrentes permaneçam distintas onde o `instrumentation.ts` não consegue alcançar. Veja o seu [README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md).
 
 ## TanStack Start {#tanstack-start}
 

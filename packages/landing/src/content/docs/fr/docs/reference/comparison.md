@@ -4,7 +4,7 @@ description: "Comment test-proxy-recorder se compare à MSW, routeFromHAR, Polly
 sidebar:
   label: Comparaison
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 Chaque outil présenté ici contrôle les réponses d'API que voit un test de bout en bout. Ils diffèrent par l'endroit où ils interceptent les requêtes (dans le navigateur, dans votre serveur ou dans un proxy séparé) et par le fait que vous écriviez les réponses ou que vous les enregistriez. Le tableau reprend les six outils de la [vue d'ensemble de la documentation](/fr/docs/#comparison) et ajoute le mode test de Next.js, mockttp, scenarist, talkback et proxay. Chaque cellule provient de la documentation, du README ou du code source de l'outil lui-même, liés sous le tableau, à la date du 2026-10-03. « Non documenté » signifie que ces sources ne le précisent pas.
@@ -56,7 +56,7 @@ Si vous migrez depuis Polly.js, ses concepts correspondent à ceux de test-proxy
 | Modes `record`, `replay` et `passthrough` ([configuration](https://netflix.github.io/pollyjs/#/configuration)) | Modes `record`, `replay` et `transparent`, définis par test par `playwrightProxy.before()` |
 | Un enregistrement nommé par instance de Polly, sauvegardé par un *persister* | Un `.mock.json` (serveur) et un `.har` (navigateur) par test Playwright, dans le répertoire des enregistrements |
 | Des adaptateurs dans le processus qui fait les requêtes | Un processus proxy pour les appels du serveur, HAR pour les appels du navigateur, et `registerProxyFetch()` sur le serveur |
-| Requêtes mises en correspondance par défaut selon la méthode, les en-têtes, le corps, l'ordre et l'URL | Requêtes côté serveur mises en correspondance selon la méthode, le chemin et un hash de la query string, dans l'ordre d'enregistrement, sans comparer les corps. Les requêtes du navigateur suivent les règles HAR de Playwright, qui comparent aussi les corps des POST |
+| Requêtes mises en correspondance par défaut selon la méthode, les en-têtes, le corps, l'ordre et l'URL | Requêtes côté serveur mises en correspondance selon la méthode, le chemin, un hash de la query string et le corps, les répétitions étant servies dans l'ordre d'enregistrement, sans comparer les en-têtes. Requêtes du navigateur mises en correspondance selon la méthode, l'URL et le corps, puis selon les en-têtes partagés |
 
 ## MSW avec Next.js et Playwright {#msw}
 

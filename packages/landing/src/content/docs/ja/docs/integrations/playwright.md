@@ -4,7 +4,7 @@ description: test-proxy-recorder で Playwright テストの API 呼び出しを
 sidebar:
   label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
+i18nSourceBlob: 41506a06c67c43287c172907f5ef6c6ef07e36e3
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -28,7 +28,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **例外 — フルスタックアプリ:** ブラウザも `localhost:8100` を呼ぶ場合（フロントエンドがプロキシ URL を API ベースとして設定しているため）、パターンには `/localhost:8100/` を使ってください。その場合、それらのブラウザのリクエストはプロキシにそのまま渡され、プロキシがテストの `.mock.json` に記録し、そこから再生します。そのため、記録のないリクエストは HAR による中断ではなくプロキシの 404 を受け取ります（[再生時のリクエストの照合](/ja/docs/getting-started/how-it-works/#replay-matching)を参照）。
 
-記録ファイル名はテスト名から導かれます（`"create a user"` → `create-a-user.mock.json` / `.har`）。
+記録ファイル名は、テストファイル、`describe` のタイトル、テストのタイトルから作られます（`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`）。120 バイトを超える名前は切り詰められ、末尾にハッシュが付きます。
+
+## 記録のないテスト
+
+再生時、テストに記録がない場合、`before()` はプロキシを切り替える前に例外を投げます:
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+テストをスキップせずに記録してください。スキップしたテストは失敗ではなくスキップとして報告されるため、記録の欠落に気付けません。`hasRecording(testInfo)` は、再生と同じファイル名を使って、例外を投げずに同じ判定を返します。
 
 ## Global teardown（推奨） {#global-teardown-recommended}
 
@@ -48,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` はプロキシを `transparent` にリセットし、HAR の[マスキング](/ja/docs/guides/secret-redaction/)パスを実行します。`fullyParallel` 下でテストごとの `afterAll` フックでは呼ばないでください — それが並列再生を壊す理由は[FAQ](/ja/docs/reference/faq/#parallel-replay)を参照してください。
+`teardown()` はプロキシを `transparent` にリセットし、HAR の[マスキング](/ja/docs/guides/secret-redaction/)パスを実行します。`transparent` への切り替えにより、すべての記録セッションが保存されて終了します。`fullyParallel` 下でテストごとの `afterAll` フックでは呼ばないでください — それが並列の再生と記録を壊す理由は[FAQ](/ja/docs/reference/faq/#parallel-replay)を参照してください。
 
 ## 記録ファイル
 

@@ -4,7 +4,7 @@ description: Записывайте и воспроизводите в тест�
 sidebar:
   label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
+i18nSourceBlob: 80d920c0b5282f10e3c851bb058eb881830cc12e
 ---
 
 В тесте Playwright `page.route()` видит только запросы браузера; вызовы `fetch`, которые ваш сервер Next.js делает во время рендеринга, до него никогда не доходят. test-proxy-recorder записывает и воспроизводит эти серверные fetch через свой прокси, по одной записи на тест.
@@ -30,7 +30,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
 ```
 
-Он патчит глобальный `fetch`, чтобы копировать `x-test-rcrd-id` текущего запроса на исходящие запросы, чтобы прокси мог различать конкурентные сессии воспроизведения. Вызывайте его из root layout — **не** из `instrumentation.ts`, чей контекст отличается от того, который рендерит ваши роуты на Edge-runtime, поэтому патч там тихо никогда не срабатывает.
+Он патчит глобальный `fetch`, чтобы копировать `x-test-rcrd-id` текущего запроса на исходящие запросы, чтобы прокси мог различать конкурентные сессии, в режиме записи так же, как в режиме воспроизведения. Вызывайте его из root layout — **не** из `instrumentation.ts`, чей контекст отличается от того, который рендерит ваши роуты на Edge-runtime, поэтому патч там тихо никогда не срабатывает.
 
 ## axios — registerProxyAxios
 

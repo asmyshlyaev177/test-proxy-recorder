@@ -2,7 +2,7 @@
 title: 手动配置
 description: 为全栈（SSR + 浏览器）应用，或纯浏览器的 SPA / 扩展手动接入 test-proxy-recorder，然后录制一次并在 CI 中回放。
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
+i18nSourceBlob: 7f91d9e549b42132c857dc6bc0d30b021aa4ece0
 ---
 
 大多数人应当运行 [`init`](/zh-cn/docs/getting-started/quick-start/) —— 它替你写下下面所有文件。本页是 `init` 所生成内容的参考，便于你手动接线、移除 codegen 或理解每个部分。
@@ -94,8 +94,10 @@ test('homepage loads', async ({ page }) => {
 npm run serve:proxy
 
 # Terminal 2 — .mock.json and .har files are written automatically
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 ```
+
+录制使用与回放相同数量的 worker，因为每个测试都录制到它自己的会话中。当测试在后端共享状态时（例如它们会重置的同一个数据库，或它们登录的同一个账号），请加上 `--workers 1`。2.0.1 及更早的版本对所有请求只保留一个录制会话，因此在这些版本上，每次录制运行都需要 `--workers 1`。
 
 ### 5. 切换到回放并提交
 
@@ -169,9 +171,11 @@ test('homepage loads', async ({ page }) => {
 ### 5. 录制 —— 对真实 API 运行一次
 
 ```bash
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 # .har files are written to e2e/recordings/ automatically
 ```
+
+当测试在真实 API 中共享状态时（例如所有测试都登录同一个账号），或者你运行的是 2.0.1 及更早的版本时，请加上 `--workers 1`。
 
 ### 6. 提交录制内容
 

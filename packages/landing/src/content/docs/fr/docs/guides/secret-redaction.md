@@ -2,7 +2,7 @@
 title: Masquage des secrets
 description: Le masquage est activé par défaut — Authorization, Cookie et Set-Cookie sont retirés des enregistrements avant d'atteindre le disque. Ajoutez des motifs d'en-tête et de corps, autorisez des cookies, ou masquez par programme.
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 Les enregistrements sont committés dans git, donc les secrets sont retirés avant d'écrire quoi que ce soit sur le disque. Le masquage est **activé par défaut** dès que le proxy est lancé depuis la CLI ou le fichier de configuration, comme le prévoit la configuration générée par `init` ; le proxy remplace les valeurs de ces en-têtes de requête/réponse par `[REDACTED]` :
@@ -36,7 +36,7 @@ Les en-têtes par défaut s'appliquent toujours (tant que le masquage est activ�
 - `--no-redact` — désactive le masquage des secrets (activé par défaut).
 - `--redact` — active le masquage des secrets ; nécessaire seulement pour le réactiver quand la configuration met `redaction: false`.
 - `--redact-headers <names>` — noms d'en-têtes supplémentaires à masquer, séparés par des virgules (fusionnés avec les valeurs par défaut).
-- `--redact-body <patterns>` — motifs regex séparés par des virgules à masquer des corps de requête/réponse.
+- `--redact-body <patterns>` — motifs regex séparés par des virgules à masquer des corps de requête/réponse. Le replay les applique au corps de la requête reçue avant de le comparer au corps enregistré, si bien qu'une requête dont le secret a changé depuis l'enregistrement correspond quand même.
 - `--allow-headers <names>` — noms d'en-têtes séparés par des virgules à exempter du masquage (par exemple `set-cookie`).
 - `--allow-cookies <names>` — noms de cookies séparés par des virgules à garder non masqués dans `Cookie`/`Set-Cookie`.
 

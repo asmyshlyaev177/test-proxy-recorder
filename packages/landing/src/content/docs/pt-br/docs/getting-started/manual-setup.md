@@ -2,7 +2,7 @@
 title: Configuração manual
 description: Integre o test-proxy-recorder em uma aplicação full-stack (SSR + navegador) ou em uma SPA/extensão somente de navegador à mão, e depois grave uma vez e reproduza na CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
+i18nSourceBlob: 7f91d9e549b42132c857dc6bc0d30b021aa4ece0
 ---
 
 A maioria das pessoas deve executar o [`init`](/pt-br/docs/getting-started/quick-start/) — ele escreve todos os arquivos abaixo para você. Esta página é a referência do que o `init` gera, para que você possa configurar à mão, dispensar a geração de código ou entender cada parte.
@@ -94,8 +94,10 @@ Antes de gravar, coloque o banco de dados do backend no estado que os testes esp
 npm run serve:proxy
 
 # Terminal 2 — arquivos .mock.json e .har são gravados automaticamente
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 ```
+
+A gravação roda com tantos workers quanto a reprodução, porque cada teste grava na sua própria sessão. Adicione `--workers 1` quando os testes compartilham estado no backend, como um único banco de dados que eles resetam ou uma única conta com a qual fazem login. As versões até 2.0.1 mantêm uma única sessão de gravação para todas as requisições, então nessas versões toda execução de gravação precisa de `--workers 1`.
 
 ### 5. Mude para replay e faça commit
 
@@ -169,9 +171,11 @@ test('homepage loads', async ({ page }) => {
 ### 5. Grave — execute uma vez contra a API real
 
 ```bash
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 # arquivos .har são gravados em e2e/recordings/ automaticamente
 ```
+
+Adicione `--workers 1` quando os testes compartilham estado na API real, como uma única conta com a qual todos fazem login, ou quando você usa uma versão até 2.0.1.
 
 ### 6. Faça commit das gravações
 

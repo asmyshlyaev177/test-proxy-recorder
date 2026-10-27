@@ -2,7 +2,7 @@
 title: サンプルアプリ
 description: test-proxy-recorder の完全に動作するサンプル — Next.js と TanStack Start の SSR、Chrome 拡張、サードパーティの WebSocket ティッカー、そしてバックエンドなしで再生される認証済みアプリ。
 i18nSource: docs/reference/examples.md
-i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
+i18nSourceBlob: 2faae16cb9fa5b4bf1ac9a88b694d10d2440f527
 ---
 
 完全に動作するサンプルは [`apps/`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps) にあります — 記録メカニズムごとに 1 つ。それぞれ、完全なセットアップと記録/再生のワークフローを記した独自の README を備えています。
@@ -13,7 +13,7 @@ i18nSourceBlob: d58a37f3eb41cbc0c0319b630b35da2930081ea1
 
 ## Next.js Edge runtime {#nextjs-edge}
 
-[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — ページが **Edge runtime**（`export const runtime = 'edge'`）でレンダリングされる Next.js 16 アプリ。SSR の `fetch` は、`registerProxyFetch()`（ルートレイアウトから呼び出し）によって記録セッションの id でタグ付けされるため、`instrumentation.ts` が届かない場所でも並行する再生セッションが区別されたままになります。[README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md) を参照してください。
+[`apps/example-nextjs-edge`](https://github.com/asmyshlyaev177/test-proxy-recorder/tree/master/apps/example-nextjs-edge) — ページが **Edge runtime**（`export const runtime = 'edge'`）でレンダリングされる Next.js 16 アプリ。SSR の `fetch` は、`registerProxyFetch()`（ルートレイアウトから呼び出し）によって記録セッションの id でタグ付けされるため、`instrumentation.ts` が届かない場所でも並行するセッションが区別されたままになります。[README](https://github.com/asmyshlyaev177/test-proxy-recorder/blob/master/apps/example-nextjs-edge/README.md) を参照してください。
 
 ## TanStack Start {#tanstack-start}
 

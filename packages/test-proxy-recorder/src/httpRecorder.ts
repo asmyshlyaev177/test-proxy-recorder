@@ -1,5 +1,6 @@
 import http from 'node:http';
 import { Readable } from 'node:stream';
+import { buffer } from 'node:stream/consumers';
 import { promisify } from 'node:util';
 import zlib from 'node:zlib';
 
@@ -29,32 +30,19 @@ interface RecordAndProxyOptions {
   ) => void;
 }
 
-/**
- * Buffer the full request body. Resolves with the collected chunks even when
- * buffering fails (logged), so the proxy request can still be attempted.
- */
-async function bufferRequestBody(req: http.IncomingMessage): Promise<Buffer[]> {
-  const chunks: Buffer[] = [];
+const BUFFER_TIMEOUT_MS = 30_000;
 
-  req.on('data', (chunk: Buffer) => {
-    chunks.push(chunk);
-  });
-
+// Rejects when the body does not arrive whole: a partial body sent on with its original Content-Length would hang the upstream.
+async function bufferRequestBody(req: http.IncomingMessage): Promise<Buffer> {
+  const timer = setTimeout(
+    () => req.destroy(new Error('Request buffering timeout')),
+    BUFFER_TIMEOUT_MS,
+  );
   try {
-    await new Promise<void>((resolveBuffer, rejectBuffer) => {
-      req.on('end', () => resolveBuffer());
-      req.on('error', (err) => rejectBuffer(err));
-      // Add timeout to prevent hanging
-      setTimeout(
-        () => rejectBuffer(new Error('Request buffering timeout')),
-        30_000,
-      );
-    });
-  } catch (error) {
-    console.error('Error buffering request:', error);
+    return await buffer(req);
+  } finally {
+    clearTimeout(timer);
   }
-
-  return chunks;
 }
 
 interface ProxyResponseContext {
@@ -208,10 +196,29 @@ export async function recordAndProxyRequest(
   options: RecordAndProxyOptions,
 ): Promise<Recording | null> {
   const { req, res, onProxyError } = options;
+  // Registered before the body is read: a client that gives up at any point settles the call, so neither a
+  // half-sent body nor an upstream that never answers holds the session's flush open. After a recorded
+  // response the close comes later, when the race has already settled.
+  const clientGone = new Promise<null>((resolve) => {
+    res.once('close', () => resolve(null));
+  });
 
   try {
-    const chunks = await bufferRequestBody(req);
-    return await proxyWithBufferedBody(options, Buffer.concat(chunks));
+    const body = await Promise.race([
+      bufferRequestBody(req).catch((error: unknown) => {
+        console.warn(
+          `${req.method} ${req.url}: the request body did not arrive whole, so it is not proxied`,
+          error,
+        );
+        return null;
+      }),
+      clientGone,
+    ]);
+    if (body === null) return null;
+    return await Promise.race([
+      proxyWithBufferedBody(options, body),
+      clientGone,
+    ]);
   } catch (error) {
     console.error('Error in recordAndProxyRequest:', error);
     try {

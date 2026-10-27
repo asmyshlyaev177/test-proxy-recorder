@@ -4,7 +4,7 @@ description: test-proxy-recorder로 Playwright 테스트의 API 호출을 기록
 sidebar:
   label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
+i18nSourceBlob: 41506a06c67c43287c172907f5ef6c6ef07e36e3
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -28,7 +28,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **예외 — 풀스택 앱:** 프론트엔드가 프록시 URL을 API 기본값으로 사용해 브라우저도 `localhost:8100`을 호출하는 경우에는 `/localhost:8100/`을 패턴으로 사용하세요. 그러면 이 브라우저 요청은 프록시로 전달되고, 프록시가 테스트의 `.mock.json`에 기록하고 그 파일에서 재생합니다. 따라서 기록이 없는 요청은 HAR 중단이 아니라 프록시의 404를 받습니다([재생이 요청을 매칭하는 방식](/ko/docs/getting-started/how-it-works/#replay-matching) 참조).
 
-기록 파일 이름은 테스트 이름에서 파생됩니다(`"create a user"` → `create-a-user.mock.json` / `.har`).
+기록 파일 이름은 테스트 파일, `describe` 제목, 테스트 제목에서 만들어집니다(`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`). 120바이트를 넘는 이름은 잘리고 끝에 해시가 붙습니다.
+
+## 기록이 없는 테스트
+
+재생 모드에서 테스트에 기록이 없으면 `before()`는 프록시를 전환하기 전에 예외를 던집니다.
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+테스트를 건너뛰지 말고 기록하세요. 건너뛴 테스트는 실패가 아니라 건너뜀으로 보고되므로, 기록이 없다는 사실이 눈에 띄지 않습니다. `hasRecording(testInfo)`는 재생과 같은 파일 이름을 사용해, 예외를 던지지 않고 같은 질문에 답합니다.
 
 ## 전역 티어다운 (권장) {#global-teardown-recommended}
 
@@ -48,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()`은 프록시를 `transparent`로 재설정하고 HAR [마스킹](/ko/docs/guides/secret-redaction/) 과정을 실행합니다. `fullyParallel`에서 테스트별 `afterAll` 훅에서 호출하지 마세요. 병렬 재생이 깨지는 이유는 [FAQ](/ko/docs/reference/faq/#parallel-replay)를 참조하세요.
+`teardown()`은 프록시를 `transparent`로 재설정하고 HAR [마스킹](/ko/docs/guides/secret-redaction/) 과정을 실행합니다. `transparent`로 전환하면 모든 기록 세션이 저장되고 끝납니다. `fullyParallel`에서 테스트별 `afterAll` 훅에서 호출하지 마세요. 병렬 재생과 기록이 깨지는 이유는 [FAQ](/ko/docs/reference/faq/#parallel-replay)를 참조하세요.
 
 ## 기록 파일
 

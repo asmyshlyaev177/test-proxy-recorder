@@ -2,12 +2,12 @@
 title: FAQ
 description: Questions fréquentes sur test-proxy-recorder — replay en parallèle, commit des enregistrements dans git, la cible du proxy pour l'enregistrement HAR, le serveur de dev Next.js et la mise à jour des enregistrements.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
+i18nSourceBlob: 330688cb20230d36f1c5e0ee0a9e121b46abf737
 ---
 
 ## Mes tests de replay en parallèle appellent parfois le vrai backend — pourquoi ? {#parallel-replay}
 
-Vous appelez probablement `playwrightProxy.teardown()` dans un hook par test. Il met le mode **global** du proxy à `transparent`, et avec `fullyParallel: true`, chaque worker Playwright exécute son propre `test.afterAll`. Si un test rapide se termine et appelle `teardown()` pendant qu'un test plus lent tourne encore, le proxy bascule en transparent en plein test et les requêtes restantes sont transmises au vrai backend au lieu d'être rejouées.
+Vous appelez probablement `playwrightProxy.teardown()` dans un hook par test. Il met le mode **global** du proxy à `transparent`, et avec `fullyParallel: true`, chaque worker Playwright exécute son propre `test.afterAll`. Si un test rapide se termine et appelle `teardown()` pendant qu'un test plus lent tourne encore, le proxy bascule en transparent en plein test et les requêtes restantes sont transmises au vrai backend au lieu d'être rejouées. Dans une exécution en record, `teardown()` sauvegarde et termine toutes les sessions d'enregistrement : les requêtes restantes du test plus lent ne sont donc pas enregistrées.
 
 ```typescript
 // ❌ breaks parallel replay — teardown() affects all sessions globally
@@ -20,15 +20,23 @@ test.afterAll(async () => {
 
 Le timeout de session est l'autre façon dont une exécution en replay atteint le vrai backend. Chaque appel à `playwrightProxy.before()` le relance ; les requêtes qui passent par le proxy ne le relancent pas. S'il expire (120000 ms par défaut) avant l'appel suivant à `before()`, le proxy passe en `transparent`. Un test encore en cours envoie alors ses requêtes restantes au vrai backend. Si un test peut durer aussi longtemps, augmentez le timeout avec `--timeout` en [CLI](/fr/docs/guides/cli/) ou `timeout` dans la [configuration](/fr/docs/guides/config/).
 
+## Une requête rejouée échoue avec « with this request body » — pourquoi ? {#request-body-changed}
+
+Le proxy met en correspondance une requête côté serveur par son corps en plus de sa méthode, de son chemin et de sa query string, et la requête a envoyé un corps qu'aucun enregistrement n'a. En général, le corps contient une valeur qui change à chaque exécution, comme la date courante ou un id aléatoire. Fixez cette valeur pendant les tests (une horloge figée, un générateur d'id initialisé avec une graine) et réenregistrez. Si la requête de l'app a changé volontairement, réenregistrez le test. Les requêtes `GET` et `HEAD` ne sont pas comparées par leur corps.
+
 ## Puis-je enregistrer avec des workers en parallèle ? {#parallel-recording}
 
-Non. Le proxy ne tient qu'une session d'enregistrement à la fois. Quand un deuxième test commence à enregistrer, le proxy sauvegarde le fichier du premier test et passe au deuxième. Les requêtes restantes du premier test qui passent par le proxy finissent alors dans le `.mock.json` du deuxième. Enregistrez avec un seul worker, comme le fait déjà le script `test:e2e:record` qu'ajoute `init` :
+Oui, dans les versions postérieures à 2.0.1. Le proxy range chaque requête dans la session nommée dans son en-tête `x-test-rcrd-id`, en mode record comme en replay. `playwrightProxy.before()` pose cet en-tête sur les requêtes de la page, et `registerProxyFetch()` le recopie sur celles côté serveur. Quand un test se termine, le proxy sauvegarde le `.mock.json` de ce test et laisse les autres tests continuer d'enregistrer.
+
+Ce qui peut encore empêcher une exécution en record en parallèle, c'est l'app testée. Des tests qui réinitialisent une même base de données ou se connectent à un même compte s'écrasent mutuellement, quoi que fasse le proxy. Enregistrez-les avec un seul worker, ou lancez un serveur d'app par worker, chacun avec son propre port et son propre répertoire de données. Une suite de 11 tests, chacun passant 2 à 8 minutes en appels vers l'amont, avec un serveur d'app par worker, s'est enregistrée en 11,5 minutes sur cinq workers contre 49 sur un seul.
 
 ```bash
-npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-Le replay, lui, peut tourner avec des workers en parallèle. Chaque test rejoue sa propre session, et l'en-tête `x-test-rcrd-id` permet de les distinguer : `playwrightProxy.before()` le pose sur les requêtes de la page, et `registerProxyFetch()` le recopie sur celles côté serveur. C'est pour cette raison que les [apps d'exemple](/fr/docs/reference/examples/) enregistrent avec `--workers 1`.
+Le script `test:e2e:record` qu'ajoute `init` et les [apps d'exemple](/fr/docs/reference/examples/) passent `--workers 1`. Retirez-le quand vos tests ne partagent aucun état de l'app.
+
+Les versions jusqu'à 2.0.1 gardent une seule session d'enregistrement pour toutes les requêtes. Quand un deuxième test commence à enregistrer sur ces versions, le proxy sauvegarde le fichier du premier test et passe au deuxième : les requêtes restantes du premier test finissent donc dans le `.mock.json` du deuxième. Sur ces versions, enregistrez avec `--workers 1`. Le replay tourne avec des workers en parallèle dans toutes les versions.
 
 ## Dois-je committer les enregistrements dans git ?
 

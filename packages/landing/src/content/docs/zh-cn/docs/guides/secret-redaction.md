@@ -2,7 +2,7 @@
 title: 机密涂抹
 description: 涂抹默认开启 —— Authorization、Cookie 和 Set-Cookie 会在写入磁盘前从录制中去除。可添加 header 和 body 模式、放行 cookie，或以编程方式涂抹。
 i18nSource: docs/guides/secret-redaction.md
-i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
+i18nSourceBlob: bac5a9d2817380a507bdd43da7e368af3b4b59a2
 ---
 
 录制会被提交到 git，所以在向磁盘写入任何内容之前会先去除机密。只要代理通过 CLI 或配置文件运行（`init` 正是这样设置的），涂抹就**默认开启**；代理会把下列请求/响应 header 的值替换为 `[REDACTED]`：
@@ -36,7 +36,7 @@ i18nSourceBlob: ae994d1669a0b96d18dde3e6e4885e4c1404c2a3
 - `--no-redact` —— 关闭机密涂抹（默认开启）。
 - `--redact` —— 开启机密涂抹；仅当配置设置了 `redaction: false` 时，用于重新开启。
 - `--redact-headers <names>` —— 额外要涂抹的 header 名（逗号分隔，与默认值合并）。
-- `--redact-body <patterns>` —— 要从请求/响应 body 中涂抹的正则模式（逗号分隔）。
+- `--redact-body <patterns>` —— 要从请求/响应 body 中涂抹的正则模式（逗号分隔）。回放时会先把它们应用到实际请求的 body 上，再与录制的 body 比较，因此即使录制之后请求中的机密发生了变化，请求仍能匹配。
 - `--allow-headers <names>` —— 免于涂抹的 header 名（逗号分隔，例如 `set-cookie`）。
 - `--allow-cookies <names>` —— 在 `Cookie`/`Set-Cookie` 中保持不涂抹的 cookie 名（逗号分隔）。
 

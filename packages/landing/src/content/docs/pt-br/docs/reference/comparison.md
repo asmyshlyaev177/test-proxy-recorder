@@ -4,7 +4,7 @@ description: 'Como o test-proxy-recorder se compara com MSW, routeFromHAR, Polly
 sidebar:
   label: Comparação
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 Cada ferramenta aqui controla as respostas de API que um teste de ponta a ponta vê. Elas diferem em onde interceptam as requisições (no navegador, dentro do seu servidor ou em um proxy separado) e em se você escreve as respostas ou as grava. A tabela mantém as seis ferramentas da [visão geral da documentação](/pt-br/docs/#comparison) e acrescenta o modo de teste do Next.js (test mode), mockttp, scenarist, talkback e proxay. Cada célula vem da documentação, do README ou do código-fonte da própria ferramenta, com os links abaixo da tabela, conforme o estado em 2026-10-03. "Não documentado" significa que essas fontes não dizem nada a respeito.
@@ -56,7 +56,7 @@ Se você está migrando do Polly.js, os conceitos dele correspondem aos do test-
 | Modos `record`, `replay` e `passthrough` ([configuração](https://netflix.github.io/pollyjs/#/configuration)) | Modos `record`, `replay` e `transparent`, definidos por teste pelo `playwrightProxy.before()` |
 | Uma gravação nomeada por instância do Polly, salva por um persister | Um `.mock.json` (servidor) e um `.har` (navegador) por teste do Playwright, no diretório de gravações |
 | Adaptadores dentro do processo que faz as requisições | Um processo de proxy para as chamadas do servidor, HAR para as chamadas do navegador e `registerProxyFetch()` no servidor |
-| Por padrão, a correspondência das requisições usa método, headers, corpo, ordem e URL | A correspondência das requisições do lado do servidor usa método, caminho e um hash da query, na ordem gravada, sem comparar os corpos. As requisições do navegador seguem as regras de HAR do Playwright, que também comparam os corpos de POST |
+| Por padrão, a correspondência das requisições usa método, headers, corpo, ordem e URL | A correspondência das requisições do lado do servidor usa método, caminho, um hash da query e o corpo, com as repetições servidas na ordem gravada e sem comparar os headers. A correspondência das requisições do navegador usa método, URL e corpo, e depois os headers em comum |
 
 ## MSW com Next.js e Playwright {#msw}
 

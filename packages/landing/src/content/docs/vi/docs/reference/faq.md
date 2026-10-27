@@ -2,12 +2,12 @@
 title: FAQ
 description: Các câu hỏi thường gặp về test-proxy-recorder — phát lại song song, commit các bản ghi vào git, target của proxy cho việc ghi HAR, máy chủ dev của Next.js, và cập nhật các bản ghi.
 i18nSource: docs/reference/faq.md
-i18nSourceBlob: 002ae184e5041d33ef6e110d17de4e23524ea4ec
+i18nSourceBlob: 330688cb20230d36f1c5e0ee0a9e121b46abf737
 ---
 
 ## Các test phát lại song song của tôi đôi khi gọi backend thật — tại sao? {#parallel-replay}
 
-Nhiều khả năng bạn đang gọi `playwrightProxy.teardown()` trong một hook theo từng test. Nó đặt chế độ proxy **toàn cục** về `transparent`, và với `fullyParallel: true` mỗi worker Playwright chạy `test.afterAll` riêng. Nếu một test nhanh hoàn thành và gọi `teardown()` trong khi một test chậm hơn vẫn đang chạy, proxy lật sang transparent giữa chừng test và các request còn lại bị chuyển tiếp tới backend thật thay vì được phát lại.
+Nhiều khả năng bạn đang gọi `playwrightProxy.teardown()` trong một hook theo từng test. Nó đặt chế độ proxy **toàn cục** về `transparent`, và với `fullyParallel: true` mỗi worker Playwright chạy `test.afterAll` riêng. Nếu một test nhanh hoàn thành và gọi `teardown()` trong khi một test chậm hơn vẫn đang chạy, proxy lật sang transparent giữa chừng test và các request còn lại bị chuyển tiếp tới backend thật thay vì được phát lại. Trong một lần chạy ghi lại, `teardown()` lưu và kết thúc mọi session ghi lại, nên các request còn lại của test chậm hơn sẽ không được ghi lại.
 
 ```typescript
 // ❌ làm hỏng phát lại song song — teardown() ảnh hưởng mọi session toàn cục
@@ -20,15 +20,23 @@ test.afterAll(async () => {
 
 Timeout của session là cách còn lại khiến một lần chạy phát lại gọi tới backend thật. Mỗi lời gọi `playwrightProxy.before()` khởi động lại nó, còn các request đi qua proxy thì không. Nếu nó hết hạn (mặc định 120000 ms) trước lời gọi `before()` tiếp theo, proxy chuyển sang `transparent`. Khi đó một test vẫn đang chạy sẽ gửi các request còn lại của nó tới backend thật. Nếu một test có thể chạy lâu như vậy, hãy tăng timeout bằng `--timeout` trên [CLI](/vi/docs/guides/cli/) hoặc `timeout` trong [cấu hình](/vi/docs/guides/config/).
 
+## Một request được phát lại thất bại với "with this request body" — tại sao? {#request-body-changed}
+
+Proxy khớp một request phía máy chủ theo body của nó cũng như theo method, path và query, và request đó đã gửi một body mà không bản ghi nào có. Thường thì body chứa một giá trị thay đổi ở mỗi lần chạy, chẳng hạn ngày hiện tại hoặc một id ngẫu nhiên. Hãy cố định giá trị đó trong khi test (một đồng hồ cố định, một bộ sinh id có seed) rồi ghi lại lần nữa. Nếu request của ứng dụng thay đổi có chủ ý, hãy ghi lại test đó. Các request `GET` và `HEAD` không được so sánh theo body.
+
 ## Tôi có thể ghi lại với nhiều worker song song không? {#parallel-recording}
 
-Không. Proxy chỉ giữ một session ghi tại một thời điểm. Khi test thứ hai bắt đầu ghi lại, proxy lưu file của test thứ nhất và chuyển sang test thứ hai. Khi đó các request còn lại của test thứ nhất đi qua proxy sẽ rơi vào `.mock.json` của test thứ hai. Hãy ghi lại với một worker, như script `test:e2e:record` mà `init` thêm vào đã làm sẵn:
+Có, với các phiên bản sau 2.0.1. Proxy xếp mỗi request vào session có tên trong header `x-test-rcrd-id` của nó, ở chế độ ghi lại cũng như ở chế độ phát lại. `playwrightProxy.before()` đặt header này lên các request của trang, và `registerProxyFetch()` sao chép nó sang các request phía máy chủ. Khi một test kết thúc, proxy lưu `.mock.json` của test đó và để các test khác tiếp tục ghi lại.
+
+Thứ vẫn có thể cản một lần chạy ghi lại song song là chính ứng dụng đang được test. Các test reset cùng một cơ sở dữ liệu hoặc đăng nhập vào cùng một tài khoản sẽ ghi đè lên nhau, bất kể proxy làm gì. Hãy ghi lại những test đó với một worker, hoặc chạy một app server cho mỗi worker, mỗi server có port và thư mục dữ liệu riêng. Một bộ 11 test, mỗi test mất 2 đến 8 phút cho các lời gọi upstream, với một app server cho mỗi worker, được ghi lại trong 11.5 phút trên năm worker so với 49 phút trên một worker.
 
 ```bash
-npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-Phát lại thì có thể chạy với nhiều worker song song. Mỗi test phát lại session riêng của nó, và header `x-test-rcrd-id` giúp phân biệt chúng: `playwrightProxy.before()` đặt header này lên các request của trang, và `registerProxyFetch()` sao chép nó sang các request phía máy chủ. Các [ứng dụng ví dụ](/vi/docs/reference/examples/) ghi lại với `--workers 1` cũng vì lý do này.
+Script `test:e2e:record` mà `init` thêm vào và các [ứng dụng ví dụ](/vi/docs/reference/examples/) đều truyền `--workers 1`. Hãy bỏ nó đi khi các test của bạn không dùng chung trạng thái nào của ứng dụng.
+
+Các phiên bản đến 2.0.1 giữ một session ghi lại duy nhất cho mọi request. Khi test thứ hai bắt đầu ghi lại trên các phiên bản đó, proxy lưu file của test thứ nhất và chuyển sang test thứ hai, nên các request còn lại của test thứ nhất rơi vào `.mock.json` của test thứ hai. Trên các phiên bản đó, hãy ghi lại với `--workers 1`. Phát lại chạy được với nhiều worker song song ở mọi phiên bản.
 
 ## Tôi có nên commit các bản ghi vào git không?
 

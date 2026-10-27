@@ -4,7 +4,7 @@ description: Записывайте и воспроизводите вызовы
 sidebar:
   label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
+i18nSourceBlob: 41506a06c67c43287c172907f5ef6c6ef07e36e3
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -28,7 +28,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Исключение — full-stack приложения:** когда браузер тоже вызывает `localhost:8100` (потому что фронтенд настроен с URL прокси как базой API), используйте в качестве шаблона `/localhost:8100/`. Тогда эти запросы браузера проходят к прокси, который записывает их в `.mock.json` теста и воспроизводит оттуда, поэтому на отсутствующий запрос приходит 404 от прокси, а не прерывание HAR (см. [как воспроизведение сопоставляет запросы](/ru/docs/getting-started/how-it-works/#replay-matching)).
 
-Имена файлов записей выводятся из имён тестов (`"create a user"` → `create-a-user.mock.json` / `.har`).
+Имена файлов записей составляются из файла теста, заголовков `describe` и названия теста (`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`). Имя длиннее 120 байт обрезается и заканчивается хешем.
+
+## Тест без записи
+
+В режиме воспроизведения `before()` выбрасывает исключение, если у теста нет записи, ещё до переключения прокси:
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+Запишите тест, а не пропускайте его: пропущенный тест отображается как пропущенный, а не упавший, поэтому отсутствующая запись остаётся незамеченной. `hasRecording(testInfo)` отвечает на тот же вопрос без исключения и использует те же имена файлов, что и воспроизведение.
 
 ## Global teardown (рекомендуется) {#global-teardown-recommended}
 
@@ -48,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` сбрасывает прокси в `transparent` и выполняет проход [маскирования](/ru/docs/guides/secret-redaction/) HAR. Не вызывайте его в хуке `afterAll` для каждого теста при `fullyParallel` — почему это ломает параллельное воспроизведение, см. в [FAQ](/ru/docs/reference/faq/#parallel-replay).
+`teardown()` сбрасывает прокси в `transparent` и выполняет проход [маскирования](/ru/docs/guides/secret-redaction/) HAR. Переключение в `transparent` сохраняет и завершает все сессии записи. Не вызывайте его в хуке `afterAll` для каждого теста при `fullyParallel` — почему это ломает параллельные воспроизведение и запись, см. в [FAQ](/ru/docs/reference/faq/#parallel-replay).
 
 ## Файлы записей
 

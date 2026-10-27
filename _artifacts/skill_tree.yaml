@@ -45,6 +45,7 @@ skills:
     references:
       - 'references/common-mistakes.md'
       - 'references/replay-matching.md'
+      - 'references/parallel-recording.md'
 
   - name: 'nextjs-ssr'
     slug: 'nextjs-ssr'

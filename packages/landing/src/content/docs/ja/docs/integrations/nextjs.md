@@ -4,7 +4,7 @@ description: Next.js サーバーが行う fetch 呼び出し（Server Component
 sidebar:
   label: Next.js
 i18nSource: docs/integrations/nextjs.md
-i18nSourceBlob: 6abb832a0d1fea8c38f00e15dbb1693e3a164e19
+i18nSourceBlob: 80d920c0b5282f10e3c851bb058eb881830cc12e
 ---
 
 Playwright のテストで `page.route()` が見るのはブラウザのリクエストだけで、Next.js サーバーがレンダリング中に行う `fetch` 呼び出しはそこに届きません。test-proxy-recorder は、こうしたサーバーサイドフェッチをプロキシ経由で、テストごとに 1 つの記録として記録・再生します。
@@ -30,7 +30,7 @@ import { registerProxyFetch } from 'test-proxy-recorder/nextjs';
 registerProxyFetch(); // no-op in production unless TEST_PROXY_RECORDER_ENABLED=true
 ```
 
-これはグローバル `fetch` にパッチを当て、現在のリクエストの `x-test-rcrd-id` を送信リクエストにコピーするので、プロキシは並行する再生セッションを区別できます。ルートレイアウトから呼んでください — `instrumentation.ts` ではなく、そこのコンテキストは Edge ランタイムでルートをレンダリングするものと異なるため、そこでパッチしても暗黙に発火しません。
+これはグローバル `fetch` にパッチを当て、現在のリクエストの `x-test-rcrd-id` を送信リクエストにコピーするので、プロキシは再生と同様に記録モードでも、並行するセッションを区別できます。ルートレイアウトから呼んでください — `instrumentation.ts` ではなく、そこのコンテキストは Edge ランタイムでルートをレンダリングするものと異なるため、そこでパッチしても暗黙に発火しません。
 
 ## axios — registerProxyAxios
 

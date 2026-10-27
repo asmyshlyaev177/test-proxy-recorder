@@ -4,7 +4,7 @@ description: Enregistrez et rejouez les appels d'API dans les tests Playwright a
 sidebar:
   label: Playwright
 i18nSource: docs/integrations/playwright.md
-i18nSourceBlob: 26b8b462ae4153046421443a751392892c37c34b
+i18nSourceBlob: 41506a06c67c43287c172907f5ef6c6ef07e36e3
 ---
 
 ## `playwrightProxy.before(page, testInfo, mode, options?)`
@@ -28,7 +28,17 @@ await playwrightProxy.before(page, testInfo, 'replay', {
 
 **Exception — apps full-stack :** quand le navigateur appelle aussi `localhost:8100` (parce que le frontend est configuré avec l'URL du proxy comme base d'API), utilisez `/localhost:8100/` comme motif. Ces requêtes du navigateur passent alors jusqu'au proxy, qui les enregistre dans le `.mock.json` du test et les rejoue depuis celui-ci : une requête manquante reçoit donc la 404 du proxy plutôt qu'une interruption HAR (voir [la correspondance des requêtes en replay](/fr/docs/getting-started/how-it-works/#replay-matching)).
 
-Les noms de fichiers d'enregistrement sont dérivés des noms de tests (`"create a user"` → `create-a-user.mock.json` / `.har`).
+Les noms des fichiers d'enregistrement viennent du fichier de test, des titres `describe` et du titre du test (`users.spec.ts` › `create a user` → `users__create-a-user.mock.json` / `.har`). Un nom de plus de 120 octets est tronqué et se termine par un hash.
+
+## Test sans enregistrement
+
+En replay, `before()` lève une exception quand le test n'a pas d'enregistrement, avant de changer le mode du proxy :
+
+```text
+[test-proxy-recorder] This test has no recording: <recordingsDir>/users__create-a-user.mock.json does not exist. Record this test first.
+```
+
+Enregistrez le test plutôt que de le sauter : un test sauté est rapporté comme sauté, pas comme échoué, si bien qu'un enregistrement manquant passe inaperçu. `hasRecording(testInfo)` répond à la même question sans lever d'exception, avec les mêmes noms de fichiers que le replay.
 
 ## Teardown global (recommandé) {#global-teardown-recommended}
 
@@ -48,7 +58,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` réinitialise le proxy à `transparent` et exécute la passe de [masquage](/fr/docs/guides/secret-redaction/) des HAR. Ne l'appelez pas dans un hook `afterAll` par test sous `fullyParallel` — voir la [FAQ](/fr/docs/reference/faq/#parallel-replay) pour comprendre pourquoi cela casse le replay en parallèle.
+`teardown()` réinitialise le proxy à `transparent` et exécute la passe de [masquage](/fr/docs/guides/secret-redaction/) des HAR. Le passage en `transparent` sauvegarde et termine toutes les sessions d'enregistrement. Ne l'appelez pas dans un hook `afterAll` par test sous `fullyParallel` — voir la [FAQ](/fr/docs/reference/faq/#parallel-replay) pour comprendre pourquoi cela casse le replay et l'enregistrement en parallèle.
 
 ## Fichiers d'enregistrement
 

@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=es source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=es source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -111,13 +111,13 @@ export const home: HomeCopy = {
     perTest: {
       term: 'Un archivo por prueba',
       start: 'Cada prueba escribe su propio archivo, con el nombre de la prueba, así que',
-      end: 'vuelve a grabar solo esa prueba. El proxy graba una prueba cada vez, así que graba con un solo worker; la reproducción se ejecuta en paralelo.',
+      end: 'vuelve a grabar solo esa prueba. Las pruebas se graban en workers paralelos igual que se reproducen, salvo que compartan una base de datos o una cuenta.',
     },
     testId: {
       term: 'El id de la prueba',
       start: 'Playwright envía',
       mid: 'con cada petición que hace una prueba, y',
-      end: 'lo copia en los fetch propios de tu servidor. El proxy lo lee para responder a cada prueba desde el archivo de esa misma prueba, incluso cuando las pruebas se reproducen en paralelo.',
+      end: 'lo copia en los fetch propios de tu servidor. El proxy lo lee para grabar cada prueba en su propio archivo y reproducirla desde ahí, incluso cuando las pruebas se ejecutan en paralelo.',
     },
     secrets: {
       term: 'Secretos',
@@ -132,7 +132,7 @@ export const home: HomeCopy = {
     heading: 'Preguntas sobre la reproducción',
     matching: {
       term: '¿Cómo se emparejan las peticiones?',
-      body: 'El proxy empareja una llamada del lado del servidor por su método, su ruta y su cadena de consulta (query string) exacta, no por su cuerpo, y sirve las llamadas repetidas en el orden en que se grabaron. Las llamadas del navegador siguen las reglas de HAR de Playwright, que también comparan los cuerpos de los POST. Una cadena de consulta que cambia en cada ejecución, como una marca de tiempo, nunca coincide, y no hay ninguna opción para ignorar un parámetro, así que mantén esos valores fijos durante las pruebas.',
+      body: 'El proxy empareja una llamada del lado del servidor por su método, su ruta, su cadena de consulta (query string) exacta y su cuerpo, así que las llamadas enviadas en paralelo reciben cada una su propia respuesta, y sirve las llamadas repetidas en el orden en que se grabaron. Las llamadas del navegador se emparejan también por método, URL y cuerpo. Una cadena de consulta o un cuerpo que cambia en cada ejecución, como una marca de tiempo, nunca coincide, y no hay ninguna opción para ignorar un valor, así que mantén esos valores fijos durante las pruebas.',
       link: 'Cómo se emparejan las peticiones al reproducir\u00a0→',
     },
     misses: {

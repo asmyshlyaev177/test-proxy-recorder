@@ -56,7 +56,7 @@ export default defineConfig({
 });
 ```
 
-`teardown()` resets the proxy to `transparent` and runs the HAR [redaction](/docs/guides/secret-redaction/) pass. Don't call it in a per-test `afterAll` hook under `fullyParallel` — see the [FAQ](/docs/reference/faq/#parallel-replay) for why that breaks parallel replay.
+`teardown()` resets the proxy to `transparent` and runs the HAR [redaction](/docs/guides/secret-redaction/) pass. The switch to `transparent` saves and ends every recording session. Don't call it in a per-test `afterAll` hook under `fullyParallel` — see the [FAQ](/docs/reference/faq/#parallel-replay) for why that breaks parallel replay and recording.
 
 ## Recording files
 

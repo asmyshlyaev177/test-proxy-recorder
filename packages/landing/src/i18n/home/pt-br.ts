@@ -3,7 +3,7 @@
 // Values only: every key, its order and its type come from en.ts, and a
 // missing or renamed one is a type error rather than a silently English
 // page. Do not add keys here that en.ts does not have.
-// i18n:meta locale=pt-BR source=en.ts source-blob=c698d86206f541e55eef9064035f21550ca9a188 status=translated
+// i18n:meta locale=pt-BR source=en.ts source-blob=a1e6f56b0d217684bf9e32691386d4a7e4ac4d0a status=translated
 import type { HomeCopy } from './types';
 
 export const home: HomeCopy = {
@@ -111,13 +111,13 @@ export const home: HomeCopy = {
     perTest: {
       term: 'Um arquivo por teste',
       start: 'Cada teste escreve seu próprio arquivo, com o nome do teste, então',
-      end: 'grava de novo só esse teste. O proxy grava um teste por vez, então grave com um único worker; a reprodução roda em paralelo.',
+      end: 'grava de novo só esse teste. Os testes gravam em workers paralelos, como na reprodução, a menos que compartilhem um único banco de dados ou uma única conta.',
     },
     testId: {
       term: 'O id do teste',
       start: 'O Playwright envia',
       mid: 'em cada requisição que um teste faz, e o',
-      end: 'o copia para as buscas feitas pelo seu próprio servidor. O proxy o lê para responder a cada teste a partir do próprio arquivo desse teste, mesmo quando os testes são reproduzidos em paralelo.',
+      end: 'o copia para as buscas feitas pelo seu próprio servidor. O proxy o lê para gravar cada teste no seu próprio arquivo e reproduzi-lo a partir dele, mesmo quando os testes rodam em paralelo.',
     },
     secrets: {
       term: 'Segredos',
@@ -132,7 +132,7 @@ export const home: HomeCopy = {
     heading: 'Perguntas sobre a reprodução',
     matching: {
       term: 'Como é feita a correspondência das requisições?',
-      body: 'O proxy faz a correspondência de uma chamada do lado do servidor pelo método, pelo caminho e pela query string exata, não pelo corpo, e serve as chamadas repetidas na ordem em que foram gravadas. As chamadas do navegador seguem as regras de HAR do Playwright, que também comparam os corpos de POST. Uma query string que muda a cada execução, como um timestamp, nunca corresponde, e nenhuma opção ignora um parâmetro, então mantenha esses valores fixos durante os testes.',
+      body: 'O proxy faz a correspondência de uma chamada do lado do servidor pelo método, pelo caminho, pela query string exata e pelo corpo, então chamadas enviadas em paralelo recebem cada uma a sua própria resposta, e serve as chamadas repetidas na ordem em que foram gravadas. A correspondência das chamadas do navegador também usa método, URL e corpo. Uma query string ou um corpo que muda a cada execução, como um timestamp, nunca corresponde, e nenhuma opção ignora um valor, então mantenha esses valores fixos durante os testes.',
       link: 'Correspondência de requisições na reprodução →',
     },
     misses: {

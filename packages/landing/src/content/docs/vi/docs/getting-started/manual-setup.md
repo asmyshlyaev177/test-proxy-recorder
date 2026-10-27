@@ -2,7 +2,7 @@
 title: Thiết lập thủ công
 description: Kết nối test-proxy-recorder vào một ứng dụng full-stack (SSR + browser) hoặc một SPA/extension chỉ chạy trên trình duyệt bằng tay, rồi ghi lại một lần và phát lại trên CI.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
+i18nSourceBlob: 7f91d9e549b42132c857dc6bc0d30b021aa4ece0
 ---
 
 Hầu hết mọi người nên chạy [`init`](/vi/docs/getting-started/quick-start/) — nó viết mọi file bên dưới cho bạn. Trang này là tài liệu tham chiếu về những gì `init` tạo ra, để bạn có thể tự kết nối bằng tay, bỏ qua phần tạo mã, hoặc hiểu từng thành phần.
@@ -94,8 +94,10 @@ Trước khi ghi lại, hãy đưa cơ sở dữ liệu của backend về trạ
 npm run serve:proxy
 
 # Terminal 2 — các file .mock.json và .har được ghi tự động
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 ```
+
+Việc ghi lại chạy trên số worker bằng với khi phát lại, vì mỗi test ghi vào session riêng của nó. Hãy thêm `--workers 1` khi các test dùng chung trạng thái trong backend, chẳng hạn một cơ sở dữ liệu mà chúng reset hoặc một tài khoản mà chúng đăng nhập. Các phiên bản đến 2.0.1 giữ một session ghi lại duy nhất cho mọi request, nên trên các phiên bản đó mọi lần chạy ghi lại đều cần `--workers 1`.
 
 ### 5. Chuyển sang phát lại và commit
 
@@ -169,9 +171,11 @@ test('homepage loads', async ({ page }) => {
 ### 5. Ghi lại — chạy một lần dựa trên API thật
 
 ```bash
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 # Các file .har được ghi vào e2e/recordings/ một cách tự động
 ```
+
+Hãy thêm `--workers 1` khi các test dùng chung trạng thái trong API thật, chẳng hạn một tài khoản mà tất cả chúng cùng đăng nhập, hoặc khi bạn dùng một phiên bản đến 2.0.1.
 
 ### 6. Commit các bản ghi
 

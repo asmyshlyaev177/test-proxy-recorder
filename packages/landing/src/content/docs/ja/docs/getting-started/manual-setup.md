@@ -2,7 +2,7 @@
 title: 手動セットアップ
 description: フルスタック（SSR + ブラウザ）アプリ、またはブラウザのみの SPA / 拡張に test-proxy-recorder を手で組み込み、一度記録して CI で再生します。
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
+i18nSourceBlob: 7f91d9e549b42132c857dc6bc0d30b021aa4ece0
 ---
 
 ほとんどの人は [`init`](/ja/docs/getting-started/quick-start/) を実行すべきです — 以下のファイルをすべて書き出してくれます。このページは `init` が生成する内容のリファレンスで、手で組み込んだり、コード生成を省いたり、各ピースを理解したりするために使います。
@@ -94,8 +94,10 @@ test('homepage loads', async ({ page }) => {
 npm run serve:proxy
 
 # Terminal 2 — .mock.json and .har files are written automatically
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 ```
+
+各テストは自分のセッションに記録するため、記録は再生と同じ数のワーカーで実行できます。テストがバックエンドの状態を共有する場合、たとえばリセットする 1 つのデータベースやサインインする 1 つのアカウントを共有する場合は、`--workers 1` を追加してください。バージョン 2.0.1 までは、すべてのリクエストに対して 1 つの記録セッションを保持するため、それらのバージョンでは記録の実行に毎回 `--workers 1` が必要です。
 
 ### 5. 再生に切り替えてコミットする
 
@@ -169,9 +171,11 @@ test('homepage loads', async ({ page }) => {
 ### 5. 記録する — 実際の API に対して一度実行する
 
 ```bash
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 # .har files are written to e2e/recordings/ automatically
 ```
+
+テストが実際の API の状態を共有する場合（たとえば全テストが同じ 1 つのアカウントでサインインする場合）や、バージョン 2.0.1 以前を使う場合は、`--workers 1` を追加してください。
 
 ### 6. 記録をコミットする
 

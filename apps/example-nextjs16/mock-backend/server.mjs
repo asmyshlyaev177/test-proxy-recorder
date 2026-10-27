@@ -12,6 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE =
   process.env.MOCK_DATA_FILE ?? path.join(__dirname, '..', 'data', 'todos.json');
 const PORT = process.env.MOCK_BACKEND_PORT ?? 3002;
+let activeSlow = 0;
 
 async function readTodos() {
   try {
@@ -116,6 +117,29 @@ const server = createServer(async (req, res) => {
       const { input } = JSON.parse(await getBody(req));
       res.writeHead(200);
       res.end(JSON.stringify({ data: input.map((text, index) => ({ index, embedding: [text.length] })) }));
+      return;
+    }
+
+    // Answers after `ms` milliseconds, so a test can leave calls in flight through
+    // the proxy when its session ends; /slow/active says how many are waiting now
+    // (e2e/parallel-record.spec.ts).
+    if (req.method === 'GET' && url.pathname === '/slow/active') {
+      res.writeHead(200);
+      res.end(JSON.stringify({ active: activeSlow }));
+      return;
+    }
+    if (req.method === 'GET' && url.pathname === '/slow') {
+      const ms = Number(url.searchParams.get('ms'));
+      if (!Number.isInteger(ms) || ms < 0 || ms > 60_000) {
+        res.writeHead(400);
+        res.end(JSON.stringify({ error: 'ms must be an integer from 0 to 60000' }));
+        return;
+      }
+      activeSlow++;
+      await new Promise((resolve) => setTimeout(resolve, ms));
+      activeSlow--;
+      res.writeHead(200);
+      res.end(JSON.stringify({ ok: true, ms }));
       return;
     }
 

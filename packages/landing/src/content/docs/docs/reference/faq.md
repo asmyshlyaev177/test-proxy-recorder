@@ -5,7 +5,7 @@ description: Common questions about test-proxy-recorder — parallel replay, com
 
 ## My parallel replay tests sometimes hit the real backend — why? {#parallel-replay}
 
-You're likely calling `playwrightProxy.teardown()` in a per-test hook. It sets the **global** proxy mode to `transparent`, and with `fullyParallel: true` each Playwright worker runs its own `test.afterAll`. If a fast test finishes and calls `teardown()` while a slower test is still running, the proxy flips to transparent mid-test and the remaining requests are forwarded to the real backend instead of being replayed.
+You're likely calling `playwrightProxy.teardown()` in a per-test hook. It sets the **global** proxy mode to `transparent`, and with `fullyParallel: true` each Playwright worker runs its own `test.afterAll`. If a fast test finishes and calls `teardown()` while a slower test is still running, the proxy flips to transparent mid-test and the remaining requests are forwarded to the real backend instead of being replayed. In a record run, `teardown()` saves and ends every recording session, so the slower test's remaining requests are not recorded.
 
 ```typescript
 // ❌ breaks parallel replay — teardown() affects all sessions globally
@@ -24,13 +24,17 @@ The proxy matches a server-side request by its body as well as its method, path 
 
 ## Can I record with parallel workers? {#parallel-recording}
 
-No. The proxy holds one recording session at a time. When a second test starts recording, the proxy saves the first test's file and switches to the second test. The first test's remaining requests through the proxy then go into the second test's `.mock.json`. Record with one worker, as the `test:e2e:record` script that `init` adds already does:
+Yes, after 2.0.1. The proxy files each request under the session named in its `x-test-rcrd-id` header, in record mode as in replay. `playwrightProxy.before()` sets the header on the page's requests, and `registerProxyFetch()` copies it onto server-side ones. When a test ends, the proxy saves that test's `.mock.json` and leaves the other tests recording.
+
+What can still stop a parallel record run is the app under test. Tests that reset one database or sign in to one account overwrite each other whatever the proxy does. Record those with one worker, or run one app server per worker, each on its own port and data directory. A suite of 11 tests, each spending 2 to 8 minutes on upstream calls, with one app server per worker, recorded in 11.5 minutes on five workers against 49 on one.
 
 ```bash
-npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test --workers 1
 ```
 
-Replay can run with parallel workers. Each test replays its own session, and the `x-test-rcrd-id` header tells them apart: `playwrightProxy.before()` sets it on the page's requests, and `registerProxyFetch()` copies it onto server-side ones. The [example apps](/docs/reference/examples/) record with `--workers 1` for this reason.
+The `test:e2e:record` script that `init` adds and the [example apps](/docs/reference/examples/) pass `--workers 1`. Drop it when your tests share no app state.
+
+Versions up to 2.0.1 hold one recording session for every request. When a second test starts recording there, the proxy saves the first test's file and switches to the second test, so the first test's remaining requests go into the second test's `.mock.json`. On those versions, record with `--workers 1`. Replay runs with parallel workers in every version.
 
 ## Should I commit recordings to git?
 

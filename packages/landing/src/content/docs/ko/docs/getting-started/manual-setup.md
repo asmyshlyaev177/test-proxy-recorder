@@ -2,7 +2,7 @@
 title: 수동 설정
 description: test-proxy-recorder를 풀스택(SSR + 브라우저) 앱이나 브라우저 전용 SPA 또는 확장 프로그램에 직접 연결한 뒤, 한 번 기록하고 CI에서 재생하는 방법을 설명합니다.
 i18nSource: docs/getting-started/manual-setup.md
-i18nSourceBlob: 617b388907631c76661b92409d9acd89fb243a89
+i18nSourceBlob: 7f91d9e549b42132c857dc6bc0d30b021aa4ece0
 ---
 
 대부분은 [`init`](/ko/docs/getting-started/quick-start/)을 실행하는 편이 좋습니다. 아래 모든 파일을 대신 작성해 줍니다. 이 페이지는 `init`이 생성하는 내용의 참조 자료이므로, 직접 연결하거나 코드 생성을 버리거나 각 부분을 이해하는 데 쓸 수 있습니다.
@@ -94,8 +94,10 @@ test('homepage loads', async ({ page }) => {
 npm run serve:proxy
 
 # 터미널 2 — .mock.json과 .har 파일이 자동으로 작성됩니다
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 ```
+
+각 테스트가 자기 세션에 기록하므로, 기록은 재생과 같은 수의 워커로 실행됩니다. 테스트가 백엔드의 상태를 공유할 때, 예를 들어 함께 초기화하는 데이터베이스 하나나 함께 로그인하는 계정 하나를 쓸 때는 `--workers 1`을 추가하세요. 2.0.1 이하 버전은 모든 요청에 하나의 기록 세션을 유지하므로, 그 버전에서는 모든 기록 실행에 `--workers 1`이 필요합니다.
 
 ### 5. 재생으로 전환하고 커밋
 
@@ -169,9 +171,11 @@ test('homepage loads', async ({ page }) => {
 ### 5. 기록 — 실제 API를 대상으로 한 번 실행
 
 ```bash
-RECORD_MODE=1 npx playwright test --workers 1
+RECORD_MODE=1 npx playwright test
 # .har 파일이 e2e/recordings/에 자동으로 작성됩니다
 ```
+
+테스트가 실제 API의 상태를 공유할 때, 예를 들어 모든 테스트가 같은 계정 하나로 로그인할 때, 또는 2.0.1 이하 버전을 실행할 때는 `--workers 1`을 추가하세요.
 
 ### 6. 기록 커밋
 

@@ -4,7 +4,7 @@ description: 'Cómo se compara test-proxy-recorder con MSW, routeFromHAR, Polly.
 sidebar:
   label: Comparación
 i18nSource: docs/reference/comparison.md
-i18nSourceBlob: fef6bf06a88da123cd35aecb730f9916e9cb312f
+i18nSourceBlob: 01bf5e6098584536c177949ef958d0152f24f531
 ---
 
 Cada herramienta de esta página controla las respuestas de la API que ve una prueba end-to-end. Se diferencian en dónde interceptan las peticiones (en el navegador, dentro de tu servidor o en un proxy aparte) y en si las respuestas las escribes tú o las grabas. La tabla mantiene las seis herramientas de la [introducción de la documentación](/es/docs/#comparison) y añade el modo de prueba de Next.js (Next.js test mode), mockttp, scenarist, talkback y proxay. Cada celda procede de la propia documentación, README o código fuente de la herramienta, enlazados debajo de la tabla, a fecha de 2026-10-03. «No documentado» significa que esas fuentes no lo indican.
@@ -56,7 +56,7 @@ Si vienes de Polly.js, sus conceptos se corresponden con los de test-proxy-recor
 | Modos `record`, `replay` y `passthrough` ([configuración](https://netflix.github.io/pollyjs/#/configuration)) | Modos `record`, `replay` y `transparent`, que `playwrightProxy.before()` establece por prueba |
 | Una grabación con nombre por instancia de Polly, guardada por un persister | Un `.mock.json` (servidor) y un `.har` (navegador) por prueba de Playwright, en el directorio de grabaciones |
 | Adaptadores dentro del proceso que hace las peticiones | Un proceso proxy para las llamadas del servidor, HAR para las del navegador y `registerProxyFetch()` en el servidor |
-| Peticiones emparejadas por método, cabeceras, cuerpo, orden y URL por defecto | Peticiones del lado del servidor emparejadas por método, ruta y un hash de la cadena de consulta (query string), en el orden grabado y sin comparar los cuerpos. Las peticiones del navegador siguen las reglas de HAR de Playwright, que también comparan los cuerpos de los POST |
+| Peticiones emparejadas por método, cabeceras, cuerpo, orden y URL por defecto | Peticiones del lado del servidor emparejadas por método, ruta, un hash de la cadena de consulta (query string) y el cuerpo, con las repeticiones servidas en el orden grabado y sin comparar las cabeceras. Peticiones del navegador emparejadas por método, URL y cuerpo, y luego por las cabeceras que comparten |
 
 ## MSW con Next.js y Playwright {#msw}
 
