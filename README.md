@@ -134,17 +134,6 @@ npx @tanstack/intent@latest install
 
 The skill sources live in [`packages/test-proxy-recorder/skills/`](packages/test-proxy-recorder/skills/).
 
-## Hire me
-
-I'm **Aleksandr Smyshliaev** — author and maintainer of this tool. Senior frontend engineer (React / Next.js / TypeScript, 8+ years), and **available for full-time remote work right now**.
-
-This project exists because I spent years fixing other people's flaky test suites. That's the kind of work I'm best at: the boring infrastructure that decides whether a codebase is still pleasant six months in.
-
-- **Best at** — component libraries, state management, and test suites that survive a refactor.
-- **Also mine** — [react-horizontal-scrolling-menu](https://github.com/asmyshlyaev177/react-horizontal-scrolling-menu) (~84k weekly installs), [state-in-url](https://github.com/asmyshlyaev177/state-in-url) (typed URL state), [llm-queue](https://github.com/asmyshlyaev177/llm-queue).
-- **Where** — Tbilisi, Georgia (GMT+4), full CET overlap. Registered contractor entity, so B2B engagement needs no employer-of-record setup.
-- **Reach me** — [asmyshlyaev177.dev](https://asmyshlyaev177.dev) · [asmyshlyaev177@gmail.com](mailto:asmyshlyaev177@gmail.com) · [LinkedIn](https://linkedin.com/in/asmyshlyaev177) · Telegram @asmyshlyaev177
-
 ## License
 
 MIT
